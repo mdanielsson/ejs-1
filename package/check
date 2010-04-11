@@ -1,0 +1,30 @@
+#!/bin/bash
+
+for w in ejs
+do
+	for f in \
+		/etc/$w \
+		/usr/bin/ejs \
+		/usr/bin/ec \
+		/usr/bin/ejsvm \
+		/usr/bin/ejsmod \
+		/usr/lib/lib${w}* \
+		/usr/share/${w} \
+		/usr/share/doc/${w} \
+		/usr/share/man/${w} \
+		/usr/share/man/man1/${w}*  \
+		/usr/share/man/man1/ejs.* \
+		/usr/share/man/man1/ec.1* \
+		/usr/share/man/man1/ejsvm* \
+		/usr/share/man/man1/ejsmod* \
+		/usr/include/${w}* \
+		/var/www/${w}* \
+		/var/log/${w}* \
+		/usr/src/${w}* 
+	do
+		if [ -f $f -o -d $f ] ; then
+			echo -e "\n=====  $f =====\n"
+			ls $f
+		fi
+	done
+done

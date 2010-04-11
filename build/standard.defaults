@@ -1,0 +1,196 @@
+#!/bin/bash
+#
+#	standard.defaults -- Default configuration settings when building 
+#		Embedthis Ejscript from source.
+#
+#	Copyright (c) Embedthis Software LLC, 2003-2010. All Rights Reserved.
+#
+#	These defaults build a normal GPL Ejscript. It is multi-threaded, 
+#	dynamically linked with the ability to load modules. 
+#
+#	These initial defaults are read by configure when first creating the
+#	configuration files: buildConfig.make, buildConfig.sh and buildConfig.h
+#
+###############################################################################
+#
+#	Primary Configuration Section
+#
+BLD_TYPE="DEBUG" 						# The build type: (DEBUG), (RELEASE)
+BLD_TUNE="MPR_TUNE_SIZE" 			    # The tune type: (SIZE), (BALANCED), (SPEED)
+BLD_DEFAULTS="standard"					# Name of this defaults file
+BLD_DEBUG=1								# Set to 1 if DEBUG
+BLD_CLEAN_INSTALL=0						# Overwrite existing installations
+BLD_LICENSE=gpl
+BLD_COMMERCIAL=0
+
+#
+#
+#   Include settings common to all configurations
+#
+. "${BLD_TOP}/build/product.config"
+
+###############################################################################
+#
+#   Components (order matters. Dependencies first)
+#   See build/components/* for component configuration scripts
+#
+
+with --os=win winsdk
+with --build --os=wince winsdk
+with --os=wince wince
+with --os=vxworks vxworks
+
+with ar cc make nm
+with --os=linux ranlib
+with --os=macosx ranlib
+with --os=win ld mt rc
+with --os=wince ld
+
+with --build --optional doxygen
+with --os=win --build --optional pkg
+
+with --optional regexp 
+with mpr
+with --host --optional matrixssl openssl ssl
+with --optional sqlite 
+# with --optional mysql 
+with --optional appweb
+with ejs
+
+###############################################################################
+#
+#	Turn assert checking on. Good for a debug build
+#
+BLD_FEATURE_ASSERT=1
+
+#
+#   Remote command execution
+#
+BLD_FEATURE_CMD=1
+
+#
+#   Do a complete cross-build of everything including dev tools.
+#
+BLD_FEATURE_COMPLETE_CROSS=0
+
+#
+#   Do a complete build of everything for the native (build system).
+#   This includes programs that normally only run on the target.
+#
+BLD_FEATURE_COMPLETE_NATIVE=1
+
+#
+#	Disable decimal (128 bit integers) support
+#
+BLD_FEATURE_DECIMAL=0
+
+#
+#	Device or emulator. (PocketPC2003, Smartphone2003)
+#
+BLD_FEATURE_DEVICE=PocketPC2003
+
+#
+#	Enable building documentation
+#
+BLD_FEATURE_DOC=1
+
+#
+#	Enable cross-building the compiler
+#
+BLD_FEATURE_EJS_CROSS_COMPILER=1
+
+#
+#	Enable auto recompilation of modified scripts by the web framework
+#
+BLD_FEATURE_EJS_AUTO_COMPILE=1
+
+#
+#	Enable building with database support
+#
+BLD_FEATURE_EJS_DB=1
+
+#
+#	Ejscript documentation generation from script code
+#
+BLD_FEATURE_EJS_DOC=1
+
+#
+#	E4X Ejscript Extensions 
+#
+BLD_FEATURE_EJS_E4X=1
+
+#
+#	Language specification level
+#
+BLD_FEATURE_EJS_LANG=EJS_LANG_FIXED
+
+#
+#	Web framework
+#
+BLD_FEATURE_EJS_WEB=1
+
+#
+#	Floating point support
+#
+BLD_FEATURE_FLOATING_POINT=1
+
+#
+#   HTTP support (minimal http defines and http status code support)
+#
+BLD_FEATURE_HTTP=1
+
+#
+#   HTTP client support
+#
+BLD_FEATURE_HTTP_CLIENT=1
+
+#
+#	Disable building the Java Ejscript VM. Currently incomplete.
+#
+BLD_FEATURE_JAVA_VM=0
+
+#
+#	Disable the Legacy code for backward compatibility (back one major revision).
+#
+BLD_FEATURE_LEGACY_API=0
+
+#
+#	Compile multi-threaded
+#
+BLD_FEATURE_MULTITHREAD=1
+
+#
+#	Default number type. Valid types are: int, long, int64 or double
+#
+BLD_FEATURE_NUM_TYPE=double
+
+#
+#   Use poll() if supported
+#
+BLD_FEATURE_POLL=1
+
+#
+#	Disable the ability to run from a ROM file system. Only use this for deeply embedded projects without a file system.
+#
+BLD_FEATURE_ROMFS=0
+
+#
+#	Build the samples
+#
+BLD_FEATURE_SAMPLES=1
+
+#
+#   Build shared by default. Only enable one of shared or static.
+#
+BLD_FEATURE_STATIC=0
+
+#
+#	Build the test suite
+#
+BLD_FEATURE_TEST=1
+
+#
+#   Use the fast virtual malloc memory allocator
+#
+BLD_FEATURE_VMALLOC=1
+

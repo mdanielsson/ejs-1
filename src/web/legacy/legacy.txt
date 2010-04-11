@@ -1,0 +1,470 @@
+/**
+ *	@file 	esp.js
+ *	@brief 	Documentation for the Embedded Server Pages (WEB) JavaScript API.
+ *
+ *	@overview WEB provides each HTTP request its own JavaScript context 
+ *		so that computations for each request are protected from access 
+ *		or modification by other requests. This means each request has 
+ *		its own local variables and global variables store can can create 
+ *		variables without fear of name conflicts with other requests.
+ *		\n\n
+ *		WEB defines a set of standard procedures and variables that provide
+ *		access to server and request details including cookies, request headers
+ *		and session state data.
+ */
+/********************************* Copyright **********************************/
+/*
+ *	@copy	default
+ *	
+ *	Copyright (c) Embedthis Software LLC, 2003-2010. All Rights Reserved.
+ *	
+ *	This software is distributed under commercial and open source licenses.
+ *	You may use the GPL open source license described below or you may acquire 
+ *	a commercial license from Embedthis Software. You agree to be fully bound 
+ *	by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *	this software for full details.
+ *	
+ *	This software is open source; you can redistribute it and/or modify it 
+ *	under the terms of the GNU General Public License as published by the 
+ *	Free Software Foundation; either version 2 of the License, or (at your 
+ *	option) any later version. See the GNU General Public License for more 
+ *	details at: http://www.embedthis.com/downloads/gplLicense.html
+ *	
+ *	This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *	implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *	
+ *	This GPL license does NOT permit incorporating this software into 
+ *	proprietary programs. If you are unable to comply with the GPL, you must
+ *	acquire a commercial license to use this software. Commercial licenses 
+ *	for this software and support services are available from Embedthis 
+ *	Software at http://www.embedthis.com 
+ *	
+ *	@end
+ */
+
+/****************************** EJS Standard Variables ************************/
+
+var Nan;						///< Floating variable set to "Not a number"
+
+var Infinity;					///< Floating number set to Infinity
+
+var null;						///< Defined variable set to Null
+
+var undefined;					///< Variable set to the Undefined value
+
+var true;						///< true value
+
+var false;						///< False value
+
+
+/**	
+ *	@brief Stores server related request information.
+ *	@overview The server array stores information that typically does not
+ *		vary from request to request. For a given virtual server, these 
+ *		data items will be constant across all requests. Users should 
+ *		@b NOT store custom information in this array as it will probably be
+ *		made read-only and shared among host requests in the future.
+ *	@elements Elements of the server[] array include:
+ *	@li	DOCUMENT_ROOT - Set to the server's document root 
+ *	@li GATEWAY_INTERFACE - Set to the version of the CGI Gateway Interface
+ *	@li SERVER_ADDR - Set to the Server TCP/IP address
+ *	@li SERVER_PORT - Set to the Server TCP/IP port 
+ *	@li SERVER_NAME - Set to the name of Server or Virtual Host
+ *	@li SERVER_PROTOCOL - Set to the HTTP protocol version in use
+ *	@li SERVER_SOFTWARE - Set to the version of the HTTP server
+ *	@li SERVER_URL - Set to the home URL of the server
+ *	@li UPLOAD_DIR - Set to the directory path storing uploaded files.
+ */
+var server[];
+
+
+/**
+ *	@brief Stores session state information. 
+ *	@overview The session array will be created automatically if 
+ *	SessionAutoCreate is defined or if a session is started via the 
+ *	useSession() or createSession() JavaScript functions.
+ *	\n\n
+ *	Sessions are shared among requests that come from a single client. This
+ *	may mean that multiple requests access the same session concurrently. WEB
+ *	ensures that such accesses are serialized.
+ *	@elements Elements are user defined.
+ */
+var session[];
+
+
+/**
+ *	@brief Stores per-request information.
+ *	@overview The request array holds the primary request information. 
+ *	@elements The request array holds the following elements:
+ *	@li AUTH_TYPE - The authorization type (basic or digest) if authorization
+ *		is being used.
+ *	@li CONTENT_LENGTH - The length of any posted reqeust content.
+ *	@li CONTENT_TYPE - The mime type of any posted content.
+ *	@li QUERY_STRING - The request query string.
+ *	@li PATH_INFO - The portion of the path after the script name if extra
+ *		path processing is being used. See the ExtraPath directive.
+ *	@li PATH_TRANSLATED - The physical path corresponding to PATH_INFO. 
+ *	@li REMOTE_ADDR - The IP address of the Client issuing the request.
+ *	@li REMOTE_HOST - The host address of the Client issuing the request.
+ *	@li REMOTE_USER - The user name of the Client issuing the request. Rarely
+ *		supplied.
+ *	@li REQUEST_METHOD - The HTTP request method (GET|HEAD|OPTIONS|PUT|TRACE)
+ *	@li REQUEST_URI - The request URL portion after the site name with the 
+ *		query stripped off.
+ *	@li SCRIPT_FILENAME - The physical path name for SCRIPT_NAME.
+ *	@li SCRIPT_NAME - The name of the script in the URL.
+ *	@li SESSION_ID - Session state unique identifier
+ */
+var request[];
+
+
+/**
+ *	@brief Stores the request headers
+ *	@overview The request array stores all the HTTP request headers that were
+ *	supplied by the client in the current request.
+ *	@elements The following elements are usually supplied by the Client.
+ *		However the Client may supply any headers that they choose.
+ *		@li HTTP_ACCEPT - The Accept header. Specifies the content types that
+ *			are acceptable to the client.
+ *		@li HTTP_ACCEPT_CHARSET - The character set header. Specifies the 
+ *			character sets that are acceptable to the client.
+ *		@li HTTP_CONNECTION - Connection header. Specifies how the connection
+ *			should be managed by the server. This headers is used to specify
+ *			HTTP/1.1 Keep-Alive.
+ *		@li HTTP_HOST - Destination host. This is used when virtual hosts
+ *			are served by a single web server.
+ *		@li HTTP_REFERER - Name of the referring URL.
+ *		@li HTTP_USER_AGENT - Name of the Client browser software.
+ *		@li and any other custom headers
+ */
+var headers[];
+
+
+/**
+ *	@brief Stores Client cookie state information. 
+ *	@overview The cookie array will be created automatically if 
+ *	the Client supplied cookies with the current request.
+ *	\n\n
+ *	Cookies are used to specify the session state. Thus when sessions are being
+ *	used, a cookie will be sent to and from the browser with each request.
+ *	@elements Elements are user defined.
+ */
+var cookies[];
+	
+/**
+ *	@brief Stores uploaded files information. 
+ *	@overview The files array will be created automatically if 
+ *	the request includes uploaded files. 
+ *	\n\n
+ *	Sessions are shared among requests that come from a single client. This
+ *	may mean that multiple requests access the same session concurrently. WEB
+ *	ensures that such accesses are serialized.
+ *	@elements For each uploaded file, an object is created in files[]. The
+ *		name of the object is given by the upload field name in the WEB page.
+ *		@li	CLIENT_FILENAME - Name of the uploaded file given by the client.
+ *		@li CONTENT_TYPE - Type of the encoded data.
+ *		@li FILENAME - Local name of the temporary file in the upload
+ *			directory.
+ *		@li	SIZE - Size of the uploaded file in bytes.
+ */
+var files[];
+
+/**
+ *	@brief Stores the form client data
+ *	@overview The form array stores the posted data variables and query 
+ *		request data.
+ *	@elements The names of the elements are the names of the form fields.
+ */
+var form[];
+
+/**
+ *	@brief Stores application global data.
+ *	@overview The application array provides a means to store persistent
+ *		information to be shared across all requests and virtual hosts within
+ *		a server. Objects and variables stored in the application array will
+ *		live until either explicitly deleted or the web server exits. The 
+ *		application array does not persist over system reboots.		
+ *	@elements User defined
+ */
+var application[];
+
+/**
+ *	@brief Store all global variables
+ *	@overview The global array stores all global variables and provides a 
+ *		consistent means to enumerate and explicitly access global variables.
+ *	@elements The following elements are defined in the global array:
+ *		@li @ref local - Array of local variables
+ *		@li @ref Nan - Not a number constant
+ *		@li @ref Infinity - Infinity constant
+ *		@li @ref null - Null constant
+ *		@li @ref undefined - Undefined variable constant
+ *		@li @ref true - True boolean constant
+ *		@li @ref false - False boolean constant
+ *		@li @ref server - Array of server variables 
+ *		@li @ref session - Array of session variables
+ *		@li @ref request - Array of request variables
+ *		@li @ref headers - Array of header variables
+ *		@li @ref cookies - Array of cookie variables
+ *		@li @ref files - Array of uploaded files
+ *		@li @ref form - Array of form data
+ *		@li @ref application - Array of application global variable
+ */
+var global[];
+
+
+/**
+ *	@brief Store all local variables
+ *	@overview The local array stores all local variables and provides a 
+ *		consistent means to enumerate and explicitly access local variables.
+ *	@elements The following elements are defined in the local array:
+ *		@li	@ref global - Point to the global variables array.
+ *		@li	this - When inside a function, if an object method has been 
+ *		called. \a this will be set to point to the object.
+ */
+var local[];
+
+
+/****************************** EJS Standard Procedures ***********************/
+
+///
+///	@synopsis Assert a condition is true
+///	@overview This call tests if a condition is true by testing to see if 
+///		the supplied expression is true. If the expression is false, the
+///		interpreter will throw and exception and abort processing the current
+///		script.
+///	@param condition JavaScript expression evaluating or castable to a boolean
+///		result.
+/// @library libejs, libappweb
+///	@see Array, Object, eval, exit, print, println, printVars, refCount, trace
+function assert(var condition);
+
+///
+///	@synopsis Evaluate a script
+///	@overview This call evaluates the given JavaScript \a script in the
+///		current context. It provides a feature to dynamically modify the
+///		code executed by the interpreter. It is also useful to evaluate the
+///		value of complex expressions as the call will return the value of
+///		the last expression evaluated.
+///		\n\n
+///		The script is executed with the current local and global variables.
+///		No new local variable stack frame is created.
+///	@param script JavaScript to execute
+///	@return Returns the value of the last expression evaluated.
+/// @library libejs, libappweb
+///	@see Array, Object, assert, exit, print, println, printVars, refCount, trace
+function eval(var script, ...);
+
+///
+///	@synopsis Exit a script
+///	@overview This call immediately exits the current script.
+///		This call is useful when you immediately want to exit a script. WEB
+///		pages use this to terminate processing the current WEB page in the
+///		case of a web page redirect.
+///	@param status Numeric status code. This code is retrievable via the
+///		ejsGetExitCode API.
+/// @library libejs, libappweb
+///	@see Array, Object, assert, print, println, printVars, refCount, trace
+function exit(var status);
+
+///
+///	@synopsis Print the arguments to the standard output
+///	@overview This call evaluates the arguments, converts the result to
+///		strings and prints the result to the standard output.
+///		Arguments are converted to strings using the normal JavaScript
+///		conversion rules. Objects will have their @e toString methods
+///		called to get a string equivalent of their value.
+///	@param string String to print
+/// @library libejs, libappweb
+///	@see Array, Object, assert, assert, exit, println, printVars, refCount, 
+///		trace
+function print(var string, ...);
+
+///
+///	@synopsis Print the arguments to the standard output with a new line
+///	@overview This call evaluates the arguments, converts the result to
+///		strings, appends a new line character and prints the result to 
+///		the standard output.
+///		Arguments are converted to strings using the normal JavaScript
+///		conversion rules. Objects will have their @e toString methods
+///		called to get a string equivalent of their value.
+///	@param string String to print
+///	@param string JavaScript to execute
+///	@return Returns the value of the last expression evaluated.
+/// @library libejs, libappweb
+///	@see Array, Object, assert, exit, print, printVars, refCount, trace
+function println(var string, ...);
+
+///
+///	@synopsis Print the contents of a variable to the standard output
+///	@overview This call prints the contents of variables to the standard
+///		output. Unlike print and println that convert objects to strings,
+///		printVars will enumerate objects and recursively print their contents.
+///		printVars is most useful to examine the contents of objects.
+///	@param v Variable to print
+/// @library libejs, libappweb
+///	@see Array, Object, assert, exit, print, println, refCount, trace
+function printVars(var v, ...);
+
+
+///
+///	@synopsis Get the reference count for an object
+///	@overview This call returns the count of users of an object by returning
+///		the objects reference count. 
+///	@param v Object to examine for its reference count.
+/// @library libejs, libappweb
+///	@see Array, Object, assert, exit, print, println, printVars, trace
+function refCount(var v);
+
+
+///
+///	@synopsis Output trace to the web server log
+///	@overview This call outputs the given message to the web server log.
+///		An optional numeric trace log level between 0 and 9 may be given
+///		as the first argument (not shown).
+///	@param message Message to log
+/// @library libejs, libappweb
+///	@see Array, Object, assert, exit, print, println, printVars, refCount
+function trace(var message);
+
+///
+///	@synopsis Constructor for an Array object
+///	@overview Create an Array object.
+///		An empty array object will be created with \a size initial elements. 
+///		These elements will be named "0", "1", "2" etc. The value of these
+///		elements will initially be the @e undefined value. 
+///		\n\n
+///		The array object will have a length property defined that will be 
+///		set to the number of elements currently in the array. The array will
+///	 	grow on demand as new elements are added to the array.
+///		\n\n
+///		Arrays inherit all the standard properties and methods from 
+///		EJS Objects.
+///	@param size Initial number of elements in the array
+///	@return Returns the constructed array object
+/// @library libejs, libappweb
+///	@see Array, Object, assert, exit, print, println, printVars, refCount, trace
+function Array(var size);
+
+///
+///	@synopsis Constructor for an Array object
+///	@overview Create an Array object using the supplied elements.
+///		The array object will have a length property defined that will be 
+///		set to the number of elements currently in the array.
+///	@param elt1 Element one
+///	@param elt2 Element two
+///	@return Returns the constructed array object
+/// @library libejs, libappweb
+///	@see Array, Object, assert, exit, print, println, printVars, refCount, trace
+function Array(var elt1, var elt2, ...);
+
+///
+///
+///	@synopsis Constructor for an object
+///	@overview Create a new object.
+///		JavaScript objects can contain data properties and function methods.
+///		All objects contain a \e toString method that by default returns
+///		"[object name]". This method may be replaced by assigning a function
+///		to the toString property.
+///	@return Returns the constructed array object
+/// @library libejs, libappweb
+///	@see Array, Object, assert, exit, print, println, printVars, refCount, trace
+function Object();
+
+/********************************** WEB Defines *******************************/
+
+///
+///	@synopsis Create a session
+///	@overview This call creates a session state store for the current client.
+///		If a session already exists, it is used and this call has no effect.
+///		The session[] array global object is created for all HTTP requests 
+///		servicing this client. A cookie containing a session ID is
+///		automatically created and sent to the client on the first response 
+///		after creating the client.
+///		\n\n
+///		If SessionAutoCreate is defined in the configuration file, then 
+///		sessions will automatically be created for every WEB request and your
+///		WEB pages do not need to call createSession.
+///	@remarks Multiple requests may be sent from a client's browser at the same
+///		time. WEB will ensure that accesses to the sesssion[] array are 
+///		correctly serialized. useSession is also an alias for this command.
+///	@param timeout Optional timeout for the session in seconds. If ommitted
+///		the default timeout is used. In AppWeb, this is set via the 
+///		SessionTimeout configuration directive.
+///	@return Returns the Session ID string
+/// @library libejs, libappweb
+///	@see useSession, destroySession, include, redirect, setHeader, write
+function createSession(var timeout);
+
+///
+///	@synopsis Destroy a session
+///	@overview This call destroys the session state store that is being used
+///		for the current client. If no session exists, this call has no effect.
+/// @library libejs, libappweb
+///	@see useSession, include, redirect, setHeader, write
+function destroySession();
+
+///
+///	@synopsis Include an JavaScript file
+///	@overview This call includes a JavaScript at the point of the include
+///		statement. The effect is as though the text from the included file
+///		were pasted into the original file. The script executes with the
+///		context of the original file and uses its local and global variables.
+///	@param path Path name of file to be included.
+/// @library libejs, libappweb
+///	@see useSession, destroySession, redirect, setHeader, write
+function include(var path);
+
+///
+///	@synopsis Redirect the client to a new URL
+///	@overview This call redirects the client's browser to a new location 
+///		specified by the \a url. Optionally, a redirection code may be
+///		provided. Normally this code is set by WEB to be the HTTP code 302
+///		which means a temporary redirect. A 301, permanent redirect code
+///		may be explicitly set.
+///	@param url Url to redirect the client to
+///	@param code Optional HTTP redirection code
+/// @library libejs, libappweb
+///	@see include, useSession, destroySession, redirect, setHeader, write
+function redirect(var url, var code);
+
+///
+///	@synopsis Use a session
+///	@overview This call is identical to createSession. It will ensure that
+///		the WEB page uses session handle. See createSession for full 
+///		documentation. 
+///	@param timeout Optional timeout for the session in seconds. If ommitted
+///		the default timeout is used. In AppWeb, this is set via the 
+///		SessionTimeout configuration directive.
+///	@return Returns the Session ID string
+/// @library libejs, libappweb
+///	@see createSession, destroySession, include, redirect, setHeader, write
+function useSession(var timeout);
+
+///
+///	@synopsis Write text to the client
+///	@overview This call writes the arguments back to the client's browser.
+///		The arguments are converted to strings before writing back to the
+///		client. 
+///		\n\n
+///		Text written using @e write, will be buffered by WEB up to a
+///		configurable maximum. This allows text to be written prior to setting
+///		HTTP headers with setHeader.
+///	@param expr JavaScript expression or variable to write to the client.
+/// @library libejs, libappweb
+///	@see createSession, destroySession, include, redirect, setHeader, write
+function write(var expr, ...);
+
+///
+///	@synopsis Set a HTTP response header
+///	@overview This call defines a HTTP response header. The \a value argument
+///		should contain a string of the format "keyword: value". If a header has
+///		already been defined and \a allowMultiple is false, the header will be
+///		overwritten. If \a allowMultiple is true, the new header will be
+///		appended to the response headers and the existing header will also be
+///		output. NOTE: case does not matter in the header keyword.
+///	@param header Header string
+///	@param allowMultiple If false, overwrite existing headers with the same
+///		keyword. If true, all headers are output.
+/// @library libejs, libappweb
+///	@see createSession, destroySession, include, redirect, write
+function setHeader(var header, var allowMultiple);

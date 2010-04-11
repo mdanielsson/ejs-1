@@ -1,0 +1,32 @@
+
+FILES.TXT for the Configuration Directory
+--------------------------------------------------------------------------------
+
+This document describes the important files in this directory. The Embedthis
+build system is similar to GNU autoconf system. To enhance portability
+to non-unix systems, pure autoconf is not used.
+
+The key directories and files are:
+
+File                 Purpose
+----------------------------
+copyrights           - Directory containing copyright files.
+Makefile             - Makefile. Used to clean the directory.
+make.os.*            - Per O/S make file rules included by every Makefile.
+make.config          - Local makefile overrides.
+product.config       - Primary product configuration file (Edit this).
+os                   - Directory for per O/S configure settings.
+make                 - Directory for per O/S make configuration.
+tools.config         - Build tool configuration and search paths.
+*.defaults           - Configuration defaults for standard builds. See
+                       standard.defaults for full comments.
+
+--------------------------------------------------------------------------------
+
+Copyright (c) 2003-2008 Embedthis Software, LLC. All Rights Reserved.
+Embedthis and AppWeb are trademarks of Embedthis Software, LLC. Other 
+brands and their products are trademarks of their respective holders.
+
+See LICENSE.TXT for software license details.
+
+--------------------------------------------------------------------------------

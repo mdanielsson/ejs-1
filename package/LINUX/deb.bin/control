@@ -1,0 +1,14 @@
+Package: !!BLD_PRODUCT!!
+Version: !!BLD_VERSION!!
+Section: devel
+Priority: optional
+Architecture: !!BLD_HOST_CPU_MAPPED!!
+Depends: libc6
+Installed-Size: 10
+Maintainer: Embedthis Development <dev@embedthis.com>
+Description: !!BLD_NAME!! ECMAScript (Javascript) language
+ Ejscript is a powerful server-side JavaScript language and web framework suitable for dynamic web applications.
+ .
+ more information about !!BLD_NAME!! can be found at:
+ <URL:http://www.ejscript.org>
+ <URL:http://www.embedthis.com>

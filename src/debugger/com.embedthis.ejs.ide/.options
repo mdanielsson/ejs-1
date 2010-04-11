@@ -1,0 +1,9 @@
+com.embedthis.ejs.ide/debug=true
+com.embedthis.ejs.ide/debug/level=3
+com.embedthis.ejs.ide/debug/compiler=false
+com.embedthis.ejs.ide/debug/compilerOutput=false
+com.embedthis.ejs.ide/debug/editor=false
+com.embedthis.ejs.ide/debug/general=false
+com.embedthis.ejs.ide/debug/views=false
+com.embedthis.ejs.ide/debug/wizards=false
+

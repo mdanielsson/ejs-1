@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Mbedthis EJScript IDE Eclipse Test Plug-in
+Bundle-SymbolicName: com.mbedthis.ejs.ide.test
+Bundle-Version: 1.0.0
+Bundle-Activator: com.mbedthis.ejs.ide.test.Activator
+Bundle-Vendor: MBEDTHIS
+Bundle-Localization: plugin
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.junit,
+ com.mbedthis.ejs.ide
+Eclipse-LazyStart: true

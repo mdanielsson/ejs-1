@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+
+   <extension
+         id="EJScriptBuilder"
+         name="EJScript Project Builder"
+         point="org.eclipse.core.resources.builders">
+      <builder
+            hasNature="true">
+         <run
+               class="com.mbedthis.ejs.ide.builder.EJScriptBuilder">
+         </run>
+      </builder>
+   </extension>
+   <extension
+         id="EJScriptNature"
+         name="EJScript Project Nature"
+         point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run
+               class="com.mbedthis.ejs.ide.builder.EJScriptNature">
+         </run>
+      </runtime>
+      <builder
+            id="com.mbedthis.ejs.ide.EJScriptBuilder">
+      </builder>
+   </extension>
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            adaptable="true"
+            objectClass="org.eclipse.core.resources.IProject"
+            nameFilter="*"
+            id="mbedthis.ejs.ide.context">
+         <menu
+               id="com.mbedthis.ejs.ide.menu1"
+               label="&amp;EJScript">
+            <groupMarker
+                  name="com.mbedthis.ejs.ide.groupMarker1">
+            </groupMarker>
+         </menu>
+         <action
+               class="com.mbedthis.ejs.ide.actions.AddRemoveProjectNatureActionDelegate"
+               icon="icons/sample.gif"
+               id="com.mbedthis.ejs.ide.applyNature"
+               label="&amp;Add EJScript project &amp;Nature"
+               menubarPath="com.mbedthis.ejs.ide.menu1/com.mbedthis.ejs.ide.groupMarker1">
+         </action>
+         <action
+               class="com.mbedthis.ejs.ide.actions.AddRemoveProjectNatureActionDelegate"
+               icon="icons/sample.gif"
+               id="com.mbedthis.ejs.ide.removeNature"
+               label="Remove EJScript project &amp;Nature"
+               menubarPath="com.mbedthis.ejs.ide.menu1/com.mbedthis.ejs.ide.groupMarker1">
+         </action>
+      </objectContribution>
+      <objectContribution
+            id="com.mbedthis.ejs.ide.excludeFromBuild"
+            objectClass="org.eclipse.core.resources.IResource">
+         <menu
+               id="com.mbedthis.ejs.ide.menu1"
+               label="&amp;EJScript">
+         </menu>
+         <action
+               class="com.mbedthis.ejs.ide.actions.EJScriptExcludeFromBuild"
+               icon="icons/sample.gif"
+               id="com.mbedthis.ejs.ide.excludeFromBuild"
+               label="&amp;Exclude From EJScript Build"
+               menubarPath="com.mbedthis.ejs.ide.menu1">
+         </action>
+         <action
+               class="com.mbedthis.ejs.ide.actions.EJScriptExcludeFromBuild"
+               icon="icons/sample.gif"
+               id="com.mbedthis.ejs.ide.addToBuild"
+               label="&amp;Add To EJScript Build"
+               menubarPath="com.mbedthis.ejs.ide.menu1">
+         </action>
+      </objectContribution>
+   </extension>
+   <extension
+         id="xmlProblem"
+         name="XML Problem"
+         point="org.eclipse.core.resources.markers">
+      <super
+            type="org.eclipse.core.resources.problemmarker">
+      </super>
+      <persistent
+            value="true">
+      </persistent>
+   </extension>
+   <extension
+         id="ejsWizards"
+         name="EJScript Wizards"
+         point="org.eclipse.ui.newWizards">
+      <category
+            id="com.mbedthis.ejs.ide.EJScriptCategory"
+            name="EJScript"/>
+      <wizard
+            category="com.mbedthis.ejs.ide.EJScriptCategory"
+            class="com.mbedthis.ejs.ide.wizards.EJScriptProjectWizard"
+            icon="icons/newejprj_wiz.gif"
+            id="com.mbedthis.ejs.ide.EJScriptProjectWizard"
+            name="EJScript Project"
+            project="true"/>
+      <wizard
+            category="com.mbedthis.ejs.ide.EJScriptCategory"
+            class="com.mbedthis.ejs.ide.wizards.EJScriptNewWizard"
+            icon="icons/newjsfile_wiz.gif"
+            id="com.mbedthis.ejs.ide.wizards.EJScriptNewWizard"
+            name="EJScript File"
+            project="true"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            class="com.mbedthis.ejs.ide.preferences.EJSPreferencePage"
+            id="com.mbedthis.ejs.ide.preferences.EJSPreferencePage"
+            name="EJS Preferences"/>
+   </extension>
+   <extension
+         id="com.mbedthis.ejs.ide.prefs.view"
+         name="EJS"
+         point="org.eclipse.core.runtime.preferences">
+      <initializer class="com.mbedthis.ejs.ide.preferences.PreferenceInitializer"/>
+   </extension>
+   <extension
+         id="com.mbedthis.ejs.ide.EJSProjectPropertyPage"
+         name="EJS Project Properties"
+         point="org.eclipse.ui.propertyPages">
+      <page
+            class="com.mbedthis.ejs.ide.properties.EJScriptProjectPropertyPage"
+            id="com.mbedthis.ejs.ide.properties.EJSPropertyPage"
+            name="EJS Project Properties"
+            nameFilter="*"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.perspectives">
+      <perspective
+            class="com.mbedthis.ejs.ide.ui.EJScriptPerspectiveFactory"
+            fixed="false"
+            icon="icons/sample.gif"
+            id="com.mbedthis.ejs.ide.EJScriptPerspective"
+            name="EJScript"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            class="com.mbedthis.ejs.ide.editors.EJScriptEditor"
+            contributorClass="org.eclipse.ui.texteditor.BasicTextEditorActionContributor"
+            extensions="es"
+            icon="icons/sample.gif"
+            id="com.mbedthis.ejs.ide.editors.EJScriptEditor"
+            name="EJScript Editor"/>
+      <editor
+            class="com.mbedthis.ejs.ide.editors.PakDefEditor"
+            extensions="pakdef"
+            icon="icons/sample.gif"
+            id="com.mbedthis.ejs.ide.editors.PakDefEditor"
+            name="EJScript PakDef Editor">
+      </editor>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views">
+      <category
+            id="com.mbedthis.ejs.ide.sample"
+            name="Sample Category"/>
+      <view
+            category="com.mbedthis.ejs.ide.sample"
+            class="com.mbedthis.ejs.ide.views.SampleView"
+            icon="icons/sample.gif"
+            id="com.mbedthis.ejs.ide.views.SampleView"
+            name="Sample View"/>
+      <category
+            id="com.mbedthis.ejs.ide"
+            name="EJScript"/>
+      <view
+            category="com.mbedthis.ejs.ide"
+            class="com.mbedthis.ejs.ide.views.EJScriptPackageViewer"
+            icon="icons/sample.gif"
+            id="com.mbedthis.ejs.ide.EJScriptPackageViewer"
+            name="EJScript Package Viewer"/>
+   </extension>
+
+</plugin>

@@ -1,0 +1,5 @@
+LIBRARY ejs.db.sqlite.dll
+EXPORTS
+
+  ejsConfigureSqliteTypes
+  ejs_db_sqliteModuleInit

@@ -1,0 +1,246 @@
+#
+#	configure.ejs -- Build configuration script for Embedthis Ejscript
+#
+#	Copyright (c) Embedthis Software LLC, 2003-2010. All Rights Reserved.
+#	This script is included by configure and is never run stand-alone.
+#
+
+applyDependencies()
+{
+    BLD_FEATURE_MPR=1
+
+    if [ "$CFG_WITHOUT_SSL" = 1 ] ; then
+        without matrixssl
+        without openssl
+    fi
+}
+
+
+manageFeatures()
+{
+    BLD_FEATURE_MPR=1
+
+    if [ "$BLD_FEATURE_COMPLETE_CROSS" = 1 ] ; then
+        if [ "$BLD_FEATURE_EJS" = 1 ] ; then
+            BLD_FEATURE_EJS_CROSS_COMPILER=1
+        fi
+    fi
+    if [ "$BLD_FEATURE_SQLITE" = 0 ] ; then
+        BLD_FEATURE_FEATURE_DB=0
+    fi
+	if [ "$BLD_FEATURE_NUM_TYPE" = "double" ] ; then
+		BLD_FEATURE_FLOATING_POINT=1
+		BLD_FEATURE_NUM_TYPE_DOUBLE=1
+    else
+		BLD_FEATURE_NUM_TYPE_DOUBLE=0
+	fi
+    if [ "$BLD_FEATURE_EJS_E4X" = 1 ] ; then
+        BLD_FEATURE_XML=1
+    else
+        BLD_FEATURE_XML=0
+    fi
+    if [ "$BLD_FEATURE_EJS_WEB" = 1 ] ; then
+		BLD_FEATURE_HTTP=1
+		BLD_FEATURE_CMD=1
+    else
+        BLD_FEATURE_EJS_AUTO_COMPILE=0
+    fi
+    if [ "$BLD_FEATURE_COMPLETE_CROSS" = 1 ] ; then
+        BLD_FEATURE_EJS_CROSS_COMPILER=1
+    fi
+}
+
+
+createFeatureConfig()
+{
+	NAME=$1
+
+	cat >>$NAME <<!EOF_FEATURE_CONFIG1
+#
+#   Extended Feature Selection
+#
+BLD_FEATURE_EJS_AUTO_COMPILE=$BLD_FEATURE_EJS_AUTO_COMPILE
+BLD_FEATURE_EJS_CROSS_COMPILER=$BLD_FEATURE_EJS_CROSS_COMPILER
+BLD_FEATURE_EJS_DB=$BLD_FEATURE_EJS_DB
+BLD_FEATURE_EJS_DOC=$BLD_FEATURE_EJS_DOC
+BLD_FEATURE_EJS_E4X=$BLD_FEATURE_EJS_E4X
+BLD_FEATURE_EJS_LANG=$BLD_FEATURE_EJS_LANG
+BLD_FEATURE_EJS_WEB=$BLD_FEATURE_EJS_WEB
+BLD_FEATURE_HTTP=$BLD_FEATURE_HTTP
+BLD_FEATURE_HTTP_CLIENT=$BLD_FEATURE_HTTP_CLIENT
+BLD_FEATURE_JAVA_VM=$BLD_FEATURE_JAVA_VM
+BLD_FEATURE_NUM_TYPE_DOUBLE=$BLD_FEATURE_NUM_TYPE_DOUBLE
+BLD_FEATURE_XML=$BLD_FEATURE_XML
+
+#
+#   Appweb web server features
+#
+BLD_FEATURE_CONFIG_PARSE=1
+
+#
+#   Required features
+#
+BLD_FEATURE_SERVICES=1
+!EOF_FEATURE_CONFIG1
+}
+
+
+help()
+{
+	cat <<!EOF_HELP
+
+Additional Ejscript Features:
+  --enable-cmd                 Include ability to run external commands
+  --enable-cross-compiler      Include the compiler when cross-compiling.
+  --enable-auto-compile        Auto-recompile modified scripts
+  --enable-db                  Include the database extensions.
+  --enable-xml                 Include the XML extensions.
+  --enable-http-client         Build with http client support.
+  --enable-web                 Build with the Ejscript web framework.
+  --lang=LEVEL                 Set the language specification level where LEVEL 
+                               is "ecma" for strict ECMA-262, "plus" for 
+                               ECMA-262 plus compatible enhancements or "fixed"
+                               for ECMA-262 plus enhancements and fixes.
+  --number=TYPE                Set the EJS numeric type where TYPE is int, long,
+                               int64 and double
+  
+Optional Components: apache, appweb, matrixssl, mysql, openssl, regexp, sqlite
+
+  --with-NAME=[DIR]            Add support for the NAME. The component file in
+                               build/components/NAME will describe compile and 
+                               linker switches. DIR is the base directory to 
+                               find the module libraries and headers.
+  --without-NAME               Do not include support for NAME.
+
+Examples:
+  ./configure --with-openssl=/usr/src/openssl
+
+!EOF_HELP
+}
+
+
+parseArg()
+{
+    local ARG SW
+
+	ARG="${1#*=}"
+	[ "$ARG" = "$1" ] && ARG=
+
+    SW=`echo ${1#--} | tr '[A-Z]' '[a-z]'`
+    case ${SW} in
+	disable-all)
+        BLD_DISABLE_ALL=1
+        BLD_FEATURE_ASSERT=0
+        BLD_FEATURE_CMD=0
+        BLD_FEATURE_EJS_AUTO_COMPILE=0
+        BLD_FEATURE_EJS_CROSS_COMPILER=0
+        BLD_FEATURE_EJS_DB=0
+        BLD_FEATURE_EJS_DOC=0
+        BLD_FEATURE_EJS_E4X=0
+        BLD_FEATURE_EJS_LANG=EJS_SPEC_ECMA
+        BLD_FEATURE_EJS_WEB=0
+        BLD_FEATURE_DOC=0
+        BLD_FEATURE_HTTP=0
+        BLD_FEATURE_HTTP_CLIENT=0
+        BLD_FEATURE_JAVA_VM=0
+        BLD_FEATURE_LEGACY_API=0
+        BLD_FEATURE_MULTITHREAD=0
+        BLD_FEATURE_NUM_TYPE=int
+        BLD_FEATURE_SAMPLES=0
+        BLD_FEATURE_TEST=0
+        BLD_FEATURE_XML=0
+        ;;
+	disable-auto-compile)
+		BLD_FEATURE_EJS_AUTO_COMPILE=0
+		;;
+	disable-cmd)
+		BLD_FEATURE_CMD=0
+		;;
+	disable-cross-compiler)
+		BLD_FEATURE_EJS_CROSS_COMPILER=0
+		;;
+	disable-db)
+		BLD_FEATURE_EJS_DB=0
+		;;
+	disable-xml|disable-e4x)
+		BLD_FEATURE_EJS_E4X=0
+		BLD_FEATURE_XML=0
+		;;
+	disable-http-client)
+		BLD_FEATURE_HTTP=0
+		BLD_FEATURE_HTTP_CLIENT=0
+		;;
+	disable-web)
+		BLD_FEATURE_EJS_WEB=0
+		;;
+	enable-all)
+        BLD_FEATURE_ASSERT=1
+        BLD_FEATURE_CMD=1
+        BLD_FEATURE_EJS_AUTO_COMPILE=1
+        BLD_FEATURE_EJS_CROSS_COMPILER=1
+        BLD_FEATURE_EJS_DB=1
+        BLD_FEATURE_EJS_DOC=1
+        BLD_FEATURE_EJS_E4X=1
+        BLD_FEATURE_EJS_LANG=EJS_SPEC_FIXED
+        BLD_FEATURE_EJS_WEB=1
+        BLD_FEATURE_FLOATING_POINT=1
+        BLD_FEATURE_DOC=1
+        BLD_FEATURE_HTTP=1
+        BLD_FEATURE_HTTP_CLIENT=1
+        BLD_FEATURE_JAVA_VM=0
+        BLD_FEATURE_LEGACY_API=1
+        BLD_FEATURE_MULTITHREAD=0
+        BLD_FEATURE_NUM_TYPE=double
+        BLD_FEATURE_SAMPLES=1
+        BLD_FEATURE_TEST=1
+        BLD_FEATURE_XML=1
+        ;;
+	enable-auto-compile)
+		BLD_FEATURE_EJS_AUTO_COMPILE=1
+		;;
+	enable-cmd)
+		BLD_FEATURE_CMD=1
+		;;
+	enable-cross-compiler)
+		BLD_FEATURE_EJS_CROSS_COMPILER=1
+		;;
+	enable-db)
+		BLD_FEATURE_EJS_DB=1
+		;;
+	enable-xml|enable-e4x)
+		BLD_FEATURE_EJS_E4X=1
+		BLD_FEATURE_XML=1
+		;;
+	enable-web)
+		BLD_FEATURE_EJS_WEB=1
+		BLD_FEATURE_HTTP=1
+		;;
+	enable-http-client)
+		BLD_FEATURE_HTTP=1
+		BLD_FEATURE_HTTP_CLIENT=1
+		;;
+	lang=*)
+        local level
+		if [ "$ARG" = ecma ] ; then
+            level=EJS_SPEC_ECMA
+		elif [ "$ARG" = plus ] ; then
+            level=EJS_SPEC_PLUS
+		elif [ "$ARG" = fixed ] ; then
+            level=EJS_SPEC_FIXED
+        else
+			echo "Unknown language specification level. Only supported levels are: ecma, plus or fixed"
+		fi
+		BLD_FEATURE_EJS_LANG="${level}"
+		;;
+	number=*)
+		if [ "$ARG" != int -a "$ARG" != long -a "$ARG" != int64 -a "$ARG" != double ] ; then
+			echo "Unknown number type. Only supported types are: int, long, int64 and double"
+		fi
+		BLD_FEATURE_NUM_TYPE="${ARG}"
+		;;
+	*)	
+		return 1
+		;;
+	esac
+	return 0
+}

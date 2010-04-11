@@ -1,0 +1,78 @@
+/*
+ *  Initialize for Ejscript unit tests
+ */
+
+let APPWEB = "../bin/ejswebserver"
+let LOCALHOST = "127.0.0.1"
+let PIDFILE = ".ejswebserver.pid"
+let conf    = Path("ejswebserver.conf").readString()
+let port    = conf.replace(/.*Listen ([0-9]+) *# MAIN.*/ms, "$1")
+let ssl    = conf.replace(/.*Listen ([0-9]+) *# SSL.*/ms, "$1")
+
+if (Config.OS == "WIN") {
+    APPWEB += ".exe"
+}
+
+/*
+ *  Cleanup
+ */
+for each (file in find(".", "*.mod")) {
+    rm(file)
+}
+for each (f in find(".", "*.tdat", true)) {
+    rm(f)
+}
+rm("test.sdb")
+cleanDir("web/tmp")
+
+/*
+ *  Pre-compile web pages to be thread-safe
+ */
+
+/*
+ *  Setup for db tests
+ */
+if (test.config["sqlite"]) {
+    sh(locate("ejssql") + " test.sdb < db/test.sql")
+}
+
+/*
+ *   Stop an old web server
+ */
+let path = null
+if (exists(PIDFILE)) {
+    path = Path(PIDFILE)
+    pid = path.readString()
+    path.remove()
+    try {
+        kill(pid)
+    } catch {}
+}
+
+if (test.config["http_client"] == 1) {
+    if (exists(APPWEB)) {
+        if (!App.getenv("NOSERVER")) {
+            /*
+             *   Start a web server for testing
+             */
+            pid = System.daemon(APPWEB + " --name forEjsTest --config ejswebserver.conf")
+            Path(PIDFILE).write(pid)
+            share("webPidFile", PIDFILE)
+
+            http = new Http
+            host = "http://" + LOCALHOST + ":" + port
+            for (i in 50) {
+                try { 
+                    http.get(host + "/alive.html")
+                } catch {}
+                if (http.code == 200) break
+                App.sleep(250)
+                http.close()
+            }
+            if (http.code != 200) throw "Can't start web server"
+        }
+        share("http", "http://" + LOCALHOST + ":" + port)
+        share("https", "https://" + LOCALHOST + ":" + ssl)
+        share("port", port)
+    }
+}

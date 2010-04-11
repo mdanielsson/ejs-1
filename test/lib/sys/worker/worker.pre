@@ -1,0 +1,11 @@
+
+
+
+if (test.config["multithread"] == 1) {
+    /*
+     *  Compile lib/sys/worker/module.es
+     */
+    sh(locate("ejsc") + " --out lib/sys/worker/module.mod lib/sys/worker/module.es")
+} else {
+    test.skip("Http client not enabled")
+}

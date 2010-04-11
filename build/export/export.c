@@ -1,0 +1,12 @@
+./all/*.c
+./all/*.es
+./all/Makefile.all
+./all/appweb.conf
+./all/mime.types
+./all/default-web/*.ico
+./all/default-web/images/*.jpg
+./all/default-web/images/*.png
+./all/default-web/*.ejs
+./all/default-web/js/*.js
+./all/default-web/*.css
+./all/default-web/themes/*.css

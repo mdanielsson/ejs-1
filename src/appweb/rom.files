@@ -1,0 +1,6 @@
+.
+ejswebserver.conf
+mime.types
+default-web
+default-web/favicon.ico
+default-web/index.html

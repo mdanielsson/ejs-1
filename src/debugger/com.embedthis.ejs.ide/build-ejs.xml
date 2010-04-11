@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project default="plugin_export" name="build">
+	<target name="plugin_export">
+		<delete file="C:\dev\mob\repository\ejs\src\debugger\com.embedthis.ejs.ide\builtPlugin\ejs.zip"/>
+		<pde.exportPlugins destination="C:\dev\mob\repository\ejs\src\debugger\com.embedthis.ejs.ide\builtPlugin" exportSource="false" exportType="zip" filename="ejs.zip" plugins="com.embedthis.ejs.ide" useJARFormat="true"/>
+		<echo level="info">Project built to C:\dev\mob\repository\ejs\src\debugger\com.embedthis.ejs.ide\builtPlugin\ejs.zip</echo>
+	</target>
+</project>

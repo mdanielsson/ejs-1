@@ -1,0 +1,8 @@
+../../bin/RELEASE/ejs bench.js
+500000 for loop iterations: 2373
+768000 statements:          2674
+125000 function calls :     2444
+100000 if/elses:            2664
+250000 object creations:    2443
+
+TOTAL :                    12608

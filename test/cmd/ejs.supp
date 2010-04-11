@@ -1,0 +1,88 @@
+{
+   Pthread
+   Memcheck:Cond
+   fun:strstr
+   fun:__pthread_initialize_minimal
+   obj:/lib/libpthread-*.so
+   obj:/lib/libpthread*.so*
+}
+{
+   dl lib invalid read
+   Memcheck:Addr8
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/libdl-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/libdl-*.so
+   fun:dlopen
+   fun:mprLoadModule
+}
+{
+   ld invalid read
+   Memcheck:Addr4
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/tls/*/cmov/libdl-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/tls/*/cmov/libdl-*.so
+   fun:dlopen
+   fun:mprLoadModule
+   fun:ejsLoadModule
+}
+{
+   ld invalid read on ub64
+   Memcheck:Addr8
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/libdl-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/libdl-*.so
+   fun:dlopen
+   fun:mprLoadModule
+}
+{
+   nss lookup
+   Memcheck:Addr8
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/libc-*.so
+   obj:/lib/ld-*.so
+   fun:__libc_dlopen_mode
+   fun:__nss_lookup_function
+   obj:/lib/libc-*.so
+}
+{
+   nss lookup 2
+   Memcheck:Addr4
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/ld-*.so
+   obj:/lib/tls/*/cmov/libc-*.so
+   obj:/lib/ld-*.so
+   fun:__libc_dlopen_mode
+   fun:__nss_lookup_function
+   obj:/lib/tls/*/cmov/libc-*.so
+   fun:__nss_hosts_lookup
+}
