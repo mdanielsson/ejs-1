@@ -1879,10 +1879,10 @@ static void genForIn(EcCompiler *cp, EcNode *np)
         EJS_EX_CATCH | EJS_EX_ITERATION);
 
     /*
-     *  Patch break/continue statements
+     *  Patch break/continue statements.
      */
-    breakLabel = mprGetBufLength(state->code->buf);
     discardStackItems(cp, startMark);
+    breakLabel = mprGetBufLength(state->code->buf);
 
     patchJumps(cp, EC_JUMP_BREAK, breakLabel);
     patchJumps(cp, EC_JUMP_CONTINUE, 0);
