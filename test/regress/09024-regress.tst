@@ -2,7 +2,7 @@
  *  Regression when reading lines from a text stream. Was losing data
  */
 
-datafile = "regress/09024-" + hashcode(self) + ".tdat"
+datafile = "regress/09024-" + hashcode(global) + ".tdat"
 
 var generate = function() {
     file = new File(datafile)

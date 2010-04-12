@@ -355,11 +355,7 @@ static void genBreak(EcCompiler *cp, EcNode *np)
     if (state->code->jumps == 0 || !(state->code->jumpKinds & EC_JUMP_BREAK)) {
         genError(cp, np, "Illegal break statement");
     } else {
-#if FUTURE
-        emptyStack(cp, state->stackBase);
-#else
         emptyStack(cp, 0);
-#endif
         ecEncodeOpcode(cp, EJS_OP_GOTO);
         addJump(cp, np, EC_JUMP_BREAK);
         ecEncodeWord(cp, 0);
@@ -1340,11 +1336,7 @@ static void genDirectives(EcCompiler *cp, EcNode *np, bool resetStack)
         cp->directiveState = cp->state;
         processNode(cp, child);
         if (resetStack) {
-#if FUTURE
-            emptyStack(cp, stackCount);
-#else
             emptyStack(cp, 0);
-#endif
         }
     }
     cp->directiveState = lastDirectiveState;
@@ -1867,15 +1859,9 @@ static void genForIn(EcCompiler *cp, EcNode *np)
      *  Now the loop body. Must hide the pushed iterator on the stack as genDirectives will clear the stack.
      */
     if (np->forInLoop.body) {
-#if FUTURE
-        int count = getStackCount(cp);
-        processNode(cp, np->forInLoop.body);
-        mprAssert(count == getStackCount(cp));
-#else
         state->code->stackCount--;
         processNode(cp, np->forInLoop.body);
         state->code->stackCount++;
-#endif
     }
     emptyStack(cp, 1);
 
