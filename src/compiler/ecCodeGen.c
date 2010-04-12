@@ -1657,9 +1657,10 @@ static void genFor(EcCompiler *cp, EcNode *np)
         np->forLoop.condCode = state->code = allocCodeBuffer(cp);
         state->needsValue = 1;
         processNode(cp, np->forLoop.cond);
-        /* Leaves one item on the stack */
         state->needsValue = 0;
+        /* Leaves one item on the stack. But this will be cleared when compared */
         mprAssert(state->code->stackCount >= 1);
+        popStack(cp, 1);
     }
 
     if (np->forLoop.body) {
@@ -1729,8 +1730,6 @@ static void genFor(EcCompiler *cp, EcNode *np)
      */
     setCodeBuffer(cp, code);
     if (np->forLoop.condCode) {
-        mprAssert(np->forLoop.condCode->stackCount >= 1);
-        setStack(cp, np->forLoop.condCode->stackCount);
         copyCodeBuffer(cp, state->code, np->forLoop.condCode);
         len = bodyLen + perLoopLen;
         if (condShortJump) {
@@ -1740,7 +1739,6 @@ static void genFor(EcCompiler *cp, EcNode *np)
             ecEncodeOpcode(cp, EJS_OP_BRANCH_FALSE);
             ecEncodeWord(cp, len);
         }
-        popStack(cp, 1);
     }
 
     /*

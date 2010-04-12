@@ -1465,6 +1465,7 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
          */
         CASE (EJS_OP_POP):
             ejs->result = pop(ejs);
+            mprAssert(ejs->result != (void*) 0xf7f7f7f7f7f7f7f7);
             mprAssert(ejs->exception || ejs->result);
             BREAK;
 
