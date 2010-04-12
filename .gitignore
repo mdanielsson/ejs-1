@@ -44,3 +44,6 @@ test/test.sdb
 projects/MACOSX/*/build
 projects/MACOSX/*/*/mob.*
 projects/MACOSX/*/*/*.pbxuser
+*.so
+bin/.kdbgrc.*
+test/.ejswebserver.pid
