@@ -162,7 +162,6 @@
 		C97628210FD079D9009C78E1 /* ejsFileSystem.c in Sources */ = {isa = PBXBuildFile; fileRef = C97624700FD06F8B009C78E1 /* ejsFileSystem.c */; };
 		C97628220FD079D9009C78E1 /* ejsHttp.c in Sources */ = {isa = PBXBuildFile; fileRef = C97624710FD06F8B009C78E1 /* ejsHttp.c */; };
 		C97628230FD079D9009C78E1 /* ejsPath.c in Sources */ = {isa = PBXBuildFile; fileRef = C97624720FD06F8B009C78E1 /* ejsPath.c */; };
-		C97628240FD079D9009C78E1 /* ejsSocket.c in Sources */ = {isa = PBXBuildFile; fileRef = C97624730FD06F8B009C78E1 /* ejsSocket.c */; };
 		C97628250FD079D9009C78E1 /* ejsApp.c in Sources */ = {isa = PBXBuildFile; fileRef = C97624780FD06F8B009C78E1 /* ejsApp.c */; };
 		C97628260FD079D9009C78E1 /* ejsConfig.c in Sources */ = {isa = PBXBuildFile; fileRef = C97624790FD06F8B009C78E1 /* ejsConfig.c */; };
 		C97628270FD079D9009C78E1 /* ejsDebug.c in Sources */ = {isa = PBXBuildFile; fileRef = C976247A0FD06F8B009C78E1 /* ejsDebug.c */; };
@@ -1001,7 +1000,6 @@
 		C97624700FD06F8B009C78E1 /* ejsFileSystem.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ejsFileSystem.c; path = io/ejsFileSystem.c; sourceTree = "<group>"; };
 		C97624710FD06F8B009C78E1 /* ejsHttp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ejsHttp.c; path = io/ejsHttp.c; sourceTree = "<group>"; };
 		C97624720FD06F8B009C78E1 /* ejsPath.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ejsPath.c; path = io/ejsPath.c; sourceTree = "<group>"; };
-		C97624730FD06F8B009C78E1 /* ejsSocket.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ejsSocket.c; path = io/ejsSocket.c; sourceTree = "<group>"; };
 		C97624780FD06F8B009C78E1 /* ejsApp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ejsApp.c; path = sys/ejsApp.c; sourceTree = "<group>"; };
 		C97624790FD06F8B009C78E1 /* ejsConfig.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ejsConfig.c; path = sys/ejsConfig.c; sourceTree = "<group>"; };
 		C976247A0FD06F8B009C78E1 /* ejsDebug.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ejsDebug.c; path = sys/ejsDebug.c; sourceTree = "<group>"; };
@@ -1499,7 +1497,6 @@
 				C97624700FD06F8B009C78E1 /* ejsFileSystem.c */,
 				C97624710FD06F8B009C78E1 /* ejsHttp.c */,
 				C97624720FD06F8B009C78E1 /* ejsPath.c */,
-				C97624730FD06F8B009C78E1 /* ejsSocket.c */,
 				C97624780FD06F8B009C78E1 /* ejsApp.c */,
 				C97624790FD06F8B009C78E1 /* ejsConfig.c */,
 				C976247A0FD06F8B009C78E1 /* ejsDebug.c */,
@@ -2261,7 +2258,6 @@
 				C97628210FD079D9009C78E1 /* ejsFileSystem.c in Sources */,
 				C97628220FD079D9009C78E1 /* ejsHttp.c in Sources */,
 				C97628230FD079D9009C78E1 /* ejsPath.c in Sources */,
-				C97628240FD079D9009C78E1 /* ejsSocket.c in Sources */,
 				C97628250FD079D9009C78E1 /* ejsApp.c in Sources */,
 				C97628260FD079D9009C78E1 /* ejsConfig.c in Sources */,
 				C97628270FD079D9009C78E1 /* ejsDebug.c in Sources */,
