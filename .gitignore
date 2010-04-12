@@ -40,3 +40,7 @@ src/.ejs.slots.h
 all/*.c
 all/*.h
 all/*.es
+test/test.sdb
+projects/MACOSX/*/build
+projects/MACOSX/*/*/mob.*
+projects/MACOSX/*/*/*.pbxuser
