@@ -37,3 +37,6 @@ lib/*.conf
 src/es/ejs.slots.h
 src/es/.slots.h
 src/.ejs.slots.h
+all/*.c
+all/*.h
+all/*.es
