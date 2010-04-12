@@ -16,6 +16,7 @@
 #define fixed(n) (n)
 #endif
 
+#if UNUSED
 #if BLD_WIN_LIKE || VXWORKS
 static double localRint(double num)
 {
@@ -25,6 +26,8 @@ static double localRint(double num)
 }
 #define rint localRint
 #endif
+#endif
+
 /******************************************************************************/
 /*
     Cast the operand to the specified type

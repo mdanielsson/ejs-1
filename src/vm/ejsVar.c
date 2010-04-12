@@ -918,6 +918,25 @@ static MprNumber parseNumber(Ejs *ejs, cchar *str)
     return (MprNumber) num;
 }
 
+
+int _ejsIs(struct EjsVar *vp, int slot)
+{
+    EjsType     *tp;
+
+    if (vp == 0) {
+        return 0;
+    }
+    if (vp->type->id == slot) {
+        return 1;
+    }
+    for (tp = ((EjsVar*) vp)->type->baseType; tp; tp = tp->baseType) {
+        if (tp->id == slot) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /*
     @copy   default
 

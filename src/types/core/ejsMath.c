@@ -178,7 +178,7 @@ static EjsVar *math_random(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
 #if WIN
         uint seed = (uint) time(0);
         srand(seed);
-#elif !MACOSX
+#elif !MACOSX && !VXWORKS
         srandom(time(0));
 #endif
         initialized = 1;
@@ -191,7 +191,7 @@ static EjsVar *math_random(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
 }
 #elif LINUX
     uvalue = random();
-#elif MACOSX
+#elif MACOSX 
     uvalue = arc4random();
 #else
 {
