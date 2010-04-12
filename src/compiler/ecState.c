@@ -63,7 +63,6 @@ int ecPushState(EcCompiler *cp, EcState *newState)
         newState->defaultNamespace = prev->defaultNamespace;
         newState->breakState = prev->breakState;
         newState->inInterface = prev->inInterface;
-        newState->stackBase = prev->stackBase;
 
     } else {
         newState->lang = cp->lang;
