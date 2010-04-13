@@ -13,7 +13,7 @@ ifeq ($(BUILDING_CROSS),1)
 		TARGETS		+= $(BLD_BIN_DIR)/ejsc$(BLD_EXE)
 		ifeq ($(BLD_UNIX_LIKE),0)
 			ifeq ($(BLD_FEATURE_EJS_WEB),1)
-				TARGETS	+= $(BLD_BIN_DIR)/ejsweb$(BLD_EXE)
+				MOB_TARGETS	+= $(BLD_BIN_DIR)/ejsweb$(BLD_EXE)
 			endif
 		endif
 	endif
@@ -21,14 +21,6 @@ else
 	TARGETS		+= $(BLD_BIN_DIR)/ejs$(BLD_EXE) 
 	TARGETS		+= $(BLD_BIN_DIR)/ejsvm$(BLD_EXE)
 	TARGETS		+= $(BLD_BIN_DIR)/ejsc$(BLD_EXE)
-	ifeq ($(BLD_FEATURE_EJS_WEB),1)
-		ifeq ($(BLD_WIN_LIKE),1)
-            TARGETS	+= $(BLD_BIN_DIR)/ejsweb$(BLD_EXE)
-        endif
-		ifeq ($(BLD_OS),CYGWIN)
-            TARGETS	+= $(BLD_BIN_DIR)/ejsweb$(BLD_EXE)
-        endif
-    endif
 endif
 
 compileExtra: $(TARGETS)
@@ -72,7 +64,7 @@ $(BLD_BIN_DIR)/ejs$(BLD_EXE): $(OBJECTS) $(BLD_LIB_DIR)/libejs$(BLD_LIB) $(BLD_L
 	bld --exe $(BLD_BIN_DIR)/ejs$(BLD_EXE) --search "$(BLD_EJS_LIBPATHS)" --libs "ec $(BLD_EJS_LIBS)" $(EJS_OBJECTS)
 
 #
-#	Make the ejsweb framework generator
+#	Deprecated. Now uses ejs.cmd for windows
 #
 $(BLD_BIN_DIR)/ejsweb$(BLD_EXE): $(OBJECTS) $(BLD_LIB_DIR)/libmpr$(BLD_LIB)
 	bld --exe $(BLD_BIN_DIR)/ejsweb$(BLD_EXE) --search "$(BLD_EJS_LIBPATHS)" --libs "ec $(BLD_EJS_LIBS)" \

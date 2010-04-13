@@ -127,10 +127,13 @@ else
 	endif
 endif
 ifeq	($(BLD_FEATURE_EJS_WEB),1)
+    EXTRA_TARGETS	    += $(BLD_BIN_DIR)/ejsweb
 	ifeq ($(BUILD_NATIVE_OR_COMPLETE_CROSS),1)
 		EXTRA_TARGETS	+= $(BLD_MOD_DIR)/ejsweb.mod
 	endif
-    EXTRA_TARGETS	    += $(BLD_BIN_DIR)/ejsweb
+	ifeq ($(BLD_WIN_LIKE),1)
+        EXTRA_TARGETS	+= $(BLD_BIN_DIR)/ejsweb.cmd
+    endif
 endif
 
 ifeq	($(BLD_FEATURE_DOC),1)
@@ -254,6 +257,10 @@ $(BLD_MOD_DIR)/ejsweb.mod: web/ejsweb.es ejs.mod $(EJSWEB_DEP) $(EJS_WEB_MOD_DEP
 $(BLD_BIN_DIR)/ejsweb: web/ejsweb.es
 	cp web/ejsweb.es $(BLD_BIN_DIR)/ejsweb
 	chmod 755 $(BLD_BIN_DIR)/ejsweb
+
+$(BLD_BIN_DIR)/ejsweb.cmd: web/ejsweb.cmd
+	cp web/ejsweb.cmd $(BLD_BIN_DIR)/ejsweb.cmd
+	chmod 755 $(BLD_BIN_DIR)/ejsweb.cmd
 
 cleanExtra:
 	rm -f *.h *.mod *.lst $(BLD_MOD_DIR)/ejsweb.mod *.h
