@@ -130,9 +130,7 @@ ifeq	($(BLD_FEATURE_EJS_WEB),1)
 	ifeq ($(BUILD_NATIVE_OR_COMPLETE_CROSS),1)
 		EXTRA_TARGETS	+= $(BLD_MOD_DIR)/ejsweb.mod
 	endif
-	ifeq ($(BLD_UNIX_LIKE),1)
-		EXTRA_TARGETS	+= $(BLD_BIN_DIR)/ejsweb
-	endif
+    EXTRA_TARGETS	    += $(BLD_BIN_DIR)/ejsweb
 endif
 
 ifeq	($(BLD_FEATURE_DOC),1)
