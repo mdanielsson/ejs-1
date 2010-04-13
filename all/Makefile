@@ -72,7 +72,7 @@ ejs.c: $(EJS_HEADERS) $(EC_HEADERS)
 	@$(call log) "[Generate]" all/ejsc.c
 	echo '#include "ejs.h"' >ejs.c
 	echo '#include "ec.h"' >>ejs.c
-	all-in-one ../src/cmd/ejs.c $(EC_SOURCES) | egrep -v '#inc.*ejs|#inc.*ec|#inc.*sql' >>ejs.c
+	all-in-one ../src/cmd/ejs.c | egrep -v '#inc.*ejs|#inc.*ec|#inc.*sql' >>ejs.c
 
 ejsmod.c: $(EJSMOD_HEADERS) $(EJSMOD_SOURCES)
 	@$(call log) "[Generate]" all/ejsmod.c

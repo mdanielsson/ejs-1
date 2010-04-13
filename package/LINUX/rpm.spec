@@ -4,7 +4,7 @@
 Summary: !!BLD_NAME!! -- ECMAScript (Javascript) 4.X Language
 Name: !!BLD_PRODUCT!!
 Version: !!BLD_VERSION!!
-Release: !!BLD_NUMBER!!
+Release: !!BLD_NUMBER_ONLY!!
 License: Dual GPL/commercial
 Group: Development/Other
 URL: http://www.ejscript.com
