@@ -47,3 +47,12 @@ projects/MACOSX/*/*/*.pbxuser
 *.so
 bin/.kdbgrc.*
 test/.ejswebserver.pid
+*.pdb
+*.obj
+bin/*.exp
+bin/*.def
+samples/*/*/*.def
+samples/*/*/*.exp
+bin/mime.types
+bin/default-web
+.port.log

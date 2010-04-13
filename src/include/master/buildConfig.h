@@ -253,7 +253,7 @@
     #define BLD_FEATURE_SSL 0
 
     #define BLD_VERSION "1.0.0"
-    #define BLD_NUMBER "3"
+    #define BLD_NUMBER "6"
     #define BLD_MAJOR_VERSION 1
     #define BLD_MINOR_VERSION 0
     #define BLD_PATCH_VERSION 0
