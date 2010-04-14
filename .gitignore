@@ -56,3 +56,5 @@ samples/*/*/*.exp
 bin/mime.types
 bin/default-web
 .port.log
+all/default-web/
+all/default-web/js/jquery.ejs.js
