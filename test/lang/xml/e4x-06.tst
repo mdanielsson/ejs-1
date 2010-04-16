@@ -1,3 +1,6 @@
+/*
+    Parse document with CDATA
+ */
 
 let xmlstring = "
     <?xml version=\"1.0\" encoding=\"UTF-8\" ?>

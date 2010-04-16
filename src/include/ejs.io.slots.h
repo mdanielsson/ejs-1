@@ -72,8 +72,8 @@
  *    Local slots for methods in type BinaryStream 
  */
 #define ES_ejs_io_BinaryStream_BinaryStream_stream                     0
-#define ES_ejs_io_BinaryStream_BinaryStream___fun_6004__               1
-#define ES_ejs_io_BinaryStream_BinaryStream___fun_6025__               2
+#define ES_ejs_io_BinaryStream_BinaryStream___fun_6018__               1
+#define ES_ejs_io_BinaryStream_BinaryStream___fun_6039__               2
 #define ES_ejs_io_BinaryStream_close_graceful                          0
 #define ES_ejs_io_BinaryStream_set_endian_value                        0
 #define ES_ejs_io_BinaryStream_flush_graceful                          0
@@ -325,7 +325,7 @@
 #define ES_ejs_io_Http_upload_boundary                                 3
 #define ES_ejs_io_Http_upload_buf                                      4
 #define ES_ejs_io_Http_upload_http                                     5
-#define ES_ejs_io_Http_upload___fun_7490__                             6
+#define ES_ejs_io_Http_upload___fun_7504__                             6
 #define ES_ejs_io_Http_upload__hoisted_7_key                           7
 #define ES_ejs_io_Http_upload__hoisted_8_key                           8
 #define ES_ejs_io_Http_set_uri_newUri                                  0
@@ -593,6 +593,6 @@
 #define ES_ejs_io_XMLHttp_callback_hp                                  1
 #define ES_ejs_io_XMLHttp_callback_count                               2
 
-#define _ES_CHECKSUM_ejs_io 349212
+#define _ES_CHECKSUM_ejs_io 349218
 
 #endif

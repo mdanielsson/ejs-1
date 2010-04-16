@@ -38,15 +38,15 @@ module ejs {
          *  @param name The name to search on.
          *  @return An XMLList with all the attributes (zero or more).
          */
-        # FUTURE
-        native function attribute(name: String): XMLList
+        function attribute(name: String): XMLList
+            this["@" + name]
 
         /**
          *  Get an XMLList containing all of the attributes of this object.
          *  @return An XMLList with all the attributes (zero or more).
          */
-        # FUTURE
-        native function attributes(): XMLList
+        function attributes(): XMLList
+            this.@*
 
         /**
          *  Get an XMLList containing the list of children (properties) in this XML object with the given name.
@@ -117,8 +117,8 @@ module ejs {
          *  @param name The (optional) name to search on.
          *  @return The list of elements.
          */
-        # FUTURE
-        native function elements(name: String = "*"): XMLList
+        function elements(name: String = "*"): XMLList
+            this[name]
 
         /**
          *  Get an iterator for this node to be used by "for (v in node)"
@@ -229,7 +229,6 @@ module ejs {
          *  Get the parent of this XML object.
          *  @return The parent.
          */
-        # FUTURE
         native function parent(): XML
 
         /**

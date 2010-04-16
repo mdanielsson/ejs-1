@@ -1,6 +1,7 @@
 /*
-    Test XML.toJSON
+    Test JSON conversion
  */
+
 var x = <Colors>
     <name intensity="bright">red</name>
     <name intensity="subdued">brown</name>

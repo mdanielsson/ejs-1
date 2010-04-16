@@ -1,5 +1,5 @@
 /*
-    Construct from antoher XML
+    Construct from another XML object
  */
 
 function write(args) {
@@ -12,6 +12,6 @@ var xml: XML = <user>
         </hobby>
     </user>
 
-var x = XML(xml);
+var x = XML(xml)
 assert(x is XML)
 assert(x == "<user><hobby>painting</hobby></user>")

@@ -18,23 +18,7 @@ static EjsVar   *loadXml(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv);
 static EjsVar   *saveXml(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv);
 static EjsVar   *xmlToString(Ejs *ejs, EjsVar *vp, int argc, EjsVar **argv);
 
-#if KEEP
-static EjsVar   *valueOf(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *toXmlString(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *appendChild(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *attributes(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *child(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *elements(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *comments(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *decendants(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *elements(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *insertChildAfter(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *insertChildBefore(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *replace(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *setName(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *text(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-
-#endif
+static EjsVar   *xml_parent(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv);
 
 static bool allDigitsForXml(cchar *name);
 static bool deepCompare(EjsXML *lhs, EjsXML *rhs);
@@ -573,6 +557,64 @@ static int setXmlPropertyByName(Ejs *ejs, EjsXML *xml, EjsName *qname, EjsVar *v
 }
 
 
+#if UNUSED
+/*
+    function attributes(name: String = "*"): XMLList
+ */
+static EjsVar *xml_attributes(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv)
+{
+    EjsXML  *result;
+    EjsXML  *item;
+    cchar   *name;
+    int     next;
+
+    name = argc > 0 ? ejsGetString(argv[0]) : "*";
+
+    result = ejsCreateXMLList(ejs, xml, &xml->targetProperty);
+    if (xml->attributes) {
+        for (next = 0; (item = mprGetNextItem(xml->attributes, &next)) != 0; ) {
+            if (name[0] == '*' || strcmp(item->qname.name, name) == 0) {
+                result = ejsAppendToXML(ejs, result, item);
+            }
+        }
+    }
+    return (EjsVar*) result;
+}
+
+
+/*
+    function elements(name: String = "*"): XMLList
+ */
+static EjsVar *xml_elements(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv)
+{
+    EjsXML  *result;
+    EjsXML  *item;
+    cchar   *name;
+    int     next;
+
+    name = argc > 0 ? ejsGetString(argv[0]) : "*";
+
+    result = ejsCreateXMLList(ejs, xml, &xml->targetProperty);
+    if (xml->elements) {
+        for (next = 0; (item = mprGetNextItem(xml->elements, &next)) != 0; ) {
+            if (name[0] == '*' || strcmp(item->qname.name, name) == 0) {
+                result = ejsAppendToXML(ejs, result, item);
+            }
+        }
+    }
+    return (EjsVar*) result;
+}
+#endif
+
+
+/*
+    function parent(): XML
+ */
+static EjsVar *xml_parent(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv)
+{
+    return xml->parent ? (EjsVar*) xml->parent : (EjsVar*) ejs->nullValue;
+}
+
 /****************************** Support Routines ****************************/
 /*
  *  Deep compare
@@ -622,17 +664,22 @@ EjsXML *ejsXMLDescendants(Ejs *ejs, EjsXML *xml, EjsName *qname)
     if (result == 0) {
         return 0;
     }
-
-    if (qname->name[0] == '@') {
+    if (qname->name[0] == '.' && qname->name[1] == '@') {
         if (xml->attributes) {
             for (next = 0; (item = mprGetNextItem(xml->attributes, &next)) != 0; ) {
-                mprAssert(qname->name[0] == '@');
-                if (qname->name[1] == '*' || strcmp(item->qname.name, &qname->name[1]) == 0) {
+                if (qname->name[2] == '*' || strcmp(item->qname.name, &qname->name[2]) == 0) {
                     result = ejsAppendToXML(ejs, result, item);
+                } else {
+                    result = ejsAppendToXML(ejs, result, ejsXMLDescendants(ejs, item, qname));
                 }
             }
         }
-
+        if (xml->elements) {
+            for (next = 0; (item = mprGetNextItem(xml->elements, &next)) != 0; ) {
+                result = ejsAppendToXML(ejs, result, ejsXMLDescendants(ejs, item, qname));
+            }
+        }
+        
     } else {
         if (xml->elements) {
             for (next = 0; (item = mprGetNextItem(xml->elements, &next)) != 0; ) {
@@ -1163,6 +1210,8 @@ void ejsConfigureXMLType(Ejs *ejs)
     ejsBindMethod(ejs, type, ES_XML_load, (EjsNativeFunction) loadXml);
     ejsBindMethod(ejs, type, ES_XML_save, (EjsNativeFunction) saveXml);
     ejsBindMethod(ejs, type, ES_XML_name, (EjsNativeFunction) getXmlNodeName);
+
+    ejsBindMethod(ejs, type, ES_XML_parent, (EjsNativeFunction) xml_parent);
 
     /*
      *  Override these methods

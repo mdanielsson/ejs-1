@@ -1343,8 +1343,12 @@
 #define ES_XML__initializer__XML_initializer                           7
 #define ES_XML_load                                                    8
 #define ES_XML_save                                                    9
-#define ES_XML_name                                                    10
-#define ES_XML_NUM_CLASS_PROP                                          11
+#define ES_XML_attribute                                               10
+#define ES_XML_attributes                                              11
+#define ES_XML_elements                                                12
+#define ES_XML_name                                                    13
+#define ES_XML_parent                                                  14
+#define ES_XML_NUM_CLASS_PROP                                          15
 
 /**
  * Instance slots for "XML" type 
@@ -1358,6 +1362,8 @@
 #define ES_XML_XML_value                                               0
 #define ES_XML_load_filename                                           0
 #define ES_XML_save_filename                                           0
+#define ES_XML_attribute_name                                          0
+#define ES_XML_elements_name                                           0
 
 
 /**
@@ -1365,14 +1371,25 @@
  */
 #define ES_XMLList__origin                                             6
 #define ES_XMLList_XMLList                                             6
-#define ES_XMLList_name                                                7
-#define ES_XMLList_NUM_CLASS_PROP                                      8
+#define ES_XMLList_attribute                                           7
+#define ES_XMLList_attributes                                          8
+#define ES_XMLList_elements                                            9
+#define ES_XMLList_name                                                10
+#define ES_XMLList_parent                                              11
+#define ES_XMLList_NUM_CLASS_PROP                                      12
 
 /**
  * Instance slots for "XMLList" type 
  */
 #define ES_XMLList_NUM_INSTANCE_PROP                                   0
 
-#define _ES_CHECKSUM_ejs 480208
+/**
+ * 
+ *    Local slots for methods in type XMLList 
+ */
+#define ES_XMLList_attribute_name                                      0
+#define ES_XMLList_elements_name                                       0
+
+#define _ES_CHECKSUM_ejs 489148
 
 #endif

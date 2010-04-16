@@ -1,5 +1,5 @@
 /*
- *	Test E4X get access
+  	Test get access
  */
 
 var order : XML = <order id="1234" color="red">
@@ -25,24 +25,21 @@ assert(all.customer.name != undefined)
 assert(all.customer.name == 'Joe Green')
 
 
-/*
- *	Test element extraction
- */
+//  Test element extraction
+
 var address = order.customer.address
 assert(address.length() == 1)
 assert(order.item.length() == 2)
 
 
-/*
- *	Extract a text value
- */
+//	Extract a text value
+
 var city = order.customer.address.city
 assert(city == "New York")
 
 
-/*
- *	Extract an attribute value
- */
+//	Extract an attribute value
+
 var level = order.item[0].@level
 assert(level == "rush")
 

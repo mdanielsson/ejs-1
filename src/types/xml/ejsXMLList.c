@@ -14,25 +14,7 @@
 /*
  *  XMLList methods
  */
-
-#if KEEP
-static EjsVar   *valueOf(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *xlLength(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *toXmlString(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *appendChild(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *attributes(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *child(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *elements(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *comments(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *decendants(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *elements(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *insertChildAfter(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *insertChildBefore(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *replace(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *setName(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-static EjsVar   *text(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv);
-
-#endif
+static EjsVar *xl_parent(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv);
 
 static bool allDigitsForXmlList(cchar *name);
 static EjsXML *resolve(Ejs *ejs, EjsXML *obj);
@@ -108,6 +90,9 @@ static EjsVar *xlCast(Ejs *ejs, EjsXML *vp, EjsType *type)
             if (ejsXMLToString(ejs, buf, elt, -1) < 0) {
                 mprFree(buf);
                 return 0;
+            }
+            if (next < vp->elements->length) {
+                mprPutStringToBuf(buf, ", ");
             }
         }
         result = (EjsVar*) ejsCreateString(ejs, (char*) buf->start);
@@ -657,6 +642,14 @@ static EjsVar *xlLength(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv)
 }
 
 
+/*
+    function parent(): XML
+ */
+static EjsVar *xl_parent(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv)
+{
+    return xml->targetObject ? (EjsVar*) xml->targetObject : (EjsVar*) ejs->nullValue;
+}
+
 /*********************************** Factory **********************************/
 
 EjsXML *ejsCreateXMLList(Ejs *ejs, EjsXML *targetObject, EjsName *targetProperty)
@@ -740,6 +733,8 @@ void ejsConfigureXMLListType(Ejs *ejs)
      */
     ejsBindMethod(ejs, type, ES_XMLList_XMLList, (EjsNativeFunction) xmlListConstructor);
     ejsBindMethod(ejs, type, ES_XMLList_name, (EjsNativeFunction) getXmlListNodeName);
+
+    ejsBindMethod(ejs, type, ES_XMLList_parent, (EjsNativeFunction) xl_parent);
 
     /*
      *  Override these methods

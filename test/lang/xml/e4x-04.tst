@@ -1,6 +1,5 @@
-
 /*
- *	Test basic update E4X access
+  	Test basic update 
  */
 
 var order : XML = <order id="1234" color="red">
