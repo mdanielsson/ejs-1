@@ -669,8 +669,10 @@ EjsXML *ejsXMLDescendants(Ejs *ejs, EjsXML *xml, EjsName *qname)
             for (next = 0; (item = mprGetNextItem(xml->attributes, &next)) != 0; ) {
                 if (qname->name[2] == '*' || strcmp(item->qname.name, &qname->name[2]) == 0) {
                     result = ejsAppendToXML(ejs, result, item);
+#if UNUSED
                 } else {
                     result = ejsAppendToXML(ejs, result, ejsXMLDescendants(ejs, item, qname));
+#endif
                 }
             }
         }

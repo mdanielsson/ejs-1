@@ -71,7 +71,8 @@ module ejs.io {
          *      Options can be either a mode string or can be an options hash. 
          *  @options mode optional file access mode string. Use "r" for read, "w" for write, "a" for append to existing
          *      content, "+" never truncate. Defaults to "r".
-         *  @options permissions optional Posix permissions number mask. Defaults to 0664.
+         *  @options permissions Number containing the Posix permissions value. Note: this is a number and not a string
+         *      representation of an octal posix number.
          *  @return the File object. This permits method chaining.
          *  @throws IOError if the path or file cannot be created.
          */

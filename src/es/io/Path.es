@@ -312,15 +312,12 @@ module ejs.io {
         native function get parent(): Path
 
         /**
-            The file permissions of a path. Set to the Posix style permissions mask or null if the file does not exist.
+            The file permissions of a path. This number contains the Posix style permissions value or null if the file 
+            does not exist. NOTE: this is not a string representation of an octal posix mask. 
          */
         native function get perms(): Number
 
-        /**
-            @duplicate Path.perms
-            @param perms the new Posix style permissions mask
-            @throws IOError if the path does not exist as a file.
-         */
+        /** */
         native function set perms(perms: Number): Void
 
         /**
