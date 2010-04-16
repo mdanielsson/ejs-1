@@ -18,11 +18,11 @@ module ejs {
         use default namespace public
 
         /**
-         *  Clone the array and all its elements.
+         *  Clone the object and all its elements.
          *  @param deep If true, do a deep copy where all object references are also copied, and so on, recursively.
          *  @spec ejs
          */
-        native function clone(deep: Boolean = true) : Array
+        native function clone(deep: Boolean = true): Object
 
         /**
          *  Get an iterator for this object to be used by "for (v in obj)"
