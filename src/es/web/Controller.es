@@ -631,7 +631,7 @@ module ejs.web {
          *  @returns a transformed string
          */
         function unescapeHtml(s: String): String
-            s.replace(/&amp/g,'&;').replace(/&gt/g,'>').replace(/&lt/g,'<').replace(/&quot/g,'"')
+            s.replace(/&amp;/g,'&').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&quot;/g,'"')
 
         /**
          *  Send a warning message back to the client for display in the flash area. This is just a convenience instead of
