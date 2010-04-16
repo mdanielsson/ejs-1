@@ -263,7 +263,7 @@ module ejs.db {
         /**
          *  Execute a SQL command on the database. This is a low level SQL command interface that bypasses logging.
          *      Use @query instead.
-         *  @param cmd SQL command string
+            @param cmd SQL command to issue. Note: "SELECT" is automatically prepended and ";" is appended for you.
          *  @returns An array of row results where each row is represented by an Object hash containing the column 
          *      names and values
          */

@@ -927,7 +927,7 @@ module ejs.db {
 
         /**
             Run an SQL statement and return selected records.
-            @param cmd SQL command to issue
+            @param cmd SQL command to issue. Note: "SELECT" is automatically prepended and ";" is appended for you.
             @returns An array of objects. Each object represents a matching row with fields for each column.
          */
         static function sql(cmd: String, count: Number = null): Array {

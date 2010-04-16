@@ -25,7 +25,6 @@ module ejs {
 
     /**
      *  Arithmetic error exception class. Thrown when the system cannot perform an arithmetic operation, 
-     *  e.g. on divide by zero.
      *  @spec ejs
      *  @stability evolving
      */

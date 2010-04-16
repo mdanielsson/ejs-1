@@ -550,7 +550,7 @@ module ejs {
             Return a localized string containing the date portion excluding the time portion of the date in local time.
             Note: You should not rely on the format of the output as the exact format will depend on the platform
             and locale.
-            Sample: "Fri, 15 Dec 2006 GMT-0800". (Note: Other platforms render as:
+            Sample: "Fri 15 Dec 2006 GMT-0800". (Note: Other platforms render as:
             V8  format: "Fri, 15 Dec 2006 GMT-0800"
             JS  format: "01/15/2010"
             JSC format: "January 15, 2010")
@@ -562,7 +562,7 @@ module ejs {
         /**
             Return a localized string containing the date. This formats the date using the operating system's locale
             conventions.
-            Sample:  "Fri, 15 Dec 2006 23:45:09 GMT-0800 (PST)". (Note: Other platforms render as:
+            Sample:  "Fri 15 Dec 2006 23:45:09 GMT-0800 (PST)". (Note: Other platforms render as:
             V8 format:  "Fri, 15 Dec 2006 23:45:09 GMT-0800 (PST)"
             JS format:  "Fri Jan 15 13:09:02 2010"
             JSC format: "January 15, 2010 1:09:06 PM PST"
@@ -584,7 +584,7 @@ module ejs {
 
         /**
             Return a string representing the date in local time. The format is American English.
-            Sample: "Fri, 15 Dec 2006 23:45:09 GMT-0800 (PST)"
+            Sample: "Fri 15 Dec 2006 23:45:09 GMT-0800 (PST)"
             @return A string representing the date.
          */
         override native function toString(): String 
@@ -599,7 +599,7 @@ module ejs {
 
         /**
             Return a string containing the date in UTC time.
-            Sample: "Sat, 16 Dec 2006 08:06:21 GMT"
+            Sample: "Sat 16 Dec 2006 08:06:21 GMT"
             @return A string representing the date.
          */
         function toUTCString(): String 
