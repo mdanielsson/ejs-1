@@ -97,12 +97,12 @@ module ejs.io {
             @param recurse Set to true to examine sub-directories. 
             @return Return a list of matching files
          */
-        function find(glob: String = null, recurse: Boolean = true): Array {
-            function recursiveFind(path: Path, pattern: RegExp): Array {
+        function find(glob: String = "*", recurse: Boolean = true): Array {
+            function recursiveFind(path: Path, pattern: RegExp, level: Number): Array {
                 let result: Array = []
-                if (path.isDir) {
-                    for each (f in Path(path).files(true)) {
-                        let got: Array = recursiveFind(f, pattern)
+                if (path.isDir && (recurse || level == 0)) {
+                    for each (f in path.files(true)) {
+                        let got: Array = recursiveFind(f, pattern, level + 1)
                         for each (i in got) {
                             result.append(i)
                         }
@@ -113,11 +113,8 @@ module ejs.io {
                 }
                 return result
             }
-            if (glob == null) {
-                glob = "*"
-            }
             pattern = RegExp("^" + glob.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$")
-            return recursiveFind(this, pattern)
+            return recursiveFind(this, pattern, 0)
         }
 
         /**
