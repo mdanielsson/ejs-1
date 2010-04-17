@@ -22,7 +22,11 @@ static int  preloadModules(EcCompiler *cp, MprList *modules);
 
 /************************************ Code ************************************/
 
-MAIN(ejsMain, int argc, char **argv)
+#if BLD_APPWEB_PRODUCT
+    MAIN(ejsMain, int argc, char **argv)
+#else
+    MAIN(ejsMain, int argc, char **argv)
+#endif
 {
     Mpr             *mpr;
     EcCompiler      *cp;

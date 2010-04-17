@@ -17,7 +17,11 @@ static int preloadModules(EcCompiler *cp, MprList *modules);
 
 /************************************ Code ************************************/
 
-MAIN(ejscMain, int argc, char **argv)
+#if BLD_APPWEB_PRODUCT
+    MAIN(ajscMain, int argc, char **argv)
+#else
+    MAIN(ejscMain, int argc, char **argv)
+#endif
 {
     Mpr             *mpr;
     Ejs             *ejs;

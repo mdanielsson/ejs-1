@@ -14,7 +14,11 @@ static int  loadModuleFile(Ejs *ejs, char *fileName);
 
 /************************************ Main ************************************/
 
-MAIN(ejsvmMain, int argc, char *argv[]) 
+#if BLD_APPWEB_PRODUCT
+    MAIN(ajsvmMain, int argc, char *argv[]) 
+#else
+    MAIN(ejsvmMain, int argc, char *argv[]) 
+#endif
 {
     Mpr             *mpr;
     EjsService      *ejsService;
