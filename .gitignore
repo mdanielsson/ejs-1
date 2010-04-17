@@ -58,3 +58,4 @@ bin/default-web
 .port.log
 all/default-web/
 all/default-web/js/jquery.ejs.js
+lib/*.so

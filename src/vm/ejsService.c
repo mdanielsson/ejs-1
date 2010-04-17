@@ -38,11 +38,6 @@ static int configureWebModule(Ejs *ejs, EjsModule *mp, cchar *path);
 #endif
 #endif
 
-/*
- *  Global singleton for the Ejs service
- */
-EjsService *_globalEjsService;
-
 /************************************* Code ***********************************/
 /*
  *  Initialize the EJS subsystem
@@ -55,7 +50,7 @@ EjsService *ejsCreateService(MprCtx ctx)
     if (sp == 0) {
         return 0;
     }
-    _globalEjsService = sp;
+    mprGetMpr(ctx)->ejsService = sp;
     sp->nativeModules = mprCreateHash(sp, 0);
 
     /*
@@ -91,7 +86,7 @@ Ejs *ejsCreate(MprCtx ctx, Ejs *master, cchar *searchPath, int flags)
         return 0;
     }
     mprSetAllocNotifier(ejs, (MprAllocNotifier) allocNotifier);
-    ejs->service = _globalEjsService;
+    ejs->service = mprGetMpr(ctx)->ejsService;
 
     /*
      *  Probably not necessary, but it keeps the objects in one place
@@ -392,7 +387,10 @@ static int configureWebModule(Ejs *ejs, EjsModule *mp, cchar *path)
  */
 int ejsAddNativeModule(MprCtx ctx, char *name, EjsNativeCallback callback)
 {
-    if (mprAddHash(_globalEjsService->nativeModules, name, callback) == 0) {
+    EjsService  *sp;
+
+    sp = mprGetMpr(ctx)->ejsService;
+    if (mprAddHash(sp->nativeModules, name, callback) == 0) {
         return EJS_ERR;
     }
     return 0;

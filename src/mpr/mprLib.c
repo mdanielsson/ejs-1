@@ -4926,15 +4926,19 @@ static MprBlk *stopAlloc;
 #define unlockHeap(ctx)
 #endif
 
+#if WIN || LINUX || MACOSX
 /*
  *  Mpr control and root memory context. This is a constant and a permissible global.
  */
 Mpr  *_globalMpr;
+#endif
 
+#if UNUSED
 /*
  *  Allocation control and statistics
  */
 static MprAlloc alloc;
+#endif
 
 
 static void allocException(MprBlk *bp, uint size, bool granted);
@@ -4974,12 +4978,6 @@ Mpr *mprCreateAllocService(MprAllocNotifier cback, MprDestructor destructor)
     uint            usize, size;
 
     /*
-     *  Set initial defaults to no memory limit. Redline at 90%.
-     */
-    alloc.maxMemory = INT_MAX;
-    alloc.redLine = INT_MAX / 100 * 99;
-
-    /*
      *  Hand-craft the first block to optimize subsequent use of mprAlloc. Layout is:
      *      HDR
      *      Mpr
@@ -4998,6 +4996,17 @@ Mpr *mprCreateAllocService(MprAllocNotifier cback, MprDestructor destructor)
         return 0;
     }
     memset(bp, 0, size);
+    mpr = (Mpr*) GET_PTR(bp);
+
+    /*
+     *  Set initial defaults to no memory limit. Redline at 90%.
+     */
+    mpr->alloc.maxMemory = INT_MAX;
+    mpr->alloc.redLine = INT_MAX / 100 * 99;
+
+#if WIN || LINUX || MACOSX
+    _globalMpr = mpr;
+#endif
 
     bp->parent = 0;
     bp->size = size;
@@ -5006,11 +5015,9 @@ Mpr *mprCreateAllocService(MprAllocNotifier cback, MprDestructor destructor)
     SET_MAGIC(bp);
     bp->flags |= MPR_ALLOC_IS_HEAP;
 
-    _globalMpr = mpr = (Mpr*) GET_PTR(bp);
-
-    alloc.bytesAllocated += size;
-    alloc.peakAllocated = alloc.bytesAllocated;
-    alloc.stackStart = (void*) &mpr;
+    mpr->alloc.bytesAllocated += size;
+    mpr->alloc.peakAllocated = mpr->alloc.bytesAllocated;
+    mpr->alloc.stackStart = (void*) &mpr;
 
     sysinit(mpr);
     initHeap(&mpr->pageHeap, "page", 1);
@@ -5029,6 +5036,7 @@ Mpr *mprCreateAllocService(MprAllocNotifier cback, MprDestructor destructor)
 
 static MprCtx allocHeap(MprCtx ctx, cchar *name, uint heapSize, bool threadSafe, MprDestructor destructor)
 {
+    Mpr         *mpr;
     MprHeap     *pageHeap, *heap;
     MprRegion   *region;
     MprBlk      *bp, *parent;
@@ -5036,6 +5044,8 @@ static MprCtx allocHeap(MprCtx ctx, cchar *name, uint heapSize, bool threadSafe,
 
     mprAssert(ctx);
     mprAssert(VALID_CTX(ctx));
+
+    mpr = mprGetMpr(ctx);
 
     /*
      *  Allocate the full arena/slab out of one memory allocation. This includes the user object, heap object and 
@@ -5053,7 +5063,7 @@ static MprCtx allocHeap(MprCtx ctx, cchar *name, uint heapSize, bool threadSafe,
      */
     headersSize = MPR_ALLOC_ALIGN(sizeof(MprHeap) + sizeof(MprRegion));
     usize = headersSize + heapSize;
-    size = MPR_PAGE_ALIGN(MPR_ALLOC_HDR_SIZE + usize, alloc.pageSize);
+    size = MPR_PAGE_ALIGN(MPR_ALLOC_HDR_SIZE + usize, mpr->alloc.pageSize);
     usize = (size - MPR_ALLOC_HDR_SIZE);
     heapSize = usize - headersSize;
 
@@ -5063,7 +5073,7 @@ static MprCtx allocHeap(MprCtx ctx, cchar *name, uint heapSize, bool threadSafe,
     /*
      *  All heaps are allocated from the page heap
      */
-    pageHeap = &_globalMpr->pageHeap;
+    pageHeap = &mpr->pageHeap;
     mprAssert(pageHeap);
 
     if (unlikely((bp = _mprAllocBlock(pageHeap, NULL, usize)) == 0)) {
@@ -5326,12 +5336,14 @@ void *_mprAllocWithDestructorZeroed(MprCtx ctx, uint size, MprDestructor destruc
  */
 int mprFree(void *ptr)
 {
+    Mpr         *mpr;
     MprHeap     *heap, *hp;
     MprBlk      *bp, *parent;
 
     if (unlikely(ptr == 0)) {
         return 0;
     }
+    mpr = mprGetMpr(ptr);
     bp = GET_BLK(ptr);
     mprAssert(VALID_BLK(bp));
     mprAssert(bp->size > 0);
@@ -5343,7 +5355,7 @@ int mprFree(void *ptr)
     /*
      *  Test if already freed
      */
-    if (unlikely(bp->parent == 0 && ptr != _globalMpr)) {
+    if (unlikely(bp->parent == 0 && ptr != mpr)) {
         mprAssert(bp->parent);
         return 0;
     }
@@ -5358,7 +5370,7 @@ int mprFree(void *ptr)
             /*
              *  Destructor aborted the free. Reparent to the top level.
              */
-            mprStealBlock(_globalMpr, ptr);
+            mprStealBlock(mpr, ptr);
             return 1;
         }
     }
@@ -5371,7 +5383,7 @@ int mprFree(void *ptr)
         if (hp->destructor) {
             hp->destructor(ptr);
         }
-        heap = &_globalMpr->pageHeap;
+        heap = &mpr->pageHeap;
 
     } else {
         mprAssert(VALID_BLK(parent));
@@ -5622,6 +5634,7 @@ void *_mprMemdup(MprCtx ctx, cvoid *ptr, uint usize)
 MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint usize)
 {
     MprBlk      *bp;
+    Mpr         *mpr;
     uint        size;
 #if BLD_FEATURE_VMALLOC
     MprRegion   *region;
@@ -5629,6 +5642,7 @@ MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint usize)
 
     size = MPR_ALLOC_ALIGN(MPR_ALLOC_HDR_SIZE + usize);
     usize = size - MPR_ALLOC_HDR_SIZE;
+    mpr = mprGetMpr(parent);
 
     /*
      *  Check a memory allocation request against configured maximums and redlines. We do this so that 
@@ -5640,13 +5654,13 @@ MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint usize)
         if (size >= MPR_ALLOC_BIGGEST) {
             return 0;
 
-        } else if ((size + alloc.bytesAllocated) > alloc.maxMemory) {
+        } else if ((size + mpr->alloc.bytesAllocated) > mpr->alloc.maxMemory) {
             /*
              *  Prevent allocation as over the maximum memory limit.
              */
             return 0;
 
-        } else if ((size + alloc.bytesAllocated) > alloc.redLine) {
+        } else if ((size + mpr->alloc.bytesAllocated) > mpr->alloc.redLine) {
             /*
              *  Warn if allocation puts us over the red line. Then continue to grant the request.
              */
@@ -5693,7 +5707,7 @@ MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint usize)
         bp->flags = 0;
 
     } else if (heap->flags & MPR_ALLOC_PAGE_HEAP) {
-        if ((bp = (MprBlk*) mprMapAlloc(size, MPR_MAP_READ | MPR_MAP_WRITE)) == 0) {
+        if ((bp = (MprBlk*) mprMapAlloc(mpr, size, MPR_MAP_READ | MPR_MAP_WRITE)) == 0) {
             unlockHeap(heap);
             return 0;
         }
@@ -5721,17 +5735,17 @@ MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint usize)
         linkBlock(parent, bp);
         incStats(heap, bp);
 
-        if (heap != (MprHeap*) _globalMpr) {
-            mprSpinLock(&_globalMpr->heap.spin);
-            alloc.bytesAllocated += size;
-            if (alloc.bytesAllocated > alloc.peakAllocated) {
-                alloc.peakAllocated = alloc.bytesAllocated;
+        if (heap != (MprHeap*) mpr) {
+            mprSpinLock(&mpr->heap.spin);
+            mpr->alloc.bytesAllocated += size;
+            if (mpr->alloc.bytesAllocated > mpr->alloc.peakAllocated) {
+                mpr->alloc.peakAllocated = mpr->alloc.bytesAllocated;
             }
-            mprSpinUnlock(&_globalMpr->heap.spin);
+            mprSpinUnlock(&mpr->heap.spin);
         } else {
-            alloc.bytesAllocated += size;
-            if (alloc.bytesAllocated > alloc.peakAllocated) {
-                alloc.peakAllocated = alloc.bytesAllocated;
+            mpr->alloc.bytesAllocated += size;
+            if (mpr->alloc.bytesAllocated > mpr->alloc.peakAllocated) {
+                mpr->alloc.peakAllocated = mpr->alloc.bytesAllocated;
             }
         }
     }
@@ -5761,13 +5775,14 @@ MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint usize)
 static inline void freeBlock(MprHeap *heap, MprBlk *bp)
 {
     int         size;
-
+    Mpr         *mpr;
 #if BLD_FEATURE_VMALLOC
     MprHeap     *hp;
     MprRegion   *region, *next;
 #endif
 
-    if (bp->flags & MPR_ALLOC_IS_HEAP && bp != GET_BLK(_globalMpr)) {
+    mpr = mprGetMpr(bp);
+    if (bp->flags & MPR_ALLOC_IS_HEAP && bp != GET_BLK(mpr)) {
 #if BLD_FEATURE_VMALLOC
         hp = (MprHeap*) GET_PTR(bp);
         if (hp->depleted) {
@@ -5797,13 +5812,13 @@ static inline void freeBlock(MprHeap *heap, MprBlk *bp)
     }
     size = bp->size;
 
-    if (heap != (MprHeap*) _globalMpr) {
-        mprSpinLock(&_globalMpr->heap.spin);
-        alloc.bytesAllocated -= size;
-        mprAssert(alloc.bytesAllocated >= 0);
-        mprSpinUnlock(&_globalMpr->heap.spin);
+    if (heap != (MprHeap*) mpr) {
+        mprSpinLock(&mpr->heap.spin);
+        mpr->alloc.bytesAllocated -= size;
+        mprAssert(mpr->alloc.bytesAllocated >= 0);
+        mprSpinUnlock(&mpr->heap.spin);
     } else {
-        alloc.bytesAllocated -= size;
+        mpr->alloc.bytesAllocated -= size;
     }
 
 #if BLD_FEATURE_VMALLOC
@@ -5843,7 +5858,10 @@ static inline void freeBlock(MprHeap *heap, MprBlk *bp)
 static MprRegion *createRegion(MprHeap *heap, uint usize)
 {
     MprRegion   *region;
+    Mpr         *mpr;
     uint        size, regionSize, regionStructSize;
+
+    mpr = mprGetMpr(heap);
 
     /*
      *  Scavenge the depleted regions for scraps. We don't expect there to be many of these.
@@ -5868,10 +5886,10 @@ static MprRegion *createRegion(MprHeap *heap, uint usize)
 
     regionStructSize = MPR_ALLOC_ALIGN(sizeof(MprRegion));
     size = max(usize, (regionStructSize + regionSize));
-    size = MPR_PAGE_ALIGN(size, alloc.pageSize);
+    size = MPR_PAGE_ALIGN(size, mpr->alloc.pageSize);
     usize = size - regionStructSize;
 
-    if ((region = (MprRegion*) mprMapAlloc(size, MPR_MAP_READ | MPR_MAP_WRITE)) == 0) {
+    if ((region = (MprRegion*) mprMapAlloc(mpr, size, MPR_MAP_READ | MPR_MAP_WRITE)) == 0) {
         return 0;
     }
     region->memory = (char*) region + regionStructSize;
@@ -5981,14 +5999,14 @@ static void monitorStack()
     /*
      *  Monitor stack usage
      */
-    int diff = (int) ((char*) alloc.stackStart - (char*) &diff);
+    int diff = (int) ((char*) mpr->alloc.stackStart - (char*) &diff);
     if (diff < 0) {
-        alloc.peakStack -= diff;
-        alloc.stackStart = (void*) &diff;
+        mpr->alloc.peakStack -= diff;
+        mpr->alloc.stackStart = (void*) &diff;
         diff = 0;
     }
-    if (diff > alloc.peakStack) {
-        alloc.peakStack = diff;
+    if (diff > mpr->alloc.peakStack) {
+        mpr->alloc.peakStack = diff;
     }
 }
 #endif
@@ -6057,18 +6075,20 @@ void mprSetAllocNotifier(MprCtx ctx, MprAllocNotifier cback)
  */
 bool mprStackCheck(MprCtx ptr)
 {
+    Mpr     *mpr;
     int     size;
 
     mprAssert(VALID_CTX(ptr));
 
-    size = (int) ((char*) alloc.stackStart - (char*) &size);
+    mpr = mprGetMpr(ptr);
+    size = (int) ((char*) mpr->alloc.stackStart - (char*) &size);
     if (size < 0) {
-        alloc.peakStack -= size;
-        alloc.stackStart = (void*) &size;
+        mpr->alloc.peakStack -= size;
+        mpr->alloc.stackStart = (void*) &size;
         size = 0;
     }
-    if (size > alloc.peakStack) {
-        alloc.peakStack = size;
+    if (size > mpr->alloc.peakStack) {
+        mpr->alloc.peakStack = size;
         return 1;
     }
     return 0;
@@ -6077,11 +6097,14 @@ bool mprStackCheck(MprCtx ptr)
 
 void mprSetAllocLimits(MprCtx ctx, int redLine, int maxMemory)
 {
+    Mpr     *mpr;
+
+    mpr = mprGetMpr(ctx);
     if (redLine > 0) {
-        alloc.redLine = redLine;
+        mpr->alloc.redLine = redLine;
     }
     if (maxMemory > 0) {
-        alloc.maxMemory = maxMemory;
+        mpr->alloc.maxMemory = maxMemory;
     }
 }
 
@@ -6106,21 +6129,24 @@ void *mprGetParent(MprCtx ptr)
 
 MprAlloc *mprGetAllocStats(MprCtx ctx)
 {
+    MprAlloc    *ap;
+
+    ap = &mprGetMpr(ctx)->alloc;
 #if LINUX
     struct rusage   rusage;
     char            buf[1024], *cp;
     int             fd, len;
 
     getrusage(RUSAGE_SELF, &rusage);
-    alloc.rss = rusage.ru_maxrss;
+    ap->rss = rusage.ru_maxrss;
 
-    alloc.ram = MAXINT64;
+    ap->ram = MAXINT64;
     if ((fd = open("/proc/meminfo", O_RDONLY)) >= 0) {
         if ((len = read(fd, buf, sizeof(buf) - 1)) > 0) {
             buf[len] = '\0';
             if ((cp = strstr(buf, "MemTotal:")) != 0) {
                 for (; *cp && !isdigit((int) *cp); cp++) {}
-                alloc.ram = ((int64) atoi(cp) * 1024);
+                ap->ram = ((int64) atoi(cp) * 1024);
             }
         }
         close(fd);
@@ -6133,27 +6159,27 @@ MprAlloc *mprGetAllocStats(MprCtx ctx)
     int             mib[2];
 
     getrusage(RUSAGE_SELF, &rusage);
-    alloc.rss = rusage.ru_maxrss;
+    ap->rss = rusage.ru_maxrss;
 
     mib[0] = CTL_HW;
     mib[1] = HW_MEMSIZE;
     len = sizeof(ram);
     sysctl(mib, 2, &ram, &len, NULL, 0);
-    alloc.ram = ram;
+    ap->ram = ram;
 
     mib[0] = CTL_HW;
     mib[1] = HW_USERMEM;
     len = sizeof(usermem);
     sysctl(mib, 2, &usermem, &len, NULL, 0);
-    alloc.user = usermem;
+    ap->user = usermem;
 #endif
-    return &alloc;
+    return ap;
 }
 
 
 int64 mprGetUsedMemory(MprCtx ctx)
 {
-    return alloc.bytesAllocated;
+    return mprGetMpr(ctx)->alloc.bytesAllocated;
 }
 
 
@@ -6166,7 +6192,7 @@ int mprIsValid(MprCtx ptr)
 }
 
 
-#if BLD_WIN_LIKE
+#if !WIN && !LINUX && !MACOSX
 /*
  *  Get the ultimate block parent
  */
@@ -6224,20 +6250,22 @@ void mprSetAllocError(MprCtx ctx)
 static void allocException(MprBlk *parent, uint size, bool granted)
 {
     MprHeap     *hp;
+    Mpr         *mpr;
 
     mprAssert(VALID_BLK(parent));
 
-    mprSpinLock(&_globalMpr->heap.spin);
-    if (alloc.inAllocException == 0) {
-        alloc.inAllocException = 1;
-        mprSpinUnlock(&_globalMpr->heap.spin);
+    mpr = mprGetMpr(parent);
+    mprSpinLock(&mpr->heap.spin);
+    if (mpr->alloc.inAllocException == 0) {
+        mpr->alloc.inAllocException = 1;
+        mprSpinUnlock(&mpr->heap.spin);
 
         /*
          *  Notify all the heaps up the chain
          */
         for (hp = mprGetHeap(parent); hp; hp = mprGetHeap(parent)) {
             if (hp->notifier) {
-                (hp->notifier)(hp->notifierCtx, size, (int) alloc.bytesAllocated, granted);
+                (hp->notifier)(hp->notifierCtx, size, (int) mpr->alloc.bytesAllocated, granted);
                 break;
             }
             parent = parent->parent;
@@ -6245,9 +6273,9 @@ static void allocException(MprBlk *parent, uint size, bool granted)
                 break;
             }
         }
-        alloc.inAllocException = 0;
+        mpr->alloc.inAllocException = 0;
     } else {
-        mprSpinUnlock(&_globalMpr->heap.spin);
+        mprSpinUnlock(&mpr->heap.spin);
     }
 }
 
@@ -6257,7 +6285,10 @@ static void allocException(MprBlk *parent, uint size, bool granted)
  */
 static void allocError(MprBlk *parent, uint size)
 {
-    alloc.errors++;
+    Mpr     *mpr;
+
+    mpr = mprGetMpr(parent);
+    mpr->alloc.errors++;
     mprSetAllocError(GET_PTR(parent));
     allocException(parent, size, 0);
 }
@@ -6268,22 +6299,26 @@ static void allocError(MprBlk *parent, uint size)
  */
 static void sysinit(Mpr *mpr)
 {
-    alloc.numCpu = 1;
+    MprAlloc    *ap;
+
+    ap = &mpr->alloc;
+
+    ap->numCpu = 1;
 
 #if MACOSX
     #ifdef _SC_NPROCESSORS_ONLN
-        alloc.numCpu = sysconf(_SC_NPROCESSORS_ONLN);
+        ap->numCpu = sysconf(_SC_NPROCESSORS_ONLN);
     #else
-        alloc.numCpu = 1;
+        ap->numCpu = 1;
     #endif
-    alloc.pageSize = sysconf(_SC_PAGESIZE);
+    ap->pageSize = sysconf(_SC_PAGESIZE);
 #elif BLD_WIN_LIKE
 {
     SYSTEM_INFO     info;
 
     GetSystemInfo(&info);
-    alloc.numCpu = info.dwNumberOfProcessors;
-    alloc.pageSize = info.dwPageSize;
+    ap->numCpu = info.dwNumberOfProcessors;
+    ap->pageSize = info.dwPageSize;
 
 }
 #elif FREEBSD
@@ -6296,15 +6331,15 @@ static void sysinit(Mpr *mpr)
          */
         cmd[0] = CTL_HW;
         cmd[1] = HW_NCPU;
-        len = sizeof(alloc.numCpu);
-        if (sysctl(cmd, 2, &alloc.numCpu, &len, 0, 0) < 0) {
-            alloc.numCpu = 1;
+        len = sizeof(ap->numCpu);
+        if (sysctl(cmd, 2, &ap->numCpu, &len, 0, 0) < 0) {
+            ap->numCpu = 1;
         }
 
         /*
          *  Get page size
          */
-        alloc.pageSize = sysconf(_SC_PAGESIZE);
+        ap->pageSize = sysconf(_SC_PAGESIZE);
     }
 #elif LINUX
     {
@@ -6329,42 +6364,47 @@ static void sysinit(Mpr *mpr)
                     col++;
 
                 } else if (match) {
-                    alloc.numCpu++;
+                    ap->numCpu++;
                     match = 0;
                 }
             }
         }
-        --alloc.numCpu;
+        --ap->numCpu;
         close(fd);
 
         /*
          *  Get page size
          */
-        alloc.pageSize = sysconf(_SC_PAGESIZE);
+        ap->pageSize = sysconf(_SC_PAGESIZE);
     }
 #else
-        alloc.pageSize = 4096;
+        ap->pageSize = 4096;
 #endif
-    if (alloc.pageSize <= 0 || alloc.pageSize >= (16 * 1024)) {
-        alloc.pageSize = 4096;
+    if (ap->pageSize <= 0 || ap->pageSize >= (16 * 1024)) {
+        ap->pageSize = 4096;
     }
 }
 
 
 int mprGetPageSize(MprCtx ctx)
 {
-    return alloc.pageSize;
+    Mpr     *mpr;
+
+    mpr = mprGetMpr(ctx);
+    return mpr->alloc.pageSize;
 }
 
 
 /*
  *  Virtual memory support. Map virutal memory into the address space and commit.
  */
-void *mprMapAlloc(uint size, int mode)
+void *mprMapAlloc(MprCtx ctx, uint size, int mode)
 {
-    void        *ptr;
+    Mpr     *mpr;
+    void    *ptr;
 
-    size = MPR_PAGE_ALIGN(size, alloc.pageSize);
+    mpr = mprGetMpr(ctx);
+    size = MPR_PAGE_ALIGN(size, mpr->alloc.pageSize);
 
 #if BLD_CC_MMU
     /*
@@ -6458,13 +6498,15 @@ static inline void freeMemory(MprBlk *bp)
 void mprValidateBlock(MprCtx ctx)
 {
 #if BLD_FEATURE_MEMORY_DEBUG
+    Mpr         *mpr;
     MprBlk      *bp, *parent, *sibling, *child;
 
     mprAssert(VALID_CTX(ctx));
 
     bp = GET_BLK(ctx);
+    mpr = mprGetMpr(ctx);
 
-    if (bp == GET_BLK(_globalMpr)) {
+    if (bp == GET_BLK(mpr)) {
         return;
     }
 
@@ -6596,7 +6638,7 @@ void mprPrintAllocReport(MprCtx ctx, cchar *msg)
 #if BLD_FEATURE_MEMORY_STATS
     MprAlloc    *ap;
 
-    ap = &alloc;
+    ap = &mprGetMpr(ctx)->alloc;
 
     /*
      *  MPR stats

@@ -3117,7 +3117,7 @@ int ejsInitStack(Ejs *ejs)
     /*
      *  This will allocate memory virtually for systems with virutal memory. Otherwise, it will just use malloc.
      */
-    state->stackBase = mprMapAlloc(state->stackSize, MPR_MAP_READ | MPR_MAP_WRITE);
+    state->stackBase = mprMapAlloc(ejs, state->stackSize, MPR_MAP_READ | MPR_MAP_WRITE);
     if (state->stackBase == 0) {
         mprSetAllocError(ejs);
         return EJS_ERR;
