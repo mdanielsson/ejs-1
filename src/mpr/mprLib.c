@@ -4926,18 +4926,11 @@ static MprBlk *stopAlloc;
 #define unlockHeap(ctx)
 #endif
 
-#if WIN || LINUX || MACOSX
+#if BLD_HAS_GLOBAL_MPR || BLD_WIN_LIKE
 /*
  *  Mpr control and root memory context. This is a constant and a permissible global.
  */
 Mpr  *_globalMpr;
-#endif
-
-#if UNUSED
-/*
- *  Allocation control and statistics
- */
-static MprAlloc alloc;
 #endif
 
 
@@ -4962,7 +4955,7 @@ static inline void decStats(MprHeap *heap, MprBlk *bp);
 #define decStats(heap, bp)
 #endif
 #if BLD_FEATURE_MONITOR_STACK
-static void monitorStack();
+static void monitorStack(Mpr *mpr);
 #endif
 #if BLD_WIN_LIKE
 static int mapProt(int flags);
@@ -5004,7 +4997,7 @@ Mpr *mprCreateAllocService(MprAllocNotifier cback, MprDestructor destructor)
     mpr->alloc.maxMemory = INT_MAX;
     mpr->alloc.redLine = INT_MAX / 100 * 99;
 
-#if WIN || LINUX || MACOSX
+#if BLD_HAS_GLOBAL_MPR
     _globalMpr = mpr;
 #endif
 
@@ -5076,7 +5069,7 @@ static MprCtx allocHeap(MprCtx ctx, cchar *name, uint heapSize, bool threadSafe,
     pageHeap = &mpr->pageHeap;
     mprAssert(pageHeap);
 
-    if (unlikely((bp = _mprAllocBlock(pageHeap, NULL, usize)) == 0)) {
+    if (unlikely((bp = _mprAllocBlock(ctx, pageHeap, NULL, usize)) == 0)) {
         allocError(parent, usize);
         unlockHeap(pageHeap);
         return 0;
@@ -5194,7 +5187,7 @@ void *_mprAlloc(MprCtx ctx, uint usize)
     heap = mprGetHeap(parent);
     mprAssert(heap);
 
-    if (unlikely((bp = _mprAllocBlock(heap, parent, usize)) == 0)) {
+    if (unlikely((bp = _mprAllocBlock(ctx, heap, parent, usize)) == 0)) {
         allocError(parent, usize);
         return 0;
     }
@@ -5631,7 +5624,7 @@ void *_mprMemdup(MprCtx ctx, cvoid *ptr, uint usize)
 /*
  *  Allocate a block from a heap. Must be heap locked when called.
  */
-MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint usize)
+MprBlk *_mprAllocBlock(MprCtx ctx, MprHeap *heap, MprBlk *parent, uint usize)
 {
     MprBlk      *bp;
     Mpr         *mpr;
@@ -5642,7 +5635,7 @@ MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint usize)
 
     size = MPR_ALLOC_ALIGN(MPR_ALLOC_HDR_SIZE + usize);
     usize = size - MPR_ALLOC_HDR_SIZE;
-    mpr = mprGetMpr(parent);
+    mpr = mprGetMpr(ctx);
 
     /*
      *  Check a memory allocation request against configured maximums and redlines. We do this so that 
@@ -5763,7 +5756,7 @@ MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint usize)
     }
 #endif
 #if BLD_FEATURE_MONITOR_STACK
-    monitorStack();
+    monitorStack(mpr);
 #endif
     return bp;
 }
@@ -5994,7 +5987,7 @@ static inline void decStats(MprHeap *heap, MprBlk *bp)
 
 
 #if BLD_FEATURE_MONITOR_STACK
-static void monitorStack()
+static void monitorStack(Mpr *mpr)
 {
     /*
      *  Monitor stack usage
@@ -6192,13 +6185,23 @@ int mprIsValid(MprCtx ptr)
 }
 
 
-#if !WIN && !LINUX && !MACOSX
+#if !BLD_HAS_GLOBAL_MPR || BLD_WIN_LIKE
 /*
  *  Get the ultimate block parent
  */
 Mpr *mprGetMpr(MprCtx ignored)
 {
+#if BLD_WIN_LIKE
+    /*  Windows can use globalMpr but must have a function to solve linkage issues */
     return (Mpr*) _globalMpr;
+#else
+    MprBlk  *bp = GET_BLK(ctx);
+
+    while (bp && bp->parent) {
+        bp = bp->parent;
+    }
+    return GET_PTR(bp);
+#endif
 }
 #endif
 

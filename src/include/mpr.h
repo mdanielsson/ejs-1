@@ -4827,7 +4827,9 @@ typedef void *Type;
  */
 extern void *mprAlloc(MprCtx ctx, uint size);
 
-extern MprBlk *mprAllocBlock(MprHeap *heap, MprBlk *parent, uint size);
+#if UNUSED
+extern MprBlk *mprAllocBlock(MprCtx ctx, MprHeap *heap, MprBlk *parent, uint size);
+#endif
 
 /**
  *  Allocate an object block of memory
@@ -5024,7 +5026,7 @@ extern cchar *mprGetName(void *ptr);
 #endif
 
 extern void *_mprAlloc(MprCtx ctx, uint size);
-extern MprBlk *_mprAllocBlock(MprHeap *heap, MprBlk *parent, uint size);
+extern MprBlk *_mprAllocBlock(MprCtx ctx, MprHeap *heap, MprBlk *parent, uint size);
 extern void *_mprAllocWithDestructor(MprCtx ctx, uint size, MprDestructor destructor);
 extern void *_mprAllocWithDestructorZeroed(MprCtx ctx, uint size, MprDestructor destructor);
 extern void *_mprAllocZeroed(MprCtx ctx, uint size);
@@ -5047,8 +5049,10 @@ extern char *_mprStrdup(MprCtx ctx, cchar *str);
 
 #define mprAlloc(ctx, size) \
     mprSetName(_mprAlloc(ctx, size), MPR_LOC)
+#if UNUSED
 #define mprAllocBlock(heap, parent, size) \
     mprSetName(_mprAllocBlock(heap, parent, size), MPR_LOC)
+#endif
 #define mprAllocWithDestructor(ctx, size, destructor) \
     mprSetName(_mprAllocWithDestructor(ctx, size, destructor), MPR_LOC)
 #define mprAllocWithDestructorZeroed(ctx, size, destructor) \
@@ -7345,11 +7349,13 @@ typedef struct Mpr {
 } Mpr;
 
 
-#if MACOSX || LINUX || !DOXYGEN
-extern Mpr  *_globalMpr;                /* Mpr singleton */
-#define mprGetMpr(ctx) _globalMpr
+#if BLD_WIN_LIKE || BLD_UNIX_LIKE
+#define BLD_HAS_GLOBAL_MPR 1
 #else
+#define BLD_HAS_GLOBAL_MPR 0
+#endif
 
+#if DOXYGEN || !BLD_HAS_GLOBAL_MPR
 /**
  *  Return the MPR control instance.
  *  @description Return the MPR singleton control object. 
@@ -7359,6 +7365,10 @@ extern Mpr  *_globalMpr;                /* Mpr singleton */
  *  @ingroup Mpr
  */
 extern struct Mpr *mprGetMpr(MprCtx ctx);
+#else
+
+extern Mpr  *_globalMpr;                /* Mpr singleton */
+#define mprGetMpr(ctx) _globalMpr
 #endif
 
 /**
