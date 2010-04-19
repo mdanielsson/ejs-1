@@ -808,8 +808,8 @@ static EjsVar *lastIndexOf(Ejs *ejs, EjsString *sp, int argc,  EjsVar **argv)
 
     if (argc == 2) {
         start = ejsGetInt(argv[1]);
-        if (start > sp->length) {
-            start = sp->length;
+        if (start >= sp->length) {
+            start = sp->length - 1;
         }
         if (start < 0) {
             start = 0;
