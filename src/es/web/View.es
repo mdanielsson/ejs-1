@@ -196,11 +196,6 @@ module ejs.web {
             @option url String Use a URL rather than action and controller for the target url.
          */
         function form(action: String, record: Object = null, options: Object = {}): Void {
-            /*
-            if (record == null) {
-                record = new LocalModel
-            }
-            */
             currentModel = record
             formErrors(record)
             options = setOptions("form", options)
@@ -212,6 +207,7 @@ module ejs.web {
             }
             let connector = getConnector("form", options)
             options.url = makeUrl(action, (record) ? record.id : null, options)
+dump("AAAA", options)
             connector.form(record, options.url, options)
         }
 
@@ -495,7 +491,7 @@ module ejs.web {
             @option styleOddRow String CSS style to use for odd data rows in the table
             @option styleEvenRow String CSS style to use for even data rows in the table
             @option title String Table title
-         *
+         
             Column options:
             <ul>
             <li>align</li>
@@ -507,7 +503,7 @@ module ejs.web {
                 Defaults to ascending.</li>
             <li>style</li>
             </ul>
-         *
+        
             @example
                 <% table("getData", { refresh: 2, pivot: true" }) %>
                 <% table(gridData, { click: "edit" }) %>
@@ -948,6 +944,7 @@ module ejs.web {
         private static const htmlOptions: Object = { 
             background: "", color: "", id: "", height: "", method: "", size: "", 
             style: "class", visible: "", width: "",
+            "remote": "data-remote",
         }
 
         /**
@@ -985,6 +982,9 @@ module ejs.web {
                         mapped = option
                     }
                     result += ' ' +  mapped + '="' + options[option] + '"'
+
+                } else if (option.startsWith("data-")) {
+                    result += ' ' +  option + '="' + options[option] + '"'
                 }
             }
             return result + " "
