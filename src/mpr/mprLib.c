@@ -4930,14 +4930,18 @@ static MprBlk *stopAlloc;
 /*
  *  Mpr control and root memory context. This is a constant and a permissible global.
  */
-Mpr  *_globalMpr;
+    #if BLD_WIN_LIKE
+        Mpr  *_globalMpr;
+    #else
+        static Mpr  *_globalMpr;
+    #endif
 #endif
 
 
 static void allocException(MprBlk *bp, uint size, bool granted);
 static inline void *allocMemory(uint size);
 static void allocError(MprBlk *parent, uint size);
-static inline void freeBlock(MprHeap *heap, MprBlk *bp);
+static inline void freeBlock(Mpr *mpr, MprHeap *heap, MprBlk *bp);
 static inline void freeMemory(MprBlk *bp);
 static inline void initHeap(MprHeap *heap, cchar *name, bool threadSafe);
 static inline void linkBlock(MprBlk *parent, MprBlk *bp);
@@ -4945,7 +4949,7 @@ static void sysinit(Mpr *mpr);
 static void inline unlinkBlock(MprBlk *bp);
 
 #if BLD_FEATURE_VMALLOC
-static MprRegion *createRegion(MprHeap *heap, uint size);
+static MprRegion *createRegion(MprCtx ctx, MprHeap *heap, uint size);
 #endif
 #if BLD_FEATURE_MEMORY_STATS
 static inline void incStats(MprHeap *heap, MprBlk *bp);
@@ -5387,7 +5391,7 @@ int mprFree(void *ptr)
     lockHeap(heap);
     decStats(heap, bp);
     unlinkBlock(bp);
-    freeBlock(heap, bp);
+    freeBlock(mpr, heap, bp);
     unlockHeap(heap);
     return 0;
 }
@@ -5429,6 +5433,7 @@ void *_mprRealloc(MprCtx ctx, void *ptr, uint usize)
 {
     MprHeap     *heap;
     MprBlk      *parent, *bp, *newbp, *child;
+    Mpr         *mpr;
     void        *newPtr;
 
     mprAssert(VALID_CTX(ctx));
@@ -5437,7 +5442,7 @@ void *_mprRealloc(MprCtx ctx, void *ptr, uint usize)
     if (ptr == 0) {
         return _mprAlloc(ctx, usize);
     }
-
+    mpr = mprGetMpr(ctx);
     mprAssert(VALID_CTX(ptr));
     bp = GET_BLK(ptr);
     mprAssert(bp);
@@ -5476,7 +5481,7 @@ void *_mprRealloc(MprCtx ctx, void *ptr, uint usize)
     }
     newbp->children = bp->children;
     unlockHeap(heap);
-    freeBlock(heap, bp);
+    freeBlock(mpr, heap, bp);
     return newPtr;
 }
 
@@ -5669,7 +5674,7 @@ MprBlk *_mprAllocBlock(MprCtx ctx, MprHeap *heap, MprBlk *parent, uint usize)
          */
         region = heap->region;
         if ((region->nextMem + size) > &region->memory[region->size]) {
-            if ((region = createRegion(heap, size)) == NULL) {
+            if ((region = createRegion(ctx, heap, size)) == NULL) {
                 unlockHeap(heap);
                 return 0;
             }
@@ -5688,7 +5693,7 @@ MprBlk *_mprAllocBlock(MprCtx ctx, MprHeap *heap, MprBlk *parent, uint usize)
             heap->reuseCount++;
         } else {
             if ((region->nextMem + size) > &region->memory[region->size]) {
-                if ((region = createRegion(heap, size)) == NULL) {
+                if ((region = createRegion(ctx, heap, size)) == NULL) {
                     unlockHeap(heap);
                     return 0;
                 }
@@ -5765,16 +5770,14 @@ MprBlk *_mprAllocBlock(MprCtx ctx, MprHeap *heap, MprBlk *parent, uint usize)
 /*
  *  Free a block back to a heap
  */
-static inline void freeBlock(MprHeap *heap, MprBlk *bp)
+static inline void freeBlock(Mpr *mpr, MprHeap *heap, MprBlk *bp)
 {
     int         size;
-    Mpr         *mpr;
 #if BLD_FEATURE_VMALLOC
     MprHeap     *hp;
     MprRegion   *region, *next;
 #endif
 
-    mpr = mprGetMpr(bp);
     if (bp->flags & MPR_ALLOC_IS_HEAP && bp != GET_BLK(mpr)) {
 #if BLD_FEATURE_VMALLOC
         hp = (MprHeap*) GET_PTR(bp);
@@ -5848,13 +5851,13 @@ static inline void freeBlock(MprHeap *heap, MprBlk *bp)
 /*
  *  Create a new region to satify the request if no memory exists in any depleted regions. 
  */
-static MprRegion *createRegion(MprHeap *heap, uint usize)
+static MprRegion *createRegion(MprCtx ctx, MprHeap *heap, uint usize)
 {
     MprRegion   *region;
     Mpr         *mpr;
     uint        size, regionSize, regionStructSize;
 
-    mpr = mprGetMpr(heap);
+    mpr = mprGetMpr(ctx);
 
     /*
      *  Scavenge the depleted regions for scraps. We don't expect there to be many of these.
@@ -6189,8 +6192,10 @@ int mprIsValid(MprCtx ptr)
 /*
  *  Get the ultimate block parent
  */
-Mpr *mprGetMpr(MprCtx ignored)
+Mpr *mprGetMpr(MprCtx ctx)
 {
+    mprAssert(ctx);
+
 #if BLD_WIN_LIKE
     /*  Windows can use globalMpr but must have a function to solve linkage issues */
     return (Mpr*) _globalMpr;
@@ -6200,7 +6205,7 @@ Mpr *mprGetMpr(MprCtx ignored)
     while (bp && bp->parent) {
         bp = bp->parent;
     }
-    return GET_PTR(bp);
+    return (Mpr*) GET_PTR(bp);
 #endif
 }
 #endif
@@ -18858,19 +18863,14 @@ static char *sprintfCore(MprCtx ctx, char *buf, int maxsize, cchar *spec, va_lis
     uint64      uValue;
     int         i, len, state;
 
-    if (ctx == 0) {
-        ctx = mprGetMpr(ctx);
-    }
     if (spec == 0) {
         spec = "";
     }
-
     if (buf != 0) {
         mprAssert(maxsize > 0);
         fmt.buf = (uchar*) buf;
         fmt.endbuf = &fmt.buf[maxsize];
         fmt.growBy = -1;
-
     } else {
         if (maxsize <= 0) {
             maxsize = MAXINT;
