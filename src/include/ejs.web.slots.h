@@ -581,11 +581,11 @@
 #define ES_ejs_web_View_ejs_web_getValue_fmt                           5
 #define ES_ejs_web_View_ejs_web_getValue__hoisted_6_part               6
 #define ES_ejs_web_View_ejs_web_date_fmt                               0
-#define ES_ejs_web_View_ejs_web_date___fun_22854__                     1
+#define ES_ejs_web_View_ejs_web_date___fun_5437__                      1
 #define ES_ejs_web_View_ejs_web_currency_fmt                           0
-#define ES_ejs_web_View_ejs_web_currency___fun_22888__                 1
+#define ES_ejs_web_View_ejs_web_currency___fun_5471__                  1
 #define ES_ejs_web_View_ejs_web_number_fmt                             0
-#define ES_ejs_web_View_ejs_web_number___fun_22918__                   1
+#define ES_ejs_web_View_ejs_web_number___fun_5501__                    1
 #define ES_ejs_web_View_ejs_web_getOptions_options                     0
 #define ES_ejs_web_View_ejs_web_getOptions_result                      1
 #define ES_ejs_web_View_ejs_web_getOptions__hoisted_2_option           2
@@ -810,7 +810,7 @@
 #define ES_LocalModel_makeLazyReader_model                             2
 #define ES_LocalModel_makeLazyReader_key                               3
 #define ES_LocalModel_makeLazyReader_options                           4
-#define ES_LocalModel_makeLazyReader___fun_15837__                     5
+#define ES_LocalModel_makeLazyReader___fun_3930__                      5
 #define ES_LocalModel_makeLazyReader_lazyReader                        6
 #define ES_LocalModel_mapSqlTypeToEjs_sqlType                          0
 #define ES_LocalModel_mapSqlTypeToEjs_ejsType                          1
@@ -897,7 +897,8 @@
 #define ES_ejs_web_HtmlConnector_getTextKind                           33
 #define ES_ejs_web_HtmlConnector_getOptions                            34
 #define ES_ejs_web_HtmlConnector_write                                 35
-#define ES_ejs_web_HtmlConnector_NUM_CLASS_PROP                        36
+#define ES_ejs_web_HtmlConnector_getDataAttributes                     36
+#define ES_ejs_web_HtmlConnector_NUM_CLASS_PROP                        37
 
 /**
  * Instance slots for "HtmlConnector" type 
@@ -923,6 +924,7 @@
 #define ES_ejs_web_HtmlConnector_ejs_web_buttonLink_text               0
 #define ES_ejs_web_HtmlConnector_ejs_web_buttonLink_url                1
 #define ES_ejs_web_HtmlConnector_ejs_web_buttonLink_options            2
+#define ES_ejs_web_HtmlConnector_ejs_web_buttonLink__hoisted_3_attributes 3
 #define ES_ejs_web_HtmlConnector_ejs_web_chart_data                    0
 #define ES_ejs_web_HtmlConnector_ejs_web_chart_options                 1
 #define ES_ejs_web_HtmlConnector_ejs_web_checkbox_name                 0
@@ -1020,6 +1022,8 @@
 #define ES_ejs_web_HtmlConnector_getTextKind_kind                      1
 #define ES_ejs_web_HtmlConnector_getOptions_options                    0
 #define ES_ejs_web_HtmlConnector_write_str                             0
+#define ES_ejs_web_HtmlConnector_getDataAttributes_options             0
+#define ES_ejs_web_HtmlConnector_getDataAttributes_attributes          1
 
 
 /**
@@ -1077,6 +1081,6 @@
 #define ES_ejs_web_GoogleConnector_getOptions__hoisted_3_word          3
 #define ES_ejs_web_GoogleConnector_write_str                           0
 
-#define _ES_CHECKSUM_ejs_web 453049
+#define _ES_CHECKSUM_ejs_web 458537
 
 #endif

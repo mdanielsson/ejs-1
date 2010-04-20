@@ -154,8 +154,12 @@ module ejs.web {
          *  @duplicate ejs.web::View.buttonLink
          */
 		function buttonLink(text: String, url: String, options: Object): Void {
-			// write('<a href="' + url + '"><button>' + text + '</button></a>')
-			write('<button onclick="window.location=\'' + url + '\';">' + text + '</button></a>')
+            if (options["data-remote"]) {
+                let attributes = getDataAttributes(options)
+                write('<button ' + attributes + '>' + text + '</button></a>')
+            } else {
+                write('<button onclick="window.location=\'' + url + '\';">' + text + '</button></a>')
+            }
         }
 
         /**
@@ -273,7 +277,7 @@ module ejs.web {
          *      list("stockId", Stock.stockList) 
          *      list("low", ["low", "med", "high"])
          *      list("low", [["low", "3"], ["med", "5"], ["high", "9"]])
-         *      list("low", [{low: 3{, {med: 5}, {high: 9}])
+         *      list("low", [{low: 3}, {med: 5}, {high: 9}])
          *      list("Stock Type")                          Will invoke StockType.findAll() to do a table lookup
          */
 		function list(field: String, choices: Object, defaultValue: String, options: Object): Void {
@@ -295,8 +299,8 @@ module ejs.web {
                             }
                         }
                     } else {
-                        isSelected = (i == defaultValue) ? 'selected="yes"' : ''
-                        write('  <option value="' + i + '"' + isSelected + '>' + choice + '</option>')
+                        isSelected = (choice == defaultValue) ? 'selected="yes"' : ''
+                        write('  <option value="' + choice + '"' + isSelected + '>' + choice + '</option>')
                     }
                 }
                 i++
@@ -473,14 +477,7 @@ module ejs.web {
             let sortOrder = options.sortOrder || ""
             let sort = options.sort
             if (sort == undefined) sort = true
-
-            let attributes = ""
-            if (options["data-remote"]) {
-                attributes += ' data-remote="' + options["data-remote"] + '"'
-            }
-            if (options["data-apply"]) {
-                attributes += ' data-apply="' + options["data-apply"] + '"'
-            }
+            let attributes = getDataAttributes(options)
 
             if (!options.ajax) {
                 let url = (data is String) ? data : null
@@ -696,6 +693,17 @@ module ejs.web {
 
         private function write(str: String): Void
             view.write(str)
+
+        private function getDataAttributes(options): String {
+            let attributes = ""
+            if (options["data-remote"]) {
+                attributes += ' data-remote="' + options["data-remote"] + '"'
+            }
+            if (options["data-apply"]) {
+                attributes += ' data-apply="' + options["data-apply"] + '"'
+            }
+            return attributes
+        }
 	}
 }
 
