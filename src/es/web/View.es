@@ -207,7 +207,6 @@ module ejs.web {
             }
             let connector = getConnector("form", options)
             options.url = makeUrl(action, (record) ? record.id : null, options)
-dump("AAAA", options)
             connector.form(record, options.url, options)
         }
 
