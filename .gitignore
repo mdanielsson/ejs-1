@@ -59,3 +59,8 @@ bin/default-web
 all/default-web/
 all/default-web/js/jquery.ejs.js
 lib/*.so
+releases/*.txt
+releases/*.gz
+releases/*.zip
+staging
+releases/*.dmg
