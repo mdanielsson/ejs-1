@@ -11045,6 +11045,13 @@ static int getPathInfo(MprDiskFileSystem *fileSystem, cchar *path, MprPath *info
     info->perms = s.st_mode & 07777;
 #ifdef S_ISLNK
     info->isLink = S_ISLNK(s.st_mode);
+	if (info->isLink) {
+		struct stat realInfo;
+		if (stat((char*) path, &realInfo) < 0) {
+			return MPR_ERR_CANT_ACCESS;
+		}
+		info->size = realInfo.st_size;
+	}
 #endif
 
     if (strcmp(path, "/dev/null") == 0) {
