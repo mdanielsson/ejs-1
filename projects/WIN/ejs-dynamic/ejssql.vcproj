@@ -185,7 +185,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{71009617-17f2-447d-bd36-593f55366315}"
+			UniqueIdentifier="{9ed4925f-3de7-4b8d-bc5b-6f524ddb9b3b}"
 			>
 			<File
 				RelativePath="..\..\..\src\db\sqlite\ejssql.c"

@@ -41,7 +41,7 @@
 				Optimization="1"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
-				AdditionalIncludeDirectories="C:/home/mob/hg/packages/openssl/openssl-1.0.0-beta5/inc32;C:/home/mob/hg/packages/matrixssl/matrixssl-1-8-8-open;../../..;../../../src/include"
+				AdditionalIncludeDirectories="../../..;../../../src/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;;_REENTRANT;_MT"
 				StringPooling="true"
 				MinimalRebuild="true"
@@ -124,7 +124,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				FavorSizeOrSpeed="1"
-				AdditionalIncludeDirectories="C:/home/mob/hg/packages/openssl/openssl-1.0.0-beta5/inc32;C:/home/mob/hg/packages/matrixssl/matrixssl-1-8-8-open;../../..;../../../src/include"
+				AdditionalIncludeDirectories="../../..;../../../src/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;;_REENTRANT;_MT"
 				StringPooling="true"
 				MinimalRebuild="true"
@@ -187,7 +187,7 @@
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
-			UniqueIdentifier="{d7618d22-f4ec-4ccd-b272-c001594d82f9}"
+			UniqueIdentifier="{bd4b2fea-eb46-47d4-b06b-58fc46d24ae4}"
 			>
 			<File
 				RelativePath="..\..\..\buildConfig.h"
@@ -205,7 +205,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{991f84aa-4dde-4f27-9226-8dbea23831ce}"
+			UniqueIdentifier="{7a20e875-ac74-4beb-9dcb-b6b7a51777c7}"
 			>
 			<File
 				RelativePath="..\..\..\src\mpr\mprSsl.c"

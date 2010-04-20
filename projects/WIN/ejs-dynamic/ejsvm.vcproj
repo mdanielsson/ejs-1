@@ -185,7 +185,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{3c30122f-10ad-4536-ab38-32f27c835410}"
+			UniqueIdentifier="{0313c64d-2741-42ec-8d39-6f8c6eedd854}"
 			>
 			<File
 				RelativePath="..\..\..\src\cmd\ejsvm.c"

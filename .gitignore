@@ -64,3 +64,7 @@ releases/*.gz
 releases/*.zip
 staging
 releases/*.dmg
+*.user
+*.ncb
+*.suo
+projects/WIN/ejs*/Win32

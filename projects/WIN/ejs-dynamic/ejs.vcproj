@@ -185,7 +185,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{238de832-3cf3-4f2a-8d3f-b469262a4f93}"
+			UniqueIdentifier="{d2a9743e-186c-4649-9955-b2196177f86e}"
 			>
 			<File
 				RelativePath="..\..\..\src\cmd\ejs.c"

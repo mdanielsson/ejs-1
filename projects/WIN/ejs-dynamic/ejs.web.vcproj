@@ -187,7 +187,7 @@
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
-			UniqueIdentifier="{e80a923f-56e1-4cba-be10-8ae8d8ab379b}"
+			UniqueIdentifier="{5fa71720-792b-4aa2-a469-0555b80cc6a8}"
 			>
 			<File
 				RelativePath="..\..\..\buildConfig.h"
@@ -246,10 +246,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\include\ejs.unix.slots.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\..\src\include\master\ejs.web.slots.h"
 				>
 			</File>
@@ -301,7 +297,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{23d4ee73-ccaa-483f-abc3-74b59fbd7222}"
+			UniqueIdentifier="{cfa2c3f7-28c2-47e6-b353-f2efd411c25a}"
 			>
 			<File
 				RelativePath="..\..\..\src\web\ejsWebCache.c"

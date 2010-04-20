@@ -187,7 +187,7 @@
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
-			UniqueIdentifier="{bb03b887-f159-4372-a033-5c9dae3825fa}"
+			UniqueIdentifier="{7f58f8b6-3f49-4029-92df-ba78caf9567c}"
 			>
 			<File
 				RelativePath="..\..\..\buildConfig.h"
@@ -205,7 +205,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{69e7fd0c-91c7-4ad1-b3e5-0d9ad08036d3}"
+			UniqueIdentifier="{1404ede5-6a87-42e4-8e5e-c01ac25e0f07}"
 			>
 			<File
 				RelativePath="..\..\..\src\db\sqlite\sqlite3.c"

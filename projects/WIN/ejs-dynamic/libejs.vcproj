@@ -187,14 +187,10 @@
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
-			UniqueIdentifier="{c10f574b-dc81-4387-be69-8653c10cc0e3}"
+			UniqueIdentifier="{a110ecac-5e57-4067-980c-37aa1fe9e765}"
 			>
 			<File
 				RelativePath="..\..\..\buildConfig.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\src\include\ejs.db.slots.h"
 				>
 			</File>
 			<File
@@ -202,11 +198,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\include\master\ejs.db.sqlite.slots.h"
+				RelativePath="..\..\..\src\include\ejs.db.slots.h"
 				>
 			</File>
 			<File
 				RelativePath="..\..\..\src\include\ejs.db.sqlite.slots.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\include\master\ejs.db.sqlite.slots.h"
 				>
 			</File>
 			<File
@@ -222,19 +222,19 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\include\ejs.io.slots.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\..\src\include\master\ejs.io.slots.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\include\ejs.slots.h"
+				RelativePath="..\..\..\src\include\ejs.io.slots.h"
 				>
 			</File>
 			<File
 				RelativePath="..\..\..\src\include\master\ejs.slots.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\include\ejs.slots.h"
 				>
 			</File>
 			<File
@@ -246,15 +246,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\include\ejs.unix.slots.h"
+				RelativePath="..\..\..\src\include\master\ejs.web.slots.h"
 				>
 			</File>
 			<File
 				RelativePath="..\..\..\src\include\ejs.web.slots.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\src\include\master\ejs.web.slots.h"
 				>
 			</File>
 			<File
@@ -301,7 +297,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{63d3206f-8375-4897-b3cc-858d65124c82}"
+			UniqueIdentifier="{b417d4cb-ac77-42f8-88e7-1dd2244f2952}"
 			>
 			<File
 				RelativePath="..\..\..\src\types\sys\ejsApp.c"
@@ -445,10 +441,6 @@
 			</File>
 			<File
 				RelativePath="..\..\..\src\vm\ejsService.c"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\src\types\io\ejsSocket.c"
 				>
 			</File>
 			<File

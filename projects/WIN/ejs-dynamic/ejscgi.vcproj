@@ -185,7 +185,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{2938b4ab-9ce8-4a6b-84fd-b0ec25c18388}"
+			UniqueIdentifier="{d0b018c4-ee64-49c8-9982-ff079de75ed0}"
 			>
 			<File
 				RelativePath="..\..\..\src\web\gateways\ejsCgi.c"

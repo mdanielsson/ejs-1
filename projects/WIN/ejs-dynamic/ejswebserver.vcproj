@@ -185,7 +185,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{c8126fb4-9725-43d2-bd97-bf3c01fee969}"
+			UniqueIdentifier="{ee46247c-0bcc-4fd7-a94c-e03a8f449d4c}"
 			>
 			<File
 				RelativePath="..\..\..\src\appweb\appweb.c"

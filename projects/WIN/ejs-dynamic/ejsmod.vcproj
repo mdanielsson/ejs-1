@@ -185,7 +185,7 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{108b7b24-4d9d-409c-abde-c9c2a50f78d8}"
+			UniqueIdentifier="{12548bc7-bb53-47a6-832e-8cba1d905041}"
 			>
 			<File
 				RelativePath="..\..\..\src\ejsmod\doc.c"
