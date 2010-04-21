@@ -1,5 +1,6 @@
 ./all/*.c
 ./all/*.es
+./all/*.cmd
 ./all/Makefile.all
 ./all/appweb.conf
 ./all/mime.types
