@@ -21,9 +21,9 @@ Embedthis Ejscript is an enhanced, embeddable implementation of JavaScript
 %build
 
 %install
-    mkdir -p !!ROOT_DIR!!/RPM/BUILDROOT/!!BLD_PRODUCT!!-!!BLD_VERSION!!-!!BLD_NUMBER!!.!!BLD_CPU!!
+    mkdir -p !!ROOT_DIR!!/RPM/BUILDROOT/!!BLD_PRODUCT!!-!!BLD_VERSION!!-!!BLD_NUMBER_ONLY!!.!!BLD_CPU!!
     for dir in BIN DEV SRC ; do
-        cp -r !!ROOT_DIR!!/${dir}/*  !!ROOT_DIR!!/RPM/BUILDROOT/!!BLD_PRODUCT!!-!!BLD_VERSION!!-!!BLD_NUMBER!!.!!BLD_CPU!!
+        cp -r !!ROOT_DIR!!/${dir}/*  !!ROOT_DIR!!/RPM/BUILDROOT/!!BLD_PRODUCT!!-!!BLD_VERSION!!-!!BLD_NUMBER_ONLY!!.!!BLD_CPU!!
     done
 
 %clean
