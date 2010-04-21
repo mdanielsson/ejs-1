@@ -5,6 +5,7 @@
 #   Copyright (c) Embedthis Software LLC, 2003-2010. All Rights Reserved.
 #
 
+TASK=$1
 PRODUCT=ejs
 EXE=
 BIN=/usr/local/bin
@@ -14,7 +15,8 @@ PROGRAMS="ejs ejsc ejscgi ejsmod ejssql ejsvm ejsweb ejsmvc ejspage jem"
 
 prefix=/usr/lib/${PRODUCT}
 version=`ls $prefix | egrep -v '[a-zA-Z@!_\-]' | sort -n -r | head -1`
-if [ "$version" = "" ] ; then
+
+if [ "$TASK" = "Remove" ] ; then
     for name in $PROGRAMS
     do
         rm -f "${BIN}/$name"
