@@ -41,18 +41,16 @@ module ejs.db {
          */
         function Database(adapter: String, connectionString: String) {
             if (adapter == "sqlite3") adapter = "sqlite"
-            try {
-                _name = basename(connectionString)
-                _connection = connectionString
-                let adapterClass = adapter.toPascal()
-                if (global."ejs.db"::[adapterClass] == undefined) {
-                    load("ejs.db." + adapter + ".mod")
-                }
-                _adapter = new global."ejs.db"::[adapterClass](connectionString)
-            } catch (e) {
-                print(e)
+            _name = basename(connectionString)
+            _connection = connectionString
+            let adapterClass = adapter.toPascal()
+            if (global."ejs.db"::[adapterClass] == undefined) {
+                load("ejs.db." + adapter + ".mod")
+            }
+            if (!global."ejs.db"::[adapterClass]) {
                 throw "Can't find database connector for " + adapter
             }
+            _adapter = new global."ejs.db"::[adapterClass](connectionString)
         }
 
         /**
