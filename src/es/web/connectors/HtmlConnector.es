@@ -560,7 +560,8 @@ module ejs.web {
                     write('    <tr class="' + styleRow + 
                         '" onclick="window.location=\'' + url + '\';">\r\n')
                 } else {
-                    write('    <tr class="' + styleRow + '">\r\n')
+                let dataId = (options["data-remote"] && r.id) ? (' data-id="' + r.id + '"') : ''
+                    write('    <tr class="' + styleRow + '"' + dataId + '>\r\n')
                 }
 
                 let col = 0
