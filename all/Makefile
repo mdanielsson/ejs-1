@@ -104,6 +104,7 @@ ejs.es: $(ES_SOURCES)
 ejsweb.es: ../src/es/web/ejsweb.es
 	@$(call log) "[Generate]" all/ejsweb.es
 	cp ../src/es/web/ejsweb.es .
+	cp ../src/es/web/ejsweb.cmd .
 	cp -r $(BLD_LIB_DIR)/default-web .
 
 $(GATEWAYS): ../src/web/gateways/$@
