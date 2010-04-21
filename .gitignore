@@ -68,3 +68,4 @@ releases/*.dmg
 *.ncb
 *.suo
 projects/WIN/ejs*/Win32
+*.deb

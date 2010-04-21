@@ -2368,7 +2368,7 @@ while [ "${1#--}" != "$1" ] ; do
         ;;
     libexecdir=*)
         BLD_LIB_PREFIX=`canonPath "${ARG}"/${BLD_PRODUCT}/${BLD_VERSION}`
-        BLD_MOD_PREFIX=`canonPath "${ARG}"/${BLD_PRODUCT}/modules`
+        BLD_MOD_PREFIX=`canonPath "${ARG}"/${BLD_PRODUCT}/${BLD_VERSION}/modules`
         BLD_JEM_PREFIX=`canonPath "${ARG}"/${BLD_PRODUCT}/jems`
         ;;
     localstatedir=*)
