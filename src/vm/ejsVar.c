@@ -828,8 +828,6 @@ static bool parseBoolean(Ejs *ejs, cchar *s)
  */
 static MprNumber parseNumber(Ejs *ejs, cchar *str)
 {
-    MprNumber   n;
-    cchar       *cp;
     int64       num;
     int         radix, c, negative;
 
@@ -851,9 +849,11 @@ static MprNumber parseNumber(Ejs *ejs, cchar *str)
     }
 
     /*
-        Floatng format: [DIGITS].[DIGITS][(e|E)[+|-]DIGITS]
+        Floating format: [DIGITS].[DIGITS][(e|E)[+|-]DIGITS]
      */
     if (!(*str == '0' && tolower((int) str[1]) == 'x')) {
+        MprNumber   n;
+        cchar       *cp;
         for (cp = str; *cp; cp++) {
             if (*cp == '.' || tolower((int) *cp) == 'e') {
                 n = atof(str);
