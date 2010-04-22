@@ -7,10 +7,15 @@
 TASK=$1
 PRODUCT=ejs
 EXE=
-BIN=/usr/local/bin
 INC=/usr/include
 MAN=/usr/share/man
 PROGRAMS="ejs ejsc ejscgi ejsmod ejssql ejsvm ejsweb ejsmvc ejspage jem"
+
+if [ -x /usr/local/bin ] ; then
+    BIN=/usr/local/bin
+else 
+    BIN=/usr/bin
+fi
 
 prefix=/usr/lib/${PRODUCT}
 version=`ls $prefix | egrep -v '[a-zA-Z@!_\-]' | sort -n -r | head -1`
