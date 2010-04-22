@@ -1,7 +1,7 @@
 # 
 #	Makefile for the Ejscript Server-Side JavaScript Language and Web Framework
 #
-#	Copyright (C) 2010 Embedthis Software
+#	Copyright (C) 2009 Embedthis Software
 #
 #	This software is licensed under the GPLv2. Commercial and other licenses 
 #   are available from http://www.embedthis.com.
@@ -14,12 +14,13 @@ PKG_NAME:=ejs
 PKG_RELEASE:=1
 
 #
-#    Build 0.9.9-3
+#    Build 1.0.0-6-repos
 #
 PKG_SOURCE_URL:=http://www.ejscript.org/software/
-PKG_VERSION:=0.9.9-3
+PKG_VERSION:=1.0.0-6-repos
 PKG_MD5SUM:=a8dd4107bd2b7c105080d20005f58303
 PKG_SOURCE:=$(PKG_NAME)-src-$(PKG_VERSION).tar.gz
+PKG_LIB_DIR:= /usr/lib/ejs/1.0.0
 
 #
 #    Build the latest snapshot from the default trunk
@@ -44,7 +45,7 @@ define Package/ejs/Default
 	SECTION:=lang
 	CATEGORY:=Languages
 	TITLE:=Ejscript programming language
-	URL:=http://www.ejs.org/
+	URL:=http://www.ejscript.org/
 endef
 
 define Package/ejs/Default/description
@@ -155,64 +156,65 @@ define Build/Compile
 endef
 
 define Package/libejs/install
-	$(INSTALL_DIR) $(1)/usr/lib/ejs
-	$(CP) $(PKG_STAGE_DIR)/usr/lib/ejs/libmpr*.so $(1)/usr/lib/ejs/
-	if [ -f $(PKG_STAGE_DIR)/usr/lib/ejs/libpcre.so ] ; then \
-		$(CP) $(PKG_STAGE_DIR)/usr/lib/ejs/libpcre.so $(1)/usr/lib/ejs/ ; \
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/modules/
+	$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libmpr*.so $(1)$(PKG_LIB_DIR)/lib/
+	if [ -f $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libpcre.so ] ; then \
+		$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libpcre.so $(1)$(PKG_LIB_DIR)/lib/ ; \
 	fi
-	if [ -f $(PKG_STAGE_DIR)/usr/lib/ejs/libsqlite3.so ] ; then \
-		$(CP) $(PKG_STAGE_DIR)/usr/lib/ejs/libsqlite3.so $(1)/usr/lib/ejs/ ; \
+	if [ -f $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libsqlite3.so ] ; then \
+		$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libsqlite3.so $(1)$(PKG_LIB_DIR)/lib/ ; \
 	fi
-	$(CP) $(PKG_STAGE_DIR)/usr/lib/ejs/libejs*.so $(1)/usr/lib/ejs/
-	if [ -f $(PKG_STAGE_DIR)/usr/lib/ejs/libmprssl.so ] ; then \
-		$(CP) $(PKG_STAGE_DIR)/usr/lib/ejs/libmprssl*.so $(1)/usr/lib/ejs/ ; \
+	$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libec.so $(1)$(PKG_LIB_DIR)/lib/
+	$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libejs*.so $(1)$(PKG_LIB_DIR)/lib/
+	if [ -f $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libmprssl.so ] ; then \
+		$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libmprssl*.so $(1)$(PKG_LIB_DIR)/lib/ ; \
 	fi
-	$(INSTALL_DIR) $(1)/usr/lib/ejs/modules
-	$(INSTALL_BIN) $(PKG_STAGE_DIR)/usr/lib/ejs/modules/*.mod \
-			$(1)/usr/lib/ejs/modules/
-	if [ -f $(PKG_STAGE_DIR)/usr/lib/ejs/modules/ejs.web.so ] ; then \
-		$(CP) $(PKG_STAGE_DIR)/usr/lib/ejs/modules/ejs.web.so $(1)/usr/lib/ejs/modules/ ; \
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/modules
+	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/modules/*.mod $(1)$(PKG_LIB_DIR)/modules/
+	if [ -f $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/modules/ejs.web.so ] ; then \
+		$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/modules/ejs.web.so $(1)$(PKG_LIB_DIR)/modules/ ; \
 	fi
-	if [ -f $(PKG_STAGE_DIR)/usr/lib/ejs/modules/ejs.db.so ] ; then \
-		$(CP) $(PKG_STAGE_DIR)/usr/lib/ejs/modules/ejs.db.so $(1)/usr/lib/ejs/modules/ ; \
+	if [ -f $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/modules/ejs.db.so ] ; then \
+		$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/modules/ejs.db.so $(1)$(PKG_LIB_DIR)/modules/ ; \
 	fi
 endef
 
 define Package/ejs/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_DIR) $(1)/usr/lib/ejs
-	$(CP) $(PKG_STAGE_DIR)/usr/lib/ejs/libec.so $(1)/usr/lib/ejs/
-	$(INSTALL_BIN) $(PKG_STAGE_DIR)/usr/bin/ejs $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
+	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/bin/ejs $(1)$(PKG_LIB_DIR)/bin/
 endef
 
 define Package/ejsc/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_STAGE_DIR)/usr/bin/{ejsc,ejsvm} $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
+	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/bin/{ejsc,ejsvm} $(1)$(PKG_LIB_DIR)/bin/
 endef
 
 define Package/ejstools/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_STAGE_DIR)/usr/bin/{ejsmod,ejssql} $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
+	$(INSTALL_BIN) $(PKG_STAGE_DIR)/${PKG_LIB_DIR}/bin/{ejsmod,ejssql} $(1)$(PKG_LIB_DIR)/bin/
 endef
 
 define Package/ejsweb/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_STAGE_DIR)/usr/bin/ejsweb $(1)/usr/bin/
-	$(INSTALL_DIR) $(1)/usr/lib/ejs/default-web
-	$(CP) -r $(PKG_STAGE_DIR)/usr/lib/ejs/default-web $(1)/usr/lib/ejs
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/default-web/
+	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/bin/ejsweb $(1)$(PKG_LIB_DIR)/bin/
+	$(CP) -r $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/default-web $(1)$(PKG_LIB_DIR)/lib/
 endef
 
 define Package/ejscgi/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_STAGE_DIR)/usr/bin/ejscgi $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
+	$(INSTALL_BIN) $(PKG_STAGE_DIR)/usr/bin/ejscgi $(1)$(PKG_LIB_DIR)/bin/
 endef
 
 define Package/ejswebserver/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_STAGE_DIR)/usr/bin/ejswebserver $(1)/usr/bin/
-	$(INSTALL_DIR) $(1)/usr/lib/ejs
-	$(INSTALL_DATA) $(PKG_STAGE_DIR)/usr/lib/ejs/{mime.types,ejswebserver.conf}\
-		 $(1)/usr/lib/ejs/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/
+	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/bin/ejswebserver $(1)$(PKG_LIB_DIR)/bin/
+	$(INSTALL_DATA) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/{mime.types,ejswebserver.conf} $(1)$(PKG_LIB_DIR)/lib/
 endef
 
 $(eval $(call BuildPackage,libejs))
