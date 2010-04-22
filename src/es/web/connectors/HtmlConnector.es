@@ -390,7 +390,11 @@ module ejs.web {
             for each (t in initialData) {
                 for (name in t) {
                     let url = t[name]
-                    write('      <li onclick="window.location=\'' + url + '\'"><a href="' + url + '">' + name + '</a></li>\r\n')
+                    if (options["data-remote"]) {
+                        write('      <li data-remote="' + url + '">' + name + '</li>\r\n')
+                    } else {
+                        write('      <li onclick="window.location=\'' + url + '\'"><a href="' + url + '">' + name + '</a></li>\r\n')
+                    }
                 }
             }
             write('    </ul>')
@@ -702,6 +706,9 @@ module ejs.web {
             }
             if (options["data-apply"]) {
                 attributes += ' data-apply="' + options["data-apply"] + '"'
+            }
+            if (options["data-id"]) {
+                attributes += ' data-id="' + options["data-id"] + '"'
             }
             return attributes
         }
