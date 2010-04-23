@@ -714,6 +714,7 @@ static void astClass(EcCompiler *cp, EcNode *np)
     state->currentClass = type;
     state->currentClassName = type->qname;
     state->inClass = 1;
+    state->inFunction = 0;
 
     /*
      *  Add the type to the scope chain and the static initializer if present. Use push frame to make it eaiser to

@@ -6016,6 +6016,7 @@ static EcNode *parseAnnotatableDirective(EcCompiler *cp, EcNode *attributes)
         break;
 
     case T_CLASS:
+#if OLD && UNUSED
         if (state->inClass == 0) {
             /* Nested classes are not supported */
             np = parseClassDefinition(cp, attributes);
@@ -6023,6 +6024,9 @@ static EcNode *parseAnnotatableDirective(EcCompiler *cp, EcNode *attributes)
             getToken(cp);
             np = unexpected(cp);
         }
+#else
+        np = parseClassDefinition(cp, attributes);
+#endif
         break;
 
     case T_INTERFACE:
@@ -6131,7 +6135,7 @@ static EcNode *parseAttribute(EcCompiler *cp)
     np = 0;
     inClass = (cp->state->inClass) ? 1 : 0;
 
-    if (state->currentFunctionNode /* || inInterface */) {
+    if (state->inFunction) {
         np = parseNamespaceAttribute(cp);
         return LEAVE(cp, np);
     }
@@ -6268,6 +6272,7 @@ static EcNode *parseNamespaceAttribute(EcCompiler *cp)
     switch (cp->peekToken->tokenId) {
     case T_RESERVED_NAMESPACE:
         if (!inClass && (subId == T_PRIVATE || subId ==  T_PROTECTED)) {
+            getToken(cp);
             return LEAVE(cp, unexpected(cp));
         }
         qualifier = parseReservedNamespace(cp);
@@ -7534,6 +7539,7 @@ static EcNode *parseClassBody(EcCompiler *cp)
     EcNode      *np;
 
     ENTER(cp);
+    cp->state->inFunction = 0;
 
     if (peekToken(cp) != T_LBRACE) {
         getToken(cp);

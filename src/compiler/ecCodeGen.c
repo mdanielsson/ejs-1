@@ -1159,6 +1159,7 @@ static void genClass(EcCompiler *cp, EcNode *np)
     mprAssert(type);
 
     state->inClass = 1;
+    state->inFunction = 0;
 
     /*
      *  Op code to define the class. This goes into the module code buffer. DefineClass will capture the current scope
@@ -1182,8 +1183,8 @@ static void genClass(EcCompiler *cp, EcNode *np)
      *  module buffer (cp->currentModule) and will be run when the module is loaded. 
      *  BUG - CLASS INITIALIZATION ORDERING.
      */
-    mprAssert(state->code == state->currentModule->code);
-
+    state->code = state->currentModule->code;
+ 
     /*
      *  Create a code buffer for static initialization code and set it as the default buffer
      */
