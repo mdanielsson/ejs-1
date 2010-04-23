@@ -18353,10 +18353,10 @@ static void getWaitFds(MprWaitService *ws)
 /*
  *  Service I/O events
  */
-static void serviceIO(MprWaitService *ws, struct pollfd *stableFds, int stableFdsCount)
+static void serviceIO(MprWaitService *ws, struct pollfd *fds, int count)
 {
     MprWaitHandler      *wp;
-    struct pollfd       *fds;
+    struct pollfd       *fp;
     int                 i, mask, index, start;
 
     /*
@@ -18371,7 +18371,7 @@ static void serviceIO(MprWaitService *ws, struct pollfd *stableFds, int stableFd
     /*
      *  Service the breakout pipe first
      */
-    if (stableFds[0].revents & POLLIN) {
+    if (fds[0].revents & POLLIN) {
         char    buf[128];
         if (read(ws->breakPipe[MPR_READ_PIPE], buf, sizeof(buf)) < 0) {
             /* Ignore */
@@ -18384,9 +18384,9 @@ static void serviceIO(MprWaitService *ws, struct pollfd *stableFds, int stableFd
     /*
      *  Now service all IO wait handlers. Processing must be aborted if an active fd is removed.
      */
-    for (i = start; i < stableFdsCount; ) {
-        fds = &stableFds[i++];
-        if (fds->revents == 0) {
+    for (i = start; i < count; ) {
+        fp = &fds[i++];
+        if (fp->revents == 0) {
             continue;
         }
 
@@ -18395,20 +18395,20 @@ static void serviceIO(MprWaitService *ws, struct pollfd *stableFds, int stableFd
          */
         for (index = -1; (wp = (MprWaitHandler*) mprGetPrevItem(ws->handlers, &index)) != 0; ) {
             mprAssert(wp->fd >= 0);
-            if (wp->fd != fds->fd) {
+            if (wp->fd != fp->fd) {
                 continue;
             }
             /*
              *  Present mask is only cleared after the io handler callback has completed
              */
             mask = 0;
-            if ((wp->desiredMask & MPR_READABLE) && fds->revents & (POLLIN | POLLHUP | POLLERR | POLLNVAL)) {
+            if ((wp->desiredMask & MPR_READABLE) && fp->revents & (POLLIN | POLLHUP | POLLERR | POLLNVAL)) {
                 mask |= MPR_READABLE;
-                fds->revents &= ~(POLLIN | POLLHUP | POLLERR | POLLNVAL);
+                fp->revents &= ~(POLLIN | POLLHUP | POLLERR | POLLNVAL);
             }
-            if ((wp->desiredMask & MPR_WRITABLE) && fds->revents & POLLOUT) {
+            if ((wp->desiredMask & MPR_WRITABLE) && fp->revents & POLLOUT) {
                 mask |= MPR_WRITABLE;
-                fds->revents &= ~POLLOUT;
+                fp->revents &= ~POLLOUT;
             }
             if (wp->flags & MPR_WAIT_RECALL_HANDLER) {
                 if (wp->desiredMask & wp->disableMask) {
@@ -18443,7 +18443,7 @@ static void serviceIO(MprWaitService *ws, struct pollfd *stableFds, int stableFd
             }
             break;
         }
-        fds->revents = 0;
+        fp->revents = 0;
     }
     mprUnlock(ws->mutex);
 }
