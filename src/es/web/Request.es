@@ -30,6 +30,7 @@ module ejs.web {
 
         /**
          *  Authentication access control list
+         *  @hide
          */
         native var authAcl: String
 
@@ -106,8 +107,7 @@ module ejs.web {
         native var mimeType: String
 
         /**
-         *  The portion of the path after the script name if extra path processing is being used. See the ExtraPath 
-         *  directive.
+         *  The portion of the path after the script name if extra path processing is being used.
          */
         native var pathInfo: String
 

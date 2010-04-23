@@ -292,6 +292,7 @@ module ejs {
      *  Print variables for debugging.
      *  @param args Variables to print
      *  @spec ejs
+     *  @hide 
      */
     native function printv(...args): void
 

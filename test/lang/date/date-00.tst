@@ -2,8 +2,6 @@
     Date tests
  */
 
-// 
-
 if (!this.assert) {
     this.assert = function (cond) {
         if (!cond) {
@@ -24,6 +22,7 @@ function eq(a, b) {
 
 
 //  Constructor
+
 d = new Date()
 assert(d)
 d = new Date(1263592610459)
@@ -49,6 +48,7 @@ assert(d.toString().contains("00:00:00"))
 
 
 //  UTC
+
 d = new Date(Date.UTC(1999, 2, 7, 11, 30, 10, 700))
 if (d.getTimezoneOffset() != 0) {
     assert(d.toUTCString() != d)
@@ -63,6 +63,7 @@ eq(d.getUTCMilliseconds(), 700)
 
 
 //  Set and Get
+
 d = new Date(1999, 2, 7, 11, 30, 10, 700)
 d.setFullYear(2000)
 assert(d.getFullYear() == 2000)
@@ -81,6 +82,7 @@ assert(d.getMilliseconds() == 901)
 
 
 //  getTime / setTime
+
 d = new Date(1263592610459)
 d2 = new Date
 d2.setTime(1263592610459)
@@ -90,6 +92,7 @@ eq(d2.getMonth(), 0)
 
 
 //  Get/Set UTC
+
 d = new Date(Date.UTC(1999, 2, 7, 11, 30, 10, 700))
 d.setUTCFullYear(2000)
 assert(d.getUTCFullYear() == 2000)
@@ -108,6 +111,7 @@ assert(d.getUTCMilliseconds() == 901)
 
 
 //  Formatting
+
 d = new Date(1999, 2, 7, 11, 30, 10, 700)
 //  Platforms provide the same output for these
 assert(d.toDateString() == "Sun Mar 07 1999")
