@@ -18167,7 +18167,7 @@ char *mprGetAppDir(MprCtx ctx)
 
 static void getWaitFds(MprWaitService *ws);
 static void growFds(MprWaitService *ws);
-static void serviceIO(MprWaitService *ws);
+static void serviceIO(MprWaitService *ws, struct pollfd *stableFds, int count);
 
 
 int mprInitSelectWait(MprWaitService *ws)
@@ -18252,7 +18252,8 @@ static void serviceRecall(MprWaitService *ws)
  */
 int mprWaitForIO(MprWaitService *ws, int timeout)
 {
-    int     rc;
+    struct pollfd   *fds;
+    int             rc, count;
 
     /*
      *  No locking. If the masks are updated after this test, the breakout pipe will wake us up soon.
@@ -18271,21 +18272,20 @@ int mprWaitForIO(MprWaitService *ws, int timeout)
 #endif
 
     mprLock(ws->mutex);
-    ws->stableFdsCount = ws->fdsCount;
-    if ((ws->stableFds = mprMemdup(ws, ws->fds, ws->stableFdsCount * sizeof(struct pollfd))) == 0) {
+    count = ws->fdsCount;
+    if ((fds = mprMemdup(ws, ws->fds, count * sizeof(struct pollfd))) == 0) {
         mprUnlock(ws->mutex);
         return MPR_ERR_NO_MEMORY;
     }
     mprUnlock(ws->mutex);
 
-    rc = poll(ws->stableFds, ws->stableFdsCount, timeout);
+    rc = poll(fds, count, timeout);
     if (rc < 0) {
         mprLog(ws, 2, "Poll returned %d, errno %d", rc, mprGetOsError());
     } else if (rc > 0) {
-        serviceIO(ws);
+        serviceIO(ws, fds, count);
     }
-    mprFree(ws->stableFds);
-    ws->stableFds = 0;
+    mprFree(fds);
     return rc;
 }
 
@@ -18353,7 +18353,7 @@ static void getWaitFds(MprWaitService *ws)
 /*
  *  Service I/O events
  */
-static void serviceIO(MprWaitService *ws)
+static void serviceIO(MprWaitService *ws, struct pollfd *stableFds, int stableFdsCount)
 {
     MprWaitHandler      *wp;
     struct pollfd       *fds;
@@ -18371,7 +18371,7 @@ static void serviceIO(MprWaitService *ws)
     /*
      *  Service the breakout pipe first
      */
-    if (ws->stableFds[0].revents & POLLIN) {
+    if (stableFds[0].revents & POLLIN) {
         char    buf[128];
         if (read(ws->breakPipe[MPR_READ_PIPE], buf, sizeof(buf)) < 0) {
             /* Ignore */
@@ -18384,8 +18384,8 @@ static void serviceIO(MprWaitService *ws)
     /*
      *  Now service all IO wait handlers. Processing must be aborted if an active fd is removed.
      */
-    for (i = start; i < ws->stableFdsCount; ) {
-        fds = &ws->stableFds[i++];
+    for (i = start; i < stableFdsCount; ) {
+        fds = &stableFds[i++];
         if (fds->revents == 0) {
             continue;
         }
