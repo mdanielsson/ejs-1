@@ -30,11 +30,11 @@ fi
 cpy -d ${BLD_MOD_DIR} "*.mod" "${BLD_MOD_PREFIX}"
 
 if `ls ${BLD_MOD_DIR}/*${BLD_SHOBJ} >/dev/null 2>&1` ; then
-	cpy -m 755 -d ${BLD_MOD_DIR} "*${BLD_SHOBJ}" "${BLD_MOD_PREFIX}"
+	cpy -s -m 755 -d ${BLD_MOD_DIR} "*${BLD_SHOBJ}" "${BLD_MOD_PREFIX}"
 fi
 if [ $BLD_LIB_DIR != $BLD_MOD_DIR ] ; then
 	if `ls ${BLD_LIB_DIR}/*${BLD_SHOBJ}* >/dev/null 2>&1` ; then
-		cpy -m 755 -d ${BLD_LIB_DIR} "*${BLD_SHOBJ}*" "${BLD_LIB_PREFIX}"
+		cpy -s -m 755 -d ${BLD_LIB_DIR} "*${BLD_SHOBJ}*" "${BLD_LIB_PREFIX}"
 	fi
 fi
 
