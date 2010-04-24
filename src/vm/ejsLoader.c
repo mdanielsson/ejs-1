@@ -1734,10 +1734,13 @@ int ejsEncodeWord(uchar *pos, int number)
 
 int ejsEncodeDouble(uchar *pos, double number)
 {
+#if UNUSED
     double   *ptr;
-
     ptr = (double*) pos;
     *ptr = number;
+#else
+    memcpy(pos, &number, sizeof(double));
+#endif
     return sizeof(double);
 }
 
