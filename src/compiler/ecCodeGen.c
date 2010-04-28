@@ -904,7 +904,13 @@ static void genCallSequence(EcCompiler *cp, EcNode *np)
             popStack(cp, 1);
             
         } else {
+#if POSSIBLE_BUG || 1
             ecEncodeOpcode(cp, EJS_OP_LOAD_GLOBAL);
+#else
+            //  See master branch for fix
+            processNodeGetValue(cp, left);
+            ecEncodeOpcode(cp, EJS_OP_DUP);
+#endif
             pushStack(cp, 1);
             processNodeGetValue(cp, left);
             argc = genCallArgs(cp, right);
