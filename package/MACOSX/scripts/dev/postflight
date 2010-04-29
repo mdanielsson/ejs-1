@@ -8,10 +8,10 @@
 PKG_DIR="$1"
 INS_DIR="$2"
 NAME="!!BLD_DOC_PREFIX!!"
-BIN="!!BLD_BIN_DIR!!"
+BIN="!!ORIG_BLD_BIN_PREFIX!!"
 path="${INS_DIR}${NAME}"
 
-${BIN}/linkup
+${BIN}/linkup Install
 
 if [ -f "$path/index.html" ] ; then
 	open "$path/index.html"
