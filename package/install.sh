@@ -226,6 +226,7 @@ installFiles() {
 	if which ldconfig >/dev/null 2>&1 ; then
 		ldconfig -n $BLD_LIB_PREFIX
 	fi
+    "$BLD_BIN_PREFIX/linkup" Install
 
 	if [ $BLD_HOST_OS = WIN ] ; then
 		echo -e "\nSetting file permissions ..."
