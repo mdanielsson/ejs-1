@@ -15,6 +15,6 @@
     <choice id="choice5" title="DEV">
         <pkg-ref id="com.embedthis.ejs.dev.pkg"/>
     </choice>
-    <pkg-ref id="com.embedthis.ejs.bin.pkg" installKBytes="1612" version="1" auth="Root">file:./Contents/Packages/bin.pkg</pkg-ref>
-    <pkg-ref id="com.embedthis.ejs.dev.pkg" installKBytes="452" version="1" auth="Root">file:./Contents/Packages/dev.pkg</pkg-ref>
+    <pkg-ref id="com.embedthis.ejs.bin.pkg" version="1" auth="Root">file:./Contents/Packages/bin.pkg</pkg-ref>
+    <pkg-ref id="com.embedthis.ejs.dev.pkg" version="1" auth="Root">file:./Contents/Packages/dev.pkg</pkg-ref>
 </installer-script>
