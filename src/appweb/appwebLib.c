@@ -3,7 +3,7 @@
 /******************************************************************************/
 /* 
  *  This file is an amalgamation of all the individual source code files for
- *  Embedthis Appweb 3.2.0.
+ *  Embedthis Appweb 3.2.1.
  *
  *  Catenating all the source into a single file makes embedding simpler and
  *  the resulting application faster, as many compilers can do whole file
@@ -7112,7 +7112,7 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
          *  This is an Apache compatible hack for PHP 5.3
          */
         mprItoa(status, sizeof(status), MPR_HTTP_CODE_MOVED_TEMPORARILY, 10);
-        mprAddHash(req->headers, "REDIRECT_STATUS", status);
+        mprAddHash(req->headers, "REDIRECT_STATUS", mprStrdup(req, status));
     }
 
     /*
@@ -12191,7 +12191,7 @@ void maCreatePipeline(MaConn *conn)
         mprAddItem(resp->outputPipeline, resp->handler);
         for (next = 0; (filter = mprGetNextItem(location->outputStages, &next)) != 0; ) {
             if (filter->stage == http->authFilter) {
-                if (req->auth->type == 0 && req->auth->type == 0) {
+                if (req->auth->type == 0) {
                     continue;
                 }
             }
