@@ -57,6 +57,6 @@ fi
 if [ "${TASK}" = Install ] ; then
     bash ${BLD_BIN_PREFIX}/linkup $TASK
 elif [ -f /tmp/linkup$$ ] ; then
-    bash /tmp/linkup$$ TASK
-    rm -f /tmp/linkup$$
+    bash /tmp/linkup$$ $TASK
+    echo MOB rm -f /tmp/linkup$$
 fi
