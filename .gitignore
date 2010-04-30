@@ -69,3 +69,4 @@ releases/*.dmg
 *.suo
 projects/WIN/ejs*/Win32
 *.deb
+lib/lib*
