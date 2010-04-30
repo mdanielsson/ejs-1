@@ -213,7 +213,7 @@ postClean() {
         fi
         rmdir /usr/share/${BLD_PRODUCT} >/dev/null 2>&1
     fi
-    /tmp/linkup$$
+    /tmp/linkup$$ Remove
     rm -f /tmp/linkup$$
 }
 
