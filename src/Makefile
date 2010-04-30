@@ -106,7 +106,9 @@ compileExtra: $(PRE_TARGETS)
 		make TRACE=$(TRACE) $(BLD_LIB_DIR)/libejs$(BLD_LIB) ; \
 		T=compile ; D="$(MID_DIRS)" ; $(DO_RECURSE) ; \
 	fi
-	@make TRACE=$(TRACE) -C ./es modules
+	@if [ "$(RETRY)" = "" ] ; then \
+		make RETRY=1 TRACE=$(TRACE) -C ./es modules ; \
+	fi
 
 compileFinal: $(TARGETS)
 
