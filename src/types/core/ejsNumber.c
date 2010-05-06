@@ -490,7 +490,7 @@ void ejsCreateNumberType(Ejs *ejs)
     EjsType     *type;
     EjsName     qname;
 #if BLD_FEATURE_NUM_TYPE_DOUBLE
-    static int  zero = 0;
+    static double zero = 0.0;
 #endif
 
     type = ejsCreateCoreType(ejs, ejsName(&qname, EJS_INTRINSIC_NAMESPACE, "Number"), ejs->objectType, sizeof(EjsNumber),
