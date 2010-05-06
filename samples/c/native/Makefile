@@ -19,8 +19,7 @@ Sample.mod: Shape.es
 compileExtra: Sample.mod Sample$(BLD_SHOBJ)
 
 Sample$(BLD_SHOBJ) : $(OBJECTS) $(BLD_EJS_MAKEDEP) Sample.slots.h
-	@bld --shared --library Sample --shared --search "$(BLD_LIB_DIR) $(BLD_LIB_PREFIX)" \
-		--libs "$(BLD_EJS_LIBS)" $(OBJECTS)
+	@bld --shared --library Sample --libs "$(BLD_EJS_LIBS)" $(OBJECTS)
 
 else
 compileExtra:
