@@ -154,10 +154,11 @@ module ejs {
          *      function match(element: Object, elementIndex: Number, arr: Array): Boolean
          *  This method is identical to the @transform method.
          *  @param modifier Transforming function
-         *  @return Returns a new array of transformed elements.
+         *  @return Returns the original (transformed) array.
          */
-        function forEach(modifier: Function, thisObj: Object = null): Void {
+        function forEach(modifier: Function): Array {
             transform(modifier)
+            return this
         }
 
         /**
@@ -335,9 +336,9 @@ module ejs {
         }
 
         /**
-         *  Sort the array using the supplied compare function
+         *  Sort the array. The array is sorted in lexical order. A compare function may be supplied.
          *  @param compare Function to use to compare. A null comparator will use a text compare
-         *  @param order If order is >= 0, then an ascending order is used. Otherwise descending.
+         *  @param order If order is >= 0, then an ascending lexical order is used. Otherwise descending.
          *  @return the sorted array reference
          *      type Comparator = (function (*,*): AnyNumber | undefined)
          *  @spec ejs Added the order argument.
@@ -399,8 +400,7 @@ module ejs {
          *  @param items to insert
          *  @return Returns the array reference
          */
-        function unshift(...items): Object
-            insert(0, items)
+        native function unshift(...items): Array
 
         /**
          *  Array intersection. Return the elements that appear in both arrays. 
