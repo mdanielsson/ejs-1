@@ -1026,7 +1026,9 @@ static EjsVar *setArrayLength(Ejs *ejs, EjsArray *ap, int argc, EjsVar **argv)
     mprAssert(ejsIsArray(ap));
 
     length = (int) ((EjsNumber*) argv[0])->value;
-
+    if (length < 0) {
+        length = 0;
+    }
     if (length > ap->length) {
         if (growArray(ejs, ap, length) < 0) {
             return 0;
