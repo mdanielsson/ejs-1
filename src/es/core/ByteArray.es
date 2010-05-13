@@ -159,15 +159,16 @@ module ejs {
         #FUTURE
         native function get MD5(): Number
 
-        /**
-         *  Define an output function to process (output) data. The output callback should read from the supplied buffer.
+        /** 
+         *  Output function to process (output) data. The output callback should read from the supplied buffer.
          *  @param callback Function to invoke when the byte array is full or flush() is called.
          *      function outputCallback(buffer: ByteArray): Number
          */
-        native function set output(callback: Function): Void
-
-        /** */
         native function get output(): Function
+
+        /**
+         */
+        native function set output(callback: Function): Void
 
         /**
          *  Read data from the array into another byte array. Data is read from the current read $position pointer toward
