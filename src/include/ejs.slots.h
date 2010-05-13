@@ -241,7 +241,6 @@
 #define ES_write_file                                                  0
 #define ES_write_items                                                 1
 #define ES_ejs_sys_worker_postMessage_data                             0
-#define ES_ejs_sys_worker_postMessage_ports                            1
 #define ES_ejs_sys_worker_set_onerror_fun                              0
 #define ES_ejs_sys_worker_set_onmessage_fun                            0
 
@@ -539,7 +538,6 @@
 #define ES_Array_findAll_result                                        1
 #define ES_Array_findAll__hoisted_2_i                                  2
 #define ES_Array_forEach_modifier                                      0
-#define ES_Array_forEach_thisObj                                       1
 #define ES_Array_indexOf_element                                       0
 #define ES_Array_indexOf_startIndex                                    1
 #define ES_Array_insert_pos                                            0
@@ -602,8 +600,8 @@
 #define ES_ByteArray_flush                                             17
 #define ES_ByteArray_set_input                                         18
 #define ES_ByteArray_input                                             19
-#define ES_ByteArray_set_output                                        20
-#define ES_ByteArray_output                                            21
+#define ES_ByteArray_output                                            20
+#define ES_ByteArray_set_output                                        21
 #define ES_ByteArray_read                                              22
 #define ES_ByteArray_readBoolean                                       23
 #define ES_ByteArray_readByte                                          24
@@ -1390,6 +1388,6 @@
 #define ES_XMLList_attribute_name                                      0
 #define ES_XMLList_elements_name                                       0
 
-#define _ES_CHECKSUM_ejs 489148
+#define _ES_CHECKSUM_ejs 488423
 
 #endif

@@ -154,11 +154,11 @@ module ejs.sys {
      *  @param path Filename path to open
      *  @param mode optional file access mode with values ored from: Read, Write, Append, Create, Open, Truncate. 
      *      Defaults to Read.
-     *  @param permissions optional permissions. Defaults to App.permissions
+     *  @param permissions optional permissions. Defaults to App.permissions.
      *  @return a File object which implements the Stream interface
      *  @throws IOError if the path or file cannot be opened or created.
      */
-    function open(path: String, mode: Number = Read, permissions: Number = 0644): File
+    function open(path: String, mode: Number = Read, permissions: Number = App.permissions): File
         new File(path, { mode: mode, permissions: permissions})
 
     /**
