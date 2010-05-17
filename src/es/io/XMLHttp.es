@@ -123,7 +123,8 @@ module ejs.io {
             @param user Optional user name if authentication is required.
             @param password Optional password if authentication is required.
          */
-        function open(method: String, url: String, async: Boolean = false, user: String = null, password: String = null): Void {
+        function open(method: String, url: String, async: Boolean = false, user: String = null, 
+                password: String = null): Void {
             hp.method = method
             hp.uri = url
             if (user && password) {

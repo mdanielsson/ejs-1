@@ -1365,7 +1365,7 @@ static EjsVar *substring(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
         end = sp->length;
     }
     /*
-     *  Swap if start is bigger than end
+        Swap if start is bigger than end
      */
     if (start > end) {
         tmp = start;

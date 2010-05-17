@@ -113,7 +113,6 @@ This is only valid inside Worker scripts.</td></tr>
    <tr class='apiDef'><td class='apiType'>public </td><td><a href='#extension'><b>extension</b></a>(path: <a href='intrinsic-String.html'>String</a>): <a href='intrinsic-String.html'>String</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Get the file extension portion of the file name.</td></tr>
    <tr class='apiDef'><td class='apiType'>public </td><td><a href='#find'><b>find</b></a>(path: <a href='intrinsic-Object.html'>Object</a>, glob: <a href='intrinsic-String.html'>String</a>, recurse: <a href='intrinsic-Boolean.html'>Boolean</a> = true): <a href='intrinsic-Array.html'>Array</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Find matching files.</td></tr>
    <tr class='apiDef'><td class='apiType'>intrinsic </td><td><a href='#formatStack'><b>formatStack</b></a>(): <a href='intrinsic-String.html'>String</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Format the current call stack.</td></tr>
-   <tr class='apiDef'><td class='apiType'>public </td><td><a href='#freeSpace'><b>freeSpace</b></a>(path: <a href='intrinsic-String.html'>String</a> = null): <a href='intrinsic-Number.html'>Number</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Return the free space in the file system.</td></tr>
    <tr class='apiDef'><td class='apiType'>intrinsic </td><td><a href='#hashcode'><b>hashcode</b></a>(o: <a href='intrinsic-Object.html'>Object</a>): <a href='intrinsic-Number.html'>Number</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Get the object's Unique hash id.</td></tr>
    <tr class='apiDef'><td class='apiType'>intrinsic </td><td><a href='#input'><b>input</b></a>(): <a href='intrinsic-String.html'>String</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Read from the standard input.</td></tr>
    <tr class='apiDef'><td class='apiType'>public </td><td><a href='#isDir'><b>isDir</b></a>(path: <a href='intrinsic-String.html'>String</a>): <a href='intrinsic-Boolean.html'>Boolean</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Is a file a directory.</td></tr>
@@ -124,19 +123,16 @@ This is only valid inside Worker scripts.</td></tr>
 This function is prototype and may be renamed in a future release.</td></tr>
    <tr class='apiDef'><td class='apiType'>public </td><td><a href='#mkdir'><b>mkdir</b></a>(path: <a href='intrinsic-String.html'>String</a>, permissions: <a href='intrinsic-Number.html'>Number</a> = 493): <a href='intrinsic-Void.html'>Void</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Make a new directory.</td></tr>
    <tr class='apiDef'><td class='apiType'>public </td><td><a href='#mv'><b>mv</b></a>(fromFile: <a href='intrinsic-String.html'>String</a>, toFile: <a href='intrinsic-String.html'>String</a>): <a href='intrinsic-Void.html'>Void</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Rename a file.</td></tr>
-   <tr class='apiDef'><td class='apiType'>public </td><td><a href='#open'><b>open</b></a>(path: <a href='intrinsic-String.html'>String</a>, mode: <a href='intrinsic-Number.html'>Number</a> = Read , permissions: <a href='intrinsic-Number.html'>Number</a> = expression): <a href='ejs.io-File.html'>File</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Open or create a file.</td></tr>
    <tr class='apiDef'><td class='apiType'>intrinsic </td><td><a href='#output'><b>output</b></a>(args: <a href='intrinsic-Array.html'>Array</a>): <a href='intrinsic-Void.html'>Void</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Print the arguments to the standard output with a new line appended.</td></tr>
    <tr class='apiDef'><td class='apiType'>intrinsic </td><td><a href='#parse'><b>parse</b></a>(str: <a href='intrinsic-String.html'>String</a>, preferredType: <a href='intrinsic-Type.html'>Type</a> = null): <a href='intrinsic-Object.html'>Object</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Parse a string and convert to a primitive type.</td></tr>
    <tr class='apiDef'><td class='apiType'>ejs.sys.worker </td><td><a href='#postMessage'><b>postMessage</b></a>(data: <a href='intrinsic-Object.html'>Object</a>): <a href='intrinsic-Void.html'>Void</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Post a message to the Worker's parent.</td></tr>
    <tr class='apiDef'><td class='apiType'>intrinsic </td><td><a href='#print'><b>print</b></a>(args: <a href='intrinsic-Array.html'>Array</a>): <a href='intrinsic-Void.html'>Void</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Print the arguments to the standard output with a new line appended.</td></tr>
    <tr class='apiDef'><td class='apiType'>public </td><td><a href='#pwd'><b>pwd</b></a>(): <a href='ejs.io-Path.html'>Path</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Get the current working directory.</td></tr>
-   <tr class='apiDef'><td class='apiType'>public </td><td><a href='#read'><b>read</b></a>(file: <a href='ejs.io-File.html'>File</a>, count: <a href='intrinsic-Number.html'>Number</a>): <a href='intrinsic-ByteArray.html'>ByteArray</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Read data bytes from a file and return a byte array containing the data.</td></tr>
    <tr class='apiDef'><td class='apiType'>public </td><td><a href='#rm'><b>rm</b></a>(path: <a href='ejs.io-Path.html'>Path</a>): <a href='intrinsic-Void.html'>Void</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Remove a file from the file system.</td></tr>
    <tr class='apiDef'><td class='apiType'>public </td><td><a href='#rmdir'><b>rmdir</b></a>(path: <a href='ejs.io-Path.html'>Path</a>, contents: <a href='intrinsic-Boolean.html'>Boolean</a> = false): <a href='intrinsic-Void.html'>Void</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Removes a directory.</td></tr>
    <tr class='apiDef'><td class='apiType'>intrinsic </td><td><a href='#serialize'><b>serialize</b></a>(obj: <a href='intrinsic-Object.html'>Object</a>, maxDepth: <a href='intrinsic-Number.html'>Number</a> = 0 , all: <a href='intrinsic-Boolean.html'>Boolean</a> = false , base: <a href='intrinsic-Boolean.html'>Boolean</a> = false): <a href='intrinsic-String.html'>String</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Encode an object as a string.</td></tr>
    <tr class='apiDef'><td class='apiType'>public </td><td><a href='#tempname'><b>tempname</b></a>(directory: <a href='intrinsic-String.html'>String</a> = null): <a href='ejs.io-File.html'>File</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Create a temporary file.</td></tr>
    <tr class='apiDef'><td class='apiType'>intrinsic </td><td><a href='#typeOf'><b>typeOf</b></a>(o): <a href='intrinsic-String.html'>String</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Return the name of a type.</td></tr>
-   <tr class='apiDef'><td class='apiType'>public </td><td><a href='#write'><b>write</b></a>(file: <a href='ejs.io-File.html'>File</a>, items: <a href='intrinsic-Array.html'>Array</a>): <a href='intrinsic-Number.html'>Number</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Write data to the file.</td></tr>
 </table>
 
 <hr />
@@ -202,7 +198,7 @@ trailing portion without any directory elements.</dd></dl>
 <p>Set the permissions of a file or directory.</p>
 <dl><dt>Parameters</dt>
 <dd><table class='parameters' summary ='parameters'>
-<tr class='param'><td class='param'>path: <a href='intrinsic-String.html'>String</a> </td><td>File or directory to modify.</td></tr><tr class='param'><td class='param'>perms: <a href='intrinsic-Number.html'>Number</a> </td><td>New Posix style permission mask.</td></tr></table></dd>
+<tr class='param'><td class='param'>path: <a href='intrinsic-String.html'>String</a> </td><td>File or directory to modify.</td></tr><tr class='param'><td class='param'>perms: <a href='intrinsic-Number.html'>Number</a> </td><td>Posix style permission mask.</td></tr></table></dd>
 </dl></div>
 </div>
 <hr />
@@ -408,13 +404,13 @@ This is only valid inside Worker scripts.</p>
 </div>
 <div class='apiDetail'>
 <p>Get the file extension portion of the file name.</p>
-<dl><dt>Description</dt><dd>The file extension is the portion starting with the last "."
-in the path. It thus includes "." as the first charcter.</dd></dl>
+<dl><dt>Description</dt><dd>The file extension is the portion after the last "."
+in the path.</dd></dl>
 <dl><dt>Parameters</dt>
 <dd><table class='parameters' summary ='parameters'>
 <tr class='param'><td class='param'>path: <a href='intrinsic-String.html'>String</a> </td><td>Filename path to examine.</td></tr></table></dd>
 </dl><dl><dt>Returns</dt>
-<dd>String containing the file extension. It includes "." as the first character.</dd></dl>
+<dd>String containing the file extension. It does not include "." as the first character.</dd></dl>
 </div>
 </div>
 <hr />
@@ -442,20 +438,6 @@ in the path. It thus includes "." as the first charcter.</dd></dl>
 <dl><dt>Description</dt><dd>Used for debugging and when creating exception objects.</dd></dl>
 <dl><dt>Specified</dt>
 <dd>ejscript-1.0</dd></dl>
-</div>
-</div>
-<hr />
-<a name='freeSpace'></a>
-<div class='api'>
-<div class='apiSig'>  public  freeSpace(path: <a href='intrinsic-String.html'>String</a> = null): <a href='intrinsic-Number.html'>Number</a>
-</div>
-<div class='apiDetail'>
-<p>Return the free space in the file system.</p>
-<dl><dt>Parameters</dt>
-<dd><table class='parameters' summary ='parameters'>
-<tr class='param'><td class='param'>path: <a href='intrinsic-String.html'>String</a> </td><td> [default: null]</td></tr></table></dd>
-</dl><dl><dt>Returns</dt>
-<dd>The number of 1M blocks (1024 *  1024 bytes) of free space in the file system.</dd></dl>
 </div>
 </div>
 <hr />
@@ -587,23 +569,6 @@ already exists, the function returns without throwing an exception.</dd></dl>
 </dl></div>
 </div>
 <hr />
-<a name='open'></a>
-<div class='api'>
-<div class='apiSig'>  public  open(path: <a href='intrinsic-String.html'>String</a>, mode: <a href='intrinsic-Number.html'>Number</a> = Read , permissions: <a href='intrinsic-Number.html'>Number</a> = expression): <a href='ejs.io-File.html'>File</a>
-</div>
-<div class='apiDetail'>
-<p>Open or create a file.</p>
-<dl><dt>Parameters</dt>
-<dd><table class='parameters' summary ='parameters'>
-<tr class='param'><td class='param'>path: <a href='intrinsic-String.html'>String</a> </td><td>Filename path to open.</td></tr><tr class='param'><td class='param'>mode: <a href='intrinsic-Number.html'>Number</a> </td><td>Optional file access mode with values ored from: Read, Write, Append, Create, Open, Truncate.  Defaults to Read. [default: Read ]</td></tr><tr class='param'><td class='param'>permissions: <a href='intrinsic-Number.html'>Number</a> </td><td>Optional permissions. Defaults to App.permissions. [default: expression]</td></tr></table></dd>
-</dl><dl><dt>Returns</dt>
-<dd>A File object which implements the Stream interface.</dd></dl>
-<dl><dt>Throws</dt><dd>
-<a href='intrinsic-IOError.html'>IOError</a>: if the path or file cannot be opened or created.  
-</dd>
-</dl></div>
-</div>
-<hr />
 <a name='output'></a>
 <div class='api'>
 <div class='apiSig'>  intrinsic  output(args: <a href='intrinsic-Array.html'>Array</a>): <a href='intrinsic-Void.html'>Void</a>
@@ -671,23 +636,6 @@ strings by calling their toString method. This method invokes <a href='#output'>
 <dl><dt>Returns</dt>
 <dd>A Path containing the current working directory.</dd></dl>
 </div>
-</div>
-<hr />
-<a name='read'></a>
-<div class='api'>
-<div class='apiSig'>  public  read(file: <a href='ejs.io-File.html'>File</a>, count: <a href='intrinsic-Number.html'>Number</a>): <a href='intrinsic-ByteArray.html'>ByteArray</a>
-</div>
-<div class='apiDetail'>
-<p>Read data bytes from a file and return a byte array containing the data.</p>
-<dl><dt>Parameters</dt>
-<dd><table class='parameters' summary ='parameters'>
-<tr class='param'><td class='param'>file: <a href='ejs.io-File.html'>File</a> </td><td>Open file object previously opened via <a href='#open'>open</a> or <a href='#File'>File</a>. </td></tr><tr class='param'><td class='param'>count: <a href='intrinsic-Number.html'>Number</a> </td><td>Number of bytes to read.</td></tr></table></dd>
-</dl><dl><dt>Returns</dt>
-<dd>A byte array containing the read data.</dd></dl>
-<dl><dt>Throws</dt><dd>
-<a href='intrinsic-IOError.html'>IOError</a>: if the file could not be read. 
-</dd>
-</dl></div>
 </div>
 <hr />
 <a name='rm'></a>
@@ -774,26 +722,6 @@ This is implemented as a wrapper around Reflect(o).typeName.</dd></dl>
 <dl><dt>Specified</dt>
 <dd>ejscript-1.0</dd></dl>
 </div>
-</div>
-<hr />
-<a name='write'></a>
-<div class='api'>
-<div class='apiSig'>  public  write(file: <a href='ejs.io-File.html'>File</a>, items: <a href='intrinsic-Array.html'>Array</a>): <a href='intrinsic-Number.html'>Number</a>
-</div>
-<div class='apiDetail'>
-<p>Write data to the file.</p>
-<dl><dt>Description</dt><dd>If the stream is in sync mode, the write call blocks until the underlying stream or 
-endpoint absorbes all the data. If in async-mode, the call accepts whatever data can be accepted immediately 
-and returns a count of the elements that have been written.</dd></dl>
-<dl><dt>Parameters</dt>
-<dd><table class='parameters' summary ='parameters'>
-<tr class='param'><td class='param'>file: <a href='ejs.io-File.html'>File</a> </td><td>Open file object previously opened via <a href='#open'>open</a> or <a href='#File'>File</a>. </td></tr><tr class='param'><td class='param'>items: <a href='intrinsic-Array.html'>Array</a> </td><td>The data argument can be ByteArrays, strings or Numbers. All other types will call serialize first before writing. Note that numbers will not be written in a cross platform manner. If that is required, use the BinaryStream class to write Numbers.</td></tr></table></dd>
-</dl><dl><dt>Returns</dt>
-<dd>The number of bytes written.</dd></dl>
-<dl><dt>Throws</dt><dd>
-<a href='intrinsic-IOError.html'>IOError</a>: if the file could not be written. 
-</dd>
-</dl></div>
 </div>
 <hr />
 <div class="terms">

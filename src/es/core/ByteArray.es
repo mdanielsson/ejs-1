@@ -75,8 +75,8 @@ module ejs {
         }
 
         /**
-         *  Compact available data down and adjust the read/write positions accordingly. This moves available room to
-         *  the end of the byte array.
+         *  Compact available data down and adjust the read/write positions accordingly. This sets the read pointer 
+         *  to the zero index and adjusts the write pointer by the corresponding amount.
          */
         native function compact(): Void
 
@@ -335,8 +335,6 @@ module ejs {
         native function get writePosition(): Number
 
         /**
-         *  Set the current write position offset.
-         *  @param position the new write  position
          */
         native function set writePosition(position: Number): Void
     }

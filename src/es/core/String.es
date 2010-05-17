@@ -263,7 +263,8 @@ module ejs {
 
         /**
             Extract a substring. Similar to slice but only allows positive indicies.
-            @param startIndex Integer location to start copying
+            If the end index is larger than start, then the effect of substring is as if the two arguments were swapped.
+            @param startIndex Integer location to start copying. 
             @param end Postitive index of one past the last character to extract.
             @return Returns a new string
          */
