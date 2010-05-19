@@ -434,8 +434,6 @@
 #define ES_String_times_s                                              1
 #define ES_String_times__hoisted_2_i                                   2
 #define ES_String_tokenize_format                                      0
-#define ES_String_toLower_locale                                       0
-#define ES_String_toUpper_locale                                       0
 #define ES_String_trim_str                                             0
 #define ES_String_MINUS_str                                            0
 #define ES_String_MINUS_i                                              1
@@ -1386,6 +1384,6 @@
 #define ES_XMLList_attribute_name                                      0
 #define ES_XMLList_elements_name                                       0
 
-#define _ES_CHECKSUM_ejs 488423
+#define _ES_CHECKSUM_ejs 485298
 
 #endif

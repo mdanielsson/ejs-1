@@ -309,7 +309,7 @@ module ejs {
             @return Returns a new lower case version of the string.
             @spec ejs
          */
-        native function toLower(locale: String = null): String
+        native function toLower(): String
 
         /**
             This function converts an object to a string representation. Types typically override this to provide 
@@ -317,14 +317,14 @@ module ejs {
             @returns a string representation of the object. For Objects "[object className]" will be returned, 
             where className is set to the name of the class on which the object was based.
          */ 
-        override native function toString(locale: String = null): String
+        override native function toString(): String
 
         /**
             Convert the string to upper case.
             @return Returns a new upper case version of the string.
             @spec ejs
          */
-        native function toUpper(locale: String = null): String
+        native function toUpper(): String
 
         /**
             Returns a trimmed copy of the string. Normally used to trim white space, but can be used to trim any 

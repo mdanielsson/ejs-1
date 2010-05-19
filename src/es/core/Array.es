@@ -371,7 +371,7 @@ module ejs {
          *  strings are concatenated.
          *  @return A string
          */
-        override native function toString(locale: String = null): String 
+        override native function toString(): String 
 
         /**
          *  Transform all elements.

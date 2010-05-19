@@ -527,6 +527,7 @@ EjsFrame *ejsCreateFrame(Ejs *ejs, EjsFunction *src)
             ejsGrowObject(ejs, (EjsObject*) frame, numSlots);
         }
         memcpy(frame->function.block.obj.slots, src->block.obj.slots, src->block.obj.numProp * sizeof(EjsVar*));
+        frame->function.block.obj.numProp = src->block.obj.numProp;
     }
     ejsSetDebugName(frame, ejsGetDebugName(src));
     mprAssert(frame->argc == 0);

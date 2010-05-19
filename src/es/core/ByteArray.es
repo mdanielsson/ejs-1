@@ -279,7 +279,7 @@ module ejs {
          *  Convert the data in the byte array between the $readPosition and $writePosition offsets.
          *  @return A string
          */
-        override native function toString(locale: String = null): String 
+        override native function toString(): String 
 
         /**
          *  Uncompress the array

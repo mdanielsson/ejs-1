@@ -12861,7 +12861,7 @@ static void setEnv(MaConn *conn)
             mprGetPathInfo(conn, resp->filename, info);
         }
         if (info->valid) {
-            resp->etag = mprAsprintf(resp, -1, "%x-%Lx-%Lx", info->inode, info->size, info->mtime);
+            resp->etag = mprAsprintf(resp, -1, "\"%x-%Lx-%Lx\"", info->inode, info->size, info->mtime);
         }
     }
 
@@ -14954,7 +14954,6 @@ bool maMatchEtag(MaConn *conn, char *requestedEtag)
     if (requestedEtag == 0) {
         return 0;
     }
-
     for (next = 0; (tag = mprGetNextItem(req->etags, &next)) != 0; ) {
         if (strcmp(tag, requestedEtag) == 0) {
             return (req->ifMatch) ? 0 : 1;

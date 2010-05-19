@@ -1428,7 +1428,7 @@ static EjsVar *stringToJson(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
 /*
  *  Convert the string to lower case.
  *
- *  function toLower(locale: String = null): String
+ *  function toLower(): String
  */
 static EjsVar *toLower(Ejs *ejs, EjsString *sp, int argc,  EjsVar **argv)
 {
@@ -1481,7 +1481,7 @@ static EjsVar *stringToString(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
  *  @return Returns a new upper case version of the string.
  *  @spec ejs-11
  *
- *  function toUpper(locale: String = null): String
+ *  function toUpper(): String
  */
 static EjsVar *toUpper(Ejs *ejs, EjsString *sp, int argc,  EjsVar **argv)
 {
