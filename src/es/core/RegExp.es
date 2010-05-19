@@ -15,7 +15,7 @@ module ejs {
      *      <tr><td>\\</td><td>Reverse whether a character is treated literally or not.</td></tr>
      *      <tr><td>^</td><td>Match to the start of input. If matching multiline, match starting after a line break.</td></tr>
      *      <tr><td>\$ </td><td>Match to the end of input. If matching multiline, match before after a line break.</td></tr>
-     *      <tr><td>*</td><td>Match the preceding item zero or more times.</td></tr>
+     *      <tr><td>* </td><td>Match the preceding item zero or more times.</td></tr>
      *      <tr><td>+</td><td>Match the preceding item one or more times.</td></tr>
      *      <tr><td>?</td><td>Match the preceding item zero or one times.</td></tr>
      *      <tr><td>(mem)</td><td>Match inside the parenthesis (i.e. "mem") and store the match.</td></tr>

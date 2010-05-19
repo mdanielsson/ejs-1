@@ -3,7 +3,7 @@
 /******************************************************************************/
 /* 
  *  This file is an amalgamation of all the individual source code files for
- *  Embedthis Appweb 3.2.1.
+ *  Embedthis Appweb 3.2.2.
  *
  *  Catenating all the source into a single file makes embedding simpler and
  *  the resulting application faster, as many compilers can do whole file
@@ -1654,14 +1654,16 @@ int maParseConfig(MaServer *server, cchar *configFile)
          *  matching directory.
          */
         for (nextAlias = 0; (alias = mprGetNextItem(hp->aliases, &nextAlias)) != 0; ) {
-            // mprLog(hp, 0, "Alias \"%s\" %s", alias->prefix, alias->filename);
-            path = maMakePath(hp, alias->filename);
-            bestDir = maLookupBestDir(hp, path);
-            if (bestDir == 0) {
-                bestDir = maCreateDir(hp, alias->filename, stack[0].dir);
-                maInsertDir(hp, bestDir);
+            if (alias->filename) {
+                // mprLog(hp, 0, "Alias \"%s\" %s", alias->prefix, alias->filename);
+                path = maMakePath(hp, alias->filename);
+                bestDir = maLookupBestDir(hp, path);
+                if (bestDir == 0) {
+                    bestDir = maCreateDir(hp, alias->filename, stack[0].dir);
+                    maInsertDir(hp, bestDir);
+                }
+                mprFree(path);
             }
-            mprFree(path);
         }
 
         /*
@@ -2505,24 +2507,25 @@ char *maReplaceReferences(MaHost *host, cchar *str)
     char    *result;
 
     buf = mprCreateBuf(host, 0, 0);
+    if (str) {
+        for (src = (char*) str; *src; ) {
+            if (*src == '$') {
+                ++src;
+                if (matchRef("DOCUMENT_ROOT", &src) && host->documentRoot) {
+                    mprPutStringToBuf(buf, host->documentRoot);
+                    continue;
 
-    for (src = (char*) str; *src; ) {
-        if (*src == '$') {
-            ++src;
-            if (matchRef("DOCUMENT_ROOT", &src) && host->documentRoot) {
-                mprPutStringToBuf(buf, host->documentRoot);
-                continue;
+                } else if (matchRef("SERVER_ROOT", &src) && host->server->serverRoot) {
+                    mprPutStringToBuf(buf, host->server->serverRoot);
+                    continue;
 
-            } else if (matchRef("SERVER_ROOT", &src) && host->server->serverRoot) {
-                mprPutStringToBuf(buf, host->server->serverRoot);
-                continue;
-
-            } else if (matchRef("PRODUCT", &src)) {
-                mprPutStringToBuf(buf, BLD_PRODUCT);
-                continue;
+                } else if (matchRef("PRODUCT", &src)) {
+                    mprPutStringToBuf(buf, BLD_PRODUCT);
+                    continue;
+                }
             }
+            mprPutCharToBuf(buf, *src++);
         }
-        mprPutCharToBuf(buf, *src++);
     }
     mprAddNullToBuf(buf);
     result = mprStealBuf(host, buf);
@@ -12858,7 +12861,7 @@ static void setEnv(MaConn *conn)
             mprGetPathInfo(conn, resp->filename, info);
         }
         if (info->valid) {
-            resp->etag = mprAsprintf(resp, -1, "%x-%Lx-%Lx", info->inode, info->size, info->mtime);
+            resp->etag = mprAsprintf(resp, -1, "\"%x-%Lx-%Lx\"", info->inode, info->size, info->mtime);
         }
     }
 
@@ -14951,7 +14954,6 @@ bool maMatchEtag(MaConn *conn, char *requestedEtag)
     if (requestedEtag == 0) {
         return 0;
     }
-
     for (next = 0; (tag = mprGetNextItem(req->etags, &next)) != 0; ) {
         if (strcmp(tag, requestedEtag) == 0) {
             return (req->ifMatch) ? 0 : 1;

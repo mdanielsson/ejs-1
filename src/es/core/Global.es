@@ -159,10 +159,10 @@ module ejs {
      *  Assert a condition is true. This call tests if a condition is true by testing to see if the supplied 
      *  expression is true. If the expression is false, the interpreter will throw an exception.
      *  @param condition JavaScript expression evaluating or castable to a Boolean result.
-     *  @return True if the condition is.
+     *  @throws AssertError if the condition is false.
      *  @spec ejs
      */
-    native function assert(condition: Boolean): Boolean
+    native function assert(condition: Boolean): Void
 
     /**
      *  Convenient way to trap to the debugger

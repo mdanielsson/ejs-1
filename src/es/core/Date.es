@@ -76,6 +76,10 @@ module ejs {
         /**
             Format a date using a format specifier in local time. This routine is implemented by calling 
             the O/S strftime routine and so not all the format specifiers are available on all platforms.
+            Windows only supports the following formats: A, a, B, b, c, d, H, I, j, M, m, p, S, U, W, w, X, x, Y, y, Z.
+            Windows does not support (C, e, k, P, s)
+            !STRFTIME does not support E, G, g, h, O
+            For full details, consult your platform API manual for strftime.
 
             The format specifiers are:
             <ul>
@@ -83,37 +87,40 @@ module ejs {
             <li>%a    national representation of the abbreviated weekday name.</li>
             <li>%B    national representation of the full month name.</li>
             <li>%b    national representation of the abbreviated month name.</li>
-            <li>%C    (year / 100) as decimal number; single digits are preceded by a zero.</li>
+W           <li>%C    (year / 100) as decimal number; single digits are preceded by a zero. Not supported on Windows.</li>
             <li>%c    national representation of time and date.</li>
             <li>%D    is equivalent to ``%m/%d/%y''.</li>
             <li>%d    the day of the month as a decimal number (01-31).</li>
-            <li>%E*   POSIX locale extensions. The sequences %Ec %EC %Ex %EX %Ey %EY are supposed to provide alternate 
-                      representations. NOTE: these are not available on some platforms.</li>
-            <li>%e    the day of month as a decimal number (1-31); single digits are preceded by a blank.</li>
+I           <li>%E*   POSIX locale extensions. The sequences %Ec %EC %Ex %EX %Ey %EY are supposed to provide alternate 
+                      representations. NOTE: these are not available on some platforms (Windows).</li>
+W           <li>%e    the day of month as a decimal number (1-31); single digits are preceded by a blank. Not supported 
+                      on Windows</li>
             <li>%F    is equivalent to ``%Y-%m-%d''.</li>
-            <li>%G    a year as a decimal number with century. This year is the one that contains the greater part of
+I           <li>%G    a year as a decimal number with century. This year is the one that contains the greater part of
                       the week (Monday as the first day of the week).</li>
-            <li>%g    the same year as in ``%G'', but as a decimal number without century (00-99).</li>
+I           <li>%g    the same year as in ``%G'', but as a decimal number without century (00-99).</li>
             <li>%H    the hour (24-hour clock) as a decimal number (00-23).</li>
-            <li>%h    the same as %b.</li>
+I           <li>%h    the same as %b.</li>
             <li>%I    the hour (12-hour clock) as a decimal number (01-12).</li>
             <li>%j    the day of the year as a decimal number (001-366). Note: this range is different to that of
                       the dayOfYear property which is 0-365.</li>
-            <li>%k    the hour (24-hour clock) as a decimal number (0-23); single digits are preceded by a blank.</li>
+W           <li>%k    the hour (24-hour clock) as a decimal number (0-23); single digits are preceded by a blank. 
+                      Not supported on windows</li>
             <li>%l    the hour (12-hour clock) as a decimal number (1-12); single digits are preceded by a blank.</li>
             <li>%M    the minute as a decimal number (00-59).</li>
             <li>%m    the month as a decimal number (01-12).</li>
             <li>%n    a newline.</li>
-            <li>%O*   POSIX locale extensions. The sequences %Od %Oe %OH %OI %Om %OM %OS %Ou %OU %OV %Ow %OW %Oy are 
+I           <li>%O*   POSIX locale extensions. The sequences %Od %Oe %OH %OI %Om %OM %OS %Ou %OU %OV %Ow %OW %Oy are 
                       supposed to provide alternate representations. Additionly %OB implemented to represent alternative 
                       months names (used standalone, without day mentioned). NOTE: these are not available on some 
                       platforms.</li>
-            <li>%P    Lower case national representation of either "ante meridiem" or "post meridiem" as appropriate.</li>
+WM          <li>%P    Lower case national representation of either "ante meridiem" or "post meridiem" as appropriate.
+                      Not supported on Windows or Mac</li>
             <li>%p    national representation of either "ante meridiem" or "post meridiem" as appropriate.</li>
             <li>%R    is equivalent to ``%H:%M''.</li>
             <li>%r    is equivalent to ``%I:%M:%S %p''.</li>
             <li>%S    the second as a decimal number (00-60).</li>
-            <li>%s    the number of seconds since the Epoch, UTC (see mktime(3)).</li>
+W           <li>%s    the number of seconds since the Epoch, UTC (see mktime(3)). Not supported on Windows</li>
             <li>%T    is equivalent to ``%H:%M:%S''.</li>
             <li>%t    a tab.</li>
             <li>%U    the week number of the year (Sunday as the first day of the week) as a decimal number (00-53).</li>

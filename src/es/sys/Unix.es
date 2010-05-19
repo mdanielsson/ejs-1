@@ -26,7 +26,7 @@ module ejs.sys {
     /**
      *  Set the permissions of a file or directory
      *  @param path File or directory to modify
-     *  @param perms New Posix style permission mask
+     *  @param perms Posix style permission mask
      */
     function chmod(path: String, perms: Number): Void
         Path(path).perms = perms
@@ -65,20 +65,13 @@ module ejs.sys {
         Path(path).exists
 
     /**
-     *  Get the file extension portion of the file name. The file extension is the portion starting with the last "."
-     *  in the path. It thus includes "." as the first charcter.
+     *  Get the file extension portion of the file name. The file extension is the portion after the last "."
+     *  in the path.
      *  @param path Filename path to examine
-     *  @return String containing the file extension. It includes "." as the first character.
+     *  @return String containing the file extension. It does not include "." as the first character.
      */
     function extension(path: String): String
         Path(path).extension
-
-    /**
-     *  Return the free space in the file system.
-     *  @return The number of 1M blocks (1024 * 1024 bytes) of free space in the file system.
-     */
-    function freeSpace(path: String = null): Number
-        FileSystem(path).freeSpace()
 
     /**
      *  Is a file a directory. Return true if the specified path exists and is a directory
@@ -149,17 +142,21 @@ module ejs.sys {
     function mv(fromFile: String, toFile: String): void
         Path(fromFile).rename(toFile)
 
+    //  DEPRECATED 1.0.2
     /**
-     *  Open or create a file
+     *  Open or create a file. 
      *  @param path Filename path to open
-     *  @param mode optional file access mode with values ored from: Read, Write, Append, Create, Open, Truncate. 
+     *  @param mode optional file access mode with values values from: Read, Write, Append, Create, Open, Truncate. 
      *      Defaults to Read.
-     *  @param permissions optional permissions. Defaults to App.permissions
+     *  @param permissions optional permissions. Defaults to App.permissions.
      *  @return a File object which implements the Stream interface
      *  @throws IOError if the path or file cannot be opened or created.
+     *  @hide
      */
-    function open(path: String, mode: Number = Read, permissions: Number = 0644): File
-        new File(path, { mode: mode, permissions: permissions})
+    function open(path: String, mode: String = "r", permissions: Number = App.permissions): File {
+        print("IN OPEN")
+        return new File(path, { mode: mode, permissions: permissions})
+    }
 
     /**
      *  Get the current working directory
@@ -168,12 +165,14 @@ module ejs.sys {
     function pwd(): Path
         App.dir
 
+    //  DEPRECATED 1.0.2
     /**
      *  Read data bytes from a file and return a byte array containing the data.
      *  @param file Open file object previously opened via $open or $File
-        @param count Number of bytes to read
+     *  @param count Number of bytes to read
      *  @return A byte array containing the read data
      *  @throws IOError if the file could not be read.
+     *  @hide
      */
     function read(file: File, count: Number): ByteArray
         file.read(count)
@@ -211,8 +210,9 @@ module ejs.sys {
      *  @returns a closed File object after creating an empty temporary file.
      */
     function tempname(directory: String = null): File
-        FileSystem.makeTemp(directory)
+        Path(directory).makeTemp()
 
+    //  DEPRECATED 1.0.2
     /**
      *  Write data to the file. If the stream is in sync mode, the write call blocks until the underlying stream or 
      *  endpoint absorbes all the data. If in async-mode, the call accepts whatever data can be accepted immediately 
@@ -223,6 +223,7 @@ module ejs.sys {
      *  the BinaryStream class to write Numbers.
      *  @returns the number of bytes written.  
      *  @throws IOError if the file could not be written.
+     *  @hide
      */
     function write(file: File, ...items): Number
         file.write(items)

@@ -75,8 +75,8 @@ module ejs {
         }
 
         /**
-         *  Compact available data down and adjust the read/write positions accordingly. This moves available room to
-         *  the end of the byte array.
+         *  Compact available data down and adjust the read/write positions accordingly. This sets the read pointer 
+         *  to the zero index and adjusts the write pointer by the corresponding amount.
          */
         native function compact(): Void
 
@@ -159,15 +159,16 @@ module ejs {
         #FUTURE
         native function get MD5(): Number
 
-        /**
-         *  Define an output function to process (output) data. The output callback should read from the supplied buffer.
+        /** 
+         *  Output function to process (output) data. The output callback should read from the supplied buffer.
          *  @param callback Function to invoke when the byte array is full or flush() is called.
          *      function outputCallback(buffer: ByteArray): Number
          */
-        native function set output(callback: Function): Void
-
-        /** */
         native function get output(): Function
+
+        /**
+         */
+        native function set output(callback: Function): Void
 
         /**
          *  Read data from the array into another byte array. Data is read from the current read $position pointer toward
@@ -278,7 +279,7 @@ module ejs {
          *  Convert the data in the byte array between the $readPosition and $writePosition offsets.
          *  @return A string
          */
-        override native function toString(locale: String = null): String 
+        override native function toString(): String 
 
         /**
          *  Uncompress the array
@@ -334,8 +335,6 @@ module ejs {
         native function get writePosition(): Number
 
         /**
-         *  Set the current write position offset.
-         *  @param position the new write  position
          */
         native function set writePosition(position: Number): Void
     }
