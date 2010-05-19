@@ -25120,6 +25120,9 @@ char *mprFormatLocalTime(MprCtx ctx, MprTime time)
 
 
 /*
+    Windows should now support C, e, k, P, s, 
+ */
+/*
     Format a time string. This uses strftime if available and so the supported formats vary from platform to platform.
     Strftime should supports some of these these formats:
 
@@ -25127,32 +25130,32 @@ char *mprFormatLocalTime(MprCtx ctx, MprTime time)
          %a      abbreviated weekday name (Mon)
          %B      full month name (January)
          %b      abbreviated month name (Jan)
-         %C      century (0-N)
+W        %C      century. Year / 100. (0-N)
          %c      standard date and time representation
          %D      date (%m/%d/%y)
          %d      day-of-month (01-31)
-         %E*     POSIX locale extensions. The sequences %Ec %EC %Ex %EX %Ey %EY are supposed to provide alternate 
+I        %E*     POSIX locale extensions. The sequences %Ec %EC %Ex %EX %Ey %EY are supposed to provide alternate 
                  representations. 
-         %e      day-of-month with a leading space if only one digit ( 1-31)
-         %G      a year as a decimal number with century. This year is the one that contains the greater part of
+W        %e      day-of-month with a leading space if only one digit ( 1-31)
+I        %G      a year as a decimal number with century. This year is the one that contains the greater part of
                  the week (Monday as the first day of the week).
-         %g      the same year as in ``%G'', but as a decimal number without century (00-99).
+I        %g      the same year as in ``%G'', but as a decimal number without century (00-99).
          %H      hour (24 hour clock) (00-23)
-         %h      same as %b
+I        %h      same as %b
          %I      hour (12 hour clock) (01-12)
          %j      day-of-year (001-366)
-         %k      hour (24 hour clock) (0-23)
+W        %k      hour (24 hour clock) (0-23)
          %l      the hour (12-hour clock) as a decimal number (1-12); single digits are preceded by a blank.
          %M      minute (00-59)
          %m      month (01-12)
          %n      a newline
-         %O*     POSIX locale extensions. The sequences %Od %Oe %OH %OI %Om %OM %OS %Ou %OU %OV %Ow %OW %Oy are 
+I        %O*     POSIX locale extensions. The sequences %Od %Oe %OH %OI %Om %OM %OS %Ou %OU %OV %Ow %OW %Oy are 
                  supposed to provide alternate representations. Additionly %OB implemented to represent alternative 
                  months names (used standalone, without day mentioned). NOTE: these are not available on some platforms.
-         %P      lower case am / pm
+WM       %P      lower case am / pm
          %p      AM / PM
          %S      second (00-59)
-         %s      seconds since epoch
+W        %s      seconds since epoch
          %T      time (%H:%M:%S)
          %t      a tab.
          %U      week-of-year, first day sunday (00-53)
@@ -25172,15 +25175,23 @@ char *mprFormatLocalTime(MprCtx ctx, MprTime time)
          %+      national representation of the date and time (the format is similar to that produced by date(1)).
          %%      percent sign
 
-    Not supported: %E, %G, %g, %h, %O
-
-    Windows only supports: a, A, b, B, c, d, H, I, j, m, M, p, S, U, w, W, x, X, y, Y, Z and does not support C, e, k, P, s
+    The !HAS_STRFTIME version does not support: %E, %G, %g, %h, %O
+    Windows only supports the following formats: A, a, B, b, c, d, H, I, j, M, m, p, S, U, W, w, X, x, Y, y, Z.
+        i.e. windows does not support (C, e, k, P, s)
 
     Useful formats:
         RFC822: "%a, %d %b %Y %H:%M:%S %Z           "Fri, 07 Jan 2003 12:12:21 PDT"
                 "%T %F                              "12:12:21 2007-01-03"
                 "%v                                 "07-Jul-2003"
  */
+
+#if WIN
+    #define VALID_FMT "AaBbCcDdEeFHhIjklMmnOPpRrSsTtUuvWwXxYyZz+%"
+#elif MACOSX
+    #define VALID_FMT "AaBbCcDdEeFGgHhIjklMmnOPpRrSsTtUuVvWwXxYyZz+%"
+#else
+    #define VALID_FMT "AaBbCcDdEeFGgHhIjklMmnOPpRrSsTtUuVvWwXxYyZz+%"
+#endif
 
 #if HAS_STRFTIME
 /*
@@ -25191,7 +25202,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
     struct tm       tm;
     char            buf[MPR_MAX_STRING];
 #if BLD_WIN_LIKE
-    char            localFmt[128];
+    char            localFmt[MPR_MAX_STRING];
 #endif
 
     if (fmt == 0) {
@@ -25204,40 +25215,175 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
 #if BLD_WIN_LIKE
 {
     cchar   *cp, *pat;
-    char    tz[80], *sign, *dp;
+    char    tz[80], *sign, *dp, *endp;
     long    timezone;
-    int     len;
+    int     len, size, value;
 
     /*
         Simulate: D, T, z
      */
     dp = localFmt;
-    for (cp = fmt; *cp && dp < &localFmt[sizeof(localFmt) - 9]; ) {
+    endp = &localFmt[sizeof(localFmt) - 1];
+    for (cp = fmt, size = sizeof(localFmt) - 1; *cp && dp < &localFmt[sizeof(localFmt) - 32]; size = dp - endp - 1) {
         if (*cp == '%') {
             *dp++ = *cp++;
-            if (*cp == '+') {
+again:
+            switch (*cp) {
+            case '+':
                 pat = "a %b %d %H:%M:%S %Z %Y";
                 strcpy(dp, pat);
                 dp += strlen(pat);
                 cp++;
+                break;
 
-            } if (*cp == 'D') {
+            case 'C':
+				dp--;
+                mprItoa(dp, size, (int64) (1900 + tp->tm_year) / 100, 10);
+                dp += strlen(dp);
+                cp++;
+                break;
+
+            case 'D':
                 strcpy(dp, "m/%d/%y");
                 dp += 7;
                 cp++;
+                break;
 
-            } else if (*cp == 'T') {
+            case 'e':
+				dp--;
+                if (tp->tm_mday < 10) {
+                    *dp++ = ' ';
+                }
+                mprItoa(dp, size - 1, (int64) tp->tm_mday, 10);
+                dp += strlen(dp);
+                cp++;
+                break;
+
+            case 'E':
+                /* Skip the 'E' */
+                cp++;
+                goto again;
+            
+            case 'F':
+                strcpy(dp, "Y-%m-%d");
+                dp += 7;
+                cp++;
+                break;
+
+			case 'h':
+				*dp++ = 'b';
+				cp++;
+				break;
+
+            case 'k':
+				dp--;
+                if (tp->tm_hour < 10) {
+                    *dp++ = ' ';
+                }
+                mprItoa(dp, size - 1, (int64) tp->tm_hour, 10);
+                dp += strlen(dp);
+                cp++;
+                break;
+
+            case 'l':
+				dp--;
+                value = tp->tm_hour;
+                if (value < 10) {
+                    *dp++ = ' ';
+                }
+                if (value > 12) {
+                    value -= 12;
+                }
+                mprItoa(dp, size - 1, (int64) value, 10);
+                dp += strlen(dp);
+                cp++;
+                break;
+
+            case 'n':
+                dp[-1] = '\n';
+                cp++;
+                break;
+
+            case 'O':
+                /* Skip the 'O' */
+                cp++;
+                goto again;
+            
+            case 'P':
+				dp--;
+                strcpy(dp, (tp->tm_hour > 11) ? "pm" : "am");
+                dp += 2;
+                cp++;
+                break;
+
+            case 'R':
+                strcpy(dp, "H:%M");
+                dp += 4;
+                cp++;
+                break;
+
+            case 'r':
+                strcpy(dp, "I:%M:%S %p");
+                dp += 10;
+                cp++;
+                break;
+
+            case 's':
+				dp--;
+                mprItoa(dp, size, (int64) mprMakeTime(ctx, tp) / 1000, 10);
+                dp += strlen(dp);
+                cp++;
+                break;
+
+            case 'T':
                 strcpy(dp, "H:%M:%S");
                 dp += 7;
                 cp++;
+                break;
 
-            } else if (*cp == 'z') {
+            case 't':
+                dp[-1] = '\t';
+                cp++;
+                break;
+
+			case 'u':
+				dp--;
+				value = tp->tm_wday;
+				if (value == 0) {
+					value = 7;
+				}
+                mprItoa(dp, size, (int64) value, 10);
+                dp += strlen(dp);
+                cp++;
+				break;
+
+            case 'v':
+                /* Inline '%e' */
+				dp--;
+                if (tp->tm_mday < 10) {
+                    *dp++ = ' ';
+                }
+                mprItoa(dp, size - 1, (int64) tp->tm_mday, 10);
+                dp += strlen(dp);
+                cp++;
+                strcpy(dp, "-%b-%Y");
+                dp += 6;
+                break;
+
+            case 'z':
                 _get_timezone(&timezone);
                 sign = (timezone >= 0) ? "-": "";
                 if (timezone < 0) {
                     timezone = -timezone;
                 }
                 timezone /= 60;
+#if WIN
+                if (tp->tm_isdst == 1) {
+                    TIME_ZONE_INFORMATION  tinfo;
+                    GetTimeZoneInformation(&tinfo);
+                    timezone += (tinfo.DaylightBias);
+                }
+#endif
                 mprSprintf(tz, sizeof(tz), "%s%02d%02d", sign, timezone / 60, timezone % 60);
                 len = strlen(tz);
                 if (&dp[len] >= &localFmt[sizeof(localFmt) - 9]) {
@@ -25246,9 +25392,16 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
                 mprStrcpy(--dp, len + 1, tz);
                 dp += len;
                 cp++;
+                break;
 
-            } else {
-                *dp++ = *cp++;
+            default: 
+                if (strchr(VALID_FMT, (int) *cp) != 0) {
+                    *dp++ = *cp++;
+				} else {
+					dp--;
+					cp++;
+				}
+                break;
             }
         } else {
             *dp++ = *cp++;
@@ -25265,6 +25418,9 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
          fmt = "%e-%b-%Y";
     }
 #endif
+	if (*fmt == '\0') {
+		fmt = "%a %b %d %H:%M:%S %Z %Y";
+	}
     if (strftime(buf, sizeof(buf) - 1, fmt, tp) > 0) {
         buf[sizeof(buf) - 1] = '\0';
         return mprStrdup(ctx, buf);
@@ -25321,11 +25477,9 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
         mprDecodeLocalTime(ctx, &tm, mprGetTime(ctx));
         tp = &tm;
     }
-
     if ((buf = mprCreateBuf(ctx, 64, -1)) == 0) {
         return 0;
     }
-
     while ((*fmt != '\0')) {
         if (*fmt++ != '%') {
             mprPutCharToBuf(buf, fmt[-1]);
@@ -25389,7 +25543,8 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
             break;
 
         case 'C' :                                      /* century number (19, 20) */
-            digits(buf, 2, tp->tm_year / 1000);
+			//	MOB -- not right for non-padded. Rename digits
+            digits(buf, 2, (1900 + tp->tm_year) / 100);
 
         case 'd' :                                      /* day of month (01-31) */
             digits(buf, 2, tp->tm_mday);
@@ -25632,11 +25787,9 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int timezone, str
             }
         }
     }
-
     token = mprStrTok(str, sep, &next);
 
     while (token && *token) {
-
         if (allDigits(token)) {
             /*
                 Parse either day of month or year. Priority to day of month. Format: <29> Jan <15> <2010>
@@ -25711,7 +25864,6 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int timezone, str
             tm.tm_sec = getNum(mpr, &token, timeSep);
 
         } else {
-
             dateSep = '/';
             if (strchr(token, dateSep) == 0) {
                 dateSep = '-';
@@ -25722,7 +25874,6 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int timezone, str
                     }
                 }
             }
-
             if (dateSep) {
                 /*
                     Date:  07/28/2010, 07/28/08, Jan/28/2010, Jaunuary-28-2010, 28-jan-2010
@@ -25914,16 +26065,10 @@ static int gettimeofday(struct timeval *tv, struct timezone *tz)
         rc = GetTimeZoneInformation(&zone);
         bias = (int) zone.Bias;
         if (rc == TIME_ZONE_ID_DAYLIGHT) {
-#if UNUSED
-            bias += zone.DaylightBias;
-#endif
             tz->tz_dsttime = 1;
         } else {
             tz->tz_dsttime = 0;
         }
-#if UNUSED
-        bias *= 60;
-#endif
         tz->tz_minuteswest = bias;
     }
 
