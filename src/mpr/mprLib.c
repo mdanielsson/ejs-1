@@ -24934,6 +24934,7 @@ static int gettimeofday(struct timeval *tv, struct timezone *tz);
 #undef gmtime_r
 #endif
 
+static int dateToDaysFrom1970(int year, int month, int day);
 static void validateTime(MprCtx ctx, struct tm *tm, struct tm *defaults);
 
 /*
@@ -24943,8 +24944,6 @@ int mprCreateTimeService(MprCtx ctx)
 {
     Mpr                 *mpr;
     TimeToken           *tt;
-    struct timezone     tz;
-    struct timeval      tv;
 
     mpr = mprGetMpr(ctx);
     mpr->timeTokens = mprCreateHash(mpr, -1);
@@ -24971,9 +24970,14 @@ int mprCreateTimeService(MprCtx ctx)
     for (tt = offsets; tt->name; tt++) {
         mprAddHash(mpr->timeTokens, tt->name, (void*) tt);
     }
-
+#if UNUSED
+    struct timezone     tz;
+    struct timeval      tv;
+    //  MOB -- not right. Should provide a call to get this
+    //  MOB -- does not account for dst
     gettimeofday(&tv, &tz);
     mpr->timezone = -tz.tz_minuteswest;
+#endif
     return 0;
 }
 
@@ -25035,25 +25039,50 @@ int mprCompareTime(MprTime t1, MprTime t2)
 }
 
 
+static MprTime makeTime(MprCtx ctx, struct tm *tp)
+{
+    MprTime     day;
+
+    day = dateToDaysFrom1970(tp->tm_year + 1900, tp->tm_mon, tp->tm_mday);
+    return ((day * 86400) + (((((tp->tm_hour * 60)) + tp->tm_min) * 60) + tp->tm_sec)) * MPR_TICKS_PER_SEC;
+}
+
+
 /*
     Make a time value interpreted using the local time value
  */
 MprTime mprMakeTime(MprCtx ctx, struct tm *tm)
 {
-    MprTime     rc;
-    
+    MprTime     when;
+
+#if UNUSED
     tm->tm_isdst = -1;
     rc = mktime(tm);
     if (rc == -1) {
         return rc;
     }
     return rc * MPR_TICKS_PER_SEC;
+#endif
+
+    when = makeTime(ctx, tm);
+#if UNUSED
+    struct tm t;
+    t.tm_isdst = -1;
+    mprDecodeLocalTime(NULL, &t, result);
+    result -= (tp->tm_gmtoff / 60);
+#endif
+    when -= mprGetTimeZoneOffset(ctx, when);
+    return when;
 }
 
 
-/*
-    Make a time value interpreted using UTC
- */
+MprTime mprMakeUniversalTime(MprCtx ctx, struct tm *tp)
+{
+    return makeTime(ctx, tp);
+}
+
+
+#if OLD && UNUSED && MOB
 MprTime mprMakeUniversalTime(MprCtx ctx, struct tm *tm)
 {
     MprTime     rc;
@@ -25069,6 +25098,7 @@ MprTime mprMakeUniversalTime(MprCtx ctx, struct tm *tm)
     if (rc == -1) {
         return rc;
     }
+    //  MOB -- what about DST
     gettimeofday(&tv, &tz);
     rc -= (tz.tz_minuteswest * 60);
 }
@@ -25080,34 +25110,42 @@ MprTime mprMakeUniversalTime(MprCtx ctx, struct tm *tm)
     }
     return rc * MPR_TICKS_PER_SEC;
 }
+#endif
 
 
 struct tm *mprDecodeLocalTime(MprCtx ctx, struct tm *timep, MprTime time)
 {
-    time_t      when;
-
-    when = (time_t) (time / MPR_TICKS_PER_SEC);
 #if BLD_UNIX_LIKE || WINCE
-    localtime_r(&when, timep);
-    return timep;
+    time_t when = (time_t) (time / MPR_TICKS_PER_SEC);
+    return localtime_r(&when, timep);
 #else
-    *timep = *localtime(&when);
-#endif
+    struct tm   *tp;
+    time_t when = (time_t) (time / MPR_TICKS_PER_SEC);
+
+    if ((tp = localtime(&when)) == 0) {
+        return 0;
+    }
+    *timep = *tp;
     return timep;
+#endif
 }
 
 
 struct tm *mprDecodeUniversalTime(MprCtx ctx, struct tm *timep, MprTime time)
 {
-    time_t      when;
-
-    when = (time_t) (time / MPR_TICKS_PER_SEC);
 #if BLD_UNIX_LIKE || WINCE
-    gmtime_r(&when, timep);
+    time_t when = (time_t) (time / MPR_TICKS_PER_SEC);
+    return gmtime_r(&when, timep);
 #else
-    *timep = *gmtime(&when);
-#endif
+    struct tm   *tp;
+    time_t      when;
+    when = (time_t) (time / MPR_TICKS_PER_SEC);
+    if ((tp = gmtime(&when)) == 0) {
+        return 0;
+    }
+    *timep = *tp;
     return timep;
+#endif
 }
 
 
@@ -25327,7 +25365,7 @@ again:
 
             case 's':
 				dp--;
-                mprItoa(dp, size, (int64) mprMakeTime(ctx, tp) / 1000, 10);
+                mprItoa(dp, size, (int64) mprMakeTime(ctx, tp) / MPR_TICKS_PER_SEC, 10);
                 dp += strlen(dp);
                 cp++;
                 break;
@@ -25368,6 +25406,7 @@ again:
                 break;
 
             case 'z':
+#if OLD && UNUSED
                 _get_timezone(&timezone);
                 sign = (timezone >= 0) ? "-": "";
                 if (timezone < 0) {
@@ -25384,8 +25423,15 @@ again:
                 if (&dp[len] >= &localFmt[sizeof(localFmt) - 9]) {
                     break;
                 }
-                mprStrcpy(--dp, len + 1, tz);
-                dp += len;
+#endif
+                value = mprGetTimeZoneOffset(ctx, mprMaketime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
+                sign = (value < 0) ? "-" : "";
+                if (value < 0) {
+                    mprPutCharToBuf(buf, '-');
+                    value = -value;
+                }
+                mprSprintf(dp, size, "%s%02d%02d", sign, value / 60, value % 60);
+                dp += strlen(dp);
                 cp++;
                 break;
 
@@ -25455,39 +25501,15 @@ static void digits(MprBuf *buf, int count, int fill, int value)
 static char *getTimeZoneName(MprCtx ctx, struct tm *tp)
 {
 #if BLD_WIN_LIKE
-    WCHAR                   *wzone;
+    //MOB1 - is tp->tm_zone set for windows?
     TIME_ZONE_INFORMATION   tz;
+    WCHAR                   *wzone;
     GetTimeZoneInformation(&tz);
     wzone = tp->tm_isdst ? tz.DaylightName : tz.StandardName;
     return mprToAsc(ctx, wzone);
 #else
     tzset();
     return mprStrdup(ctx, tp->tm_zone);
-#endif
-}
-
-
-static int getTimeZone(MprCtx ctx, struct tm *tp)
-{
-#if WIN
-    long    timezone;
-    _get_timezone(&timezone);
-    sign = (timezone >= 0) ? "-": "";
-    if (timezone < 0) {
-        timezone = -timezone;
-    }
-    timezone /= 60;
-    if (tp->tm_isdst == 1) {
-        TIME_ZONE_INFORMATION  tinfo;
-        GetTimeZoneInformation(&tinfo);
-        timezone += (tinfo.DaylightBias);
-    }
-    return timezone;
-#elif LINUX || MACOSX
-    return tp->tm_gmtoff / 60;
-#else
-    mprAssert(0);
-    return 0;
 #endif
 }
 
@@ -25673,7 +25695,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
             break;
 
         case 's':                                       /* seconds since epoch */
-            mprPutFmtToBuf(buf, "%d", mprMakeTime(ctx, tp) / 1000);
+            mprPutFmtToBuf(buf, "%d", mprMakeTime(ctx, tp) / MPR_TICKS_PER_SEC);
             break;
 
         case 'T':
@@ -25752,7 +25774,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
             break;
 
         case 'z':
-            value = getTimeZone(ctx, tp);
+            value = mprGetTimeZoneOffset(ctx, mprMaketime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
             if (value < 0) {
                 mprPutCharToBuf(buf, '-');
                 value = -value;
@@ -25865,10 +25887,10 @@ static void swapDayMonth(struct tm *tm)
 
 
 /*
-    Parse the a date/time string according to the given timezone and return the result in *time. Missing date items 
+    Parse the a date/time string according to the given zoneFlags and return the result in *time. Missing date items 
     may be provided via the defaults argument.
  */ 
-int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int timezone, struct tm *defaults)
+int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, struct tm *defaults)
 {
     Mpr             *mpr;
     TimeToken       *tt;
@@ -26064,7 +26086,7 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int timezone, str
      */
     validateTime(mpr, &tm, defaults);
 
-    if (timezone == MPR_LOCAL_TIMEZONE && !explicitZone) {
+    if (zoneFlags == MPR_LOCAL_TIMEZONE && !explicitZone) {
         *time = mprMakeTime(ctx, &tm);
     } else {
         *time = mprMakeUniversalTime(ctx, &tm);
@@ -26204,11 +26226,11 @@ static int gettimeofday(struct timeval *tv, struct timezone *tz)
     struct timespec now;
     time_t          t;
     char            *tze, *p;
-    int rc;
+    int             rc;
 
     if ((rc = clock_gettime(CLOCK_REALTIME, &now)) == 0) {
         tv->tv_sec  = now.tv_sec;
-        tv->tv_usec = (now.tv_nsec + 500) / 1000;
+        tv->tv_usec = (now.tv_nsec + 500) / MPR_TICKS_PER_SEC;
         if ((tze = getenv("TIMEZONE")) != 0) {
             if ((p = strchr(tze, ':')) != 0) {
                 if ((p = strchr(tze, ':')) != 0) {
@@ -26226,28 +26248,149 @@ static int gettimeofday(struct timeval *tv, struct timezone *tz)
 #endif
 
 
+//  MOB - double
+static MprTime daysFrom1970ToYear(int year)
+{
+    // The Gregorian Calendar rules for leap years:
+    // Every fourth year is a leap year.  2004, 2008, and 2012 are leap years.
+    // However, every hundredth year is not a leap year.  1900 and 2100 are not leap years.
+    // Every four hundred years, there's a leap year after all.  2000 and 2400 are leap years.
+
+    static const int leapDaysBefore1971By4Rule = 1970 / 4;
+    static const int excludedLeapDaysBefore1971By100Rule = 1970 / 100;
+    static const int leapDaysBefore1971By400Rule = 1970 / 400;
+
+    const MprTime yearMinusOne = year - 1;
+    const MprTime yearsToAddBy4Rule = floor(yearMinusOne / 4.0) - leapDaysBefore1971By4Rule;
+    const MprTime yearsToExcludeBy100Rule = floor(yearMinusOne / 100.0) - excludedLeapDaysBefore1971By100Rule;
+    const MprTime yearsToAddBy400Rule = floor(yearMinusOne / 400.0) - leapDaysBefore1971By400Rule;
+
+    return 365.0 * (year - 1970) + yearsToAddBy4Rule - yearsToExcludeBy100Rule + yearsToAddBy400Rule;
+}
+
+
+static const int firstDayOfMonth[2][12] = {
+    /* Non-leap */
+    {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
+    /* Leap years */
+    {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
+};
+
+static bool isLeapYear(int year)
+{
+    if (year % 4 != 0) {
+        return 0;
+    }
+    if (year % 400 == 0) {
+        return 1;
+    }
+    if (year % 100 == 0) {
+        return 0;
+    }
+    return 1;
+}
+
+
+int dateToDaysFrom1970(int year, int month, int day)
+{
+    MprTime yearday;
+    int     monthday;
+
+    year += month / 12;
+    month %= 12;
+    if (month < 0) {
+        month += 12;
+        --year;
+    }
+    //  MOB -- floor ? need define if not using double
+    yearday = floor(daysFrom1970ToYear(year));
+    monthday = firstDayOfMonth[isLeapYear(year)][month];
+    return yearday + monthday + day - 1;
+}
+
+
+#if UNUSED
+//  MOB -- VXWORKS, SOLARIS, BSD
+//  MOB -- this is not right
+static MprTime getTimeZone(struct tm *tp)
+{
+#if WIN
+    long    timezone;
+    _get_timezone(&timezone);
+    //  MOB -- can't be right
+    if (timezone < 0) {
+        timezone = -timezone;
+    }
+    timezone /= 60;
+    if (tp->tm_isdst == 1) {
+        TIME_ZONE_INFORMATION  tinfo;
+        GetTimeZoneInformation(&tinfo);
+        timezone += (tinfo.DaylightBias);
+    }
+    return timezone;
+#elif LINUX || MACOSX
+{
+#if MOB
+    struct tm t = *tp;
+    if (t.tm_year < || t.tm_year > ) {
+    } else {
+        mprDecodeLocalTime(MprCtx ctx, struct tm *timep, MprTime time)
+        return tp->tm_gmtoff / 60;
+    }
+#endif
+    return tp->tm_gmtoff / 60;
+}
+#else
+    mprAssert(0);
+    return 0;
+#endif
+}
+#endif
+
+
+/*
+    Return the timezone offset (including DST) in msec. local == (UTC + offset)
+ */
+MprTime mprGetTimeZoneOffset(MprCtx ctx, MprTime when)
+{
+    struct tm   t;
+
+    t.tm_isdst = -1;
+    mprDecodeLocalTime(ctx, &t, when);
+
+#if BLD_WIN_LIKE
+    if (t.tm_isdst == 1) {
+        TIME_ZONE_INFORMATION  tinfo;
+        GetTimeZoneInformation(&tinfo);
+        return tinfo.Bias + tinfo.DaylightBias;
+    }
+    return offset;
+#else
+    return t.tm_gmtoff * MPR_TICKS_PER_SEC;
+#endif
+}
+
+
 /*
     High resolution timer
  */
-#if BLD_DEBUG && KEEP
-    #if BLD_UNIX_LIKE
-        #if MPR_CPU_IX86
-            inline MprTime mprGetHiResTime() {
-                MprTime  now;
-                __asm__ __volatile__ ("rdtsc" : "=A" (now));
-                return now;
-            }
-        #endif /* MPR_CPU_IX86 */
-
-    #elif BLD_WIN_LIKE
-        inline MprTime mprGetHiResTime()
-        {
+#if BLD_UNIX_LIKE
+    #if MPR_CPU_IX86
+        inline MprTime mprGetHiResTime() {
             MprTime  now;
-            QueryPerformanceCounter((LARGE_INTEGER*) &now);
+            __asm__ __volatile__ ("rdtsc" : "=A" (now));
             return now;
         }
-    #endif /* BLD_WIN_LIKE */
-#endif /* BLD_DEBUG */
+    #endif /* MPR_CPU_IX86 */
+
+#elif BLD_WIN_LIKE
+    inline MprTime mprGetHiResTime()
+    {
+        MprTime  now;
+        QueryPerformanceCounter((LARGE_INTEGER*) &now);
+        return now;
+    }
+#endif /* BLD_WIN_LIKE */
 
 
 /*

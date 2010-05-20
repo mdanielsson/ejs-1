@@ -2457,6 +2457,8 @@ MprTime mprMakeUniversalTime(MprCtx ctx, struct tm *tm);
  */
 extern int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int timezone, struct tm *defaults);
 
+extern MprTime mprGetTimeZoneOffset(MprCtx ctx, MprTime when);
+
 /**
  *  List Module.
  *  @description The MprList is a dynamic growable list suitable for storing pointers to arbitrary objects.
@@ -7304,7 +7306,9 @@ typedef struct Mpr {
     char            *appPath;               /**< Path name of application executable */
     char            *appDir;                /**< Path of directory containing app executable */
     int             flags;                  /**< Processing state */
+#if UNUSED
     int             timezone;               /**< Minutes west of Greenwich */
+#endif
     int             hasDedicatedService;    /**< Running a dedicated events thread */
     int             multiThread;            /**< Is running multi-threaded */
 

@@ -3,6 +3,7 @@
  */
 
 // Property accessors 
+
 d = new Date
 assert(0 <= d.day && d.day <= 6)
 assert(0 <= d.dayOfYear && d.dayOfYear <= 366)
@@ -24,6 +25,7 @@ assert(d.getHours() == 0)
 
 
 // Misc
+
 assert(d.elapsed >= 0)
 
 

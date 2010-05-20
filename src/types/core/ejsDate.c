@@ -505,14 +505,14 @@ static EjsVar *date_set_fullYear(Ejs *ejs, EjsDate *dp, int argc, EjsVar **argv)
 /**
     Return the number of minutes between the local computer time and Coordinated Universal Time.
     @return Integer containing the number of minutes between UTC and local time. The offset is positive if
-    local time is behind UTC and negative if it is ahead. E.g. American PST is UTC-8 so 480 will be retured.
-    This value will vary if daylight savings time is in effect.
+    local time is behind UTC and negative if it is ahead. E.g. American PST is UTC-8 so 420/480 will be retured
+    depending on if daylight savings is in effect.
 
     function getTimezoneOffset(): Number
 */
 static EjsVar *date_getTimezoneOffset(Ejs *ejs, EjsDate *dp, int argc, EjsVar **argv)
 {
-    return (EjsVar*) ejsCreateNumber(ejs, -mprGetMpr(ejs)->timezone);
+    return (EjsVar*) ejsCreateNumber(ejs, -mprGetTimeZoneOffset(ejs, dp->value) / (MPR_TICKS_PER_SEC * 60));
 }
 
 
