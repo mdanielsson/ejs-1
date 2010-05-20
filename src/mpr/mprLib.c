@@ -24933,7 +24933,7 @@ static int gettimeofday(struct timeval *tv, struct timezone *tz);
 #undef gmtime_r
 #endif
 
-static int dateToDaysFrom1970(int year, int month, int day);
+static MprTime dateToDaysFrom1970(int year, int month, int day);
 static void validateTime(MprCtx ctx, struct tm *tm, struct tm *defaults);
 
 /*
@@ -25048,28 +25048,13 @@ static MprTime makeTime(MprCtx ctx, struct tm *tp)
 
 
 /*
-    Make a time value interpreted using the local time value
+    Make a time value interpreting "tm" as a local time
  */
 MprTime mprMakeTime(MprCtx ctx, struct tm *tm)
 {
     MprTime     when;
 
-#if UNUSED
-    tm->tm_isdst = -1;
-    rc = mktime(tm);
-    if (rc == -1) {
-        return rc;
-    }
-    return rc * MPR_TICKS_PER_SEC;
-#endif
-
     when = makeTime(ctx, tm);
-#if UNUSED
-    struct tm t;
-    t.tm_isdst = -1;
-    mprDecodeLocalTime(NULL, &t, result);
-    result -= (tp->tm_gmtoff / 60);
-#endif
     when -= mprGetTimeZoneOffset(ctx, when);
     return when;
 }
@@ -25249,7 +25234,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
 #if BLD_WIN_LIKE
 {
     cchar   *cp, *pat;
-    char    tz[80], *sign, *dp, *endp;
+    char    *sign, *dp, *endp;
     int     size, value;
 
     /*
@@ -25257,7 +25242,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
      */
     dp = localFmt;
     endp = &localFmt[sizeof(localFmt) - 1];
-    for (cp = fmt, size = sizeof(localFmt) - 1; *cp && dp < &localFmt[sizeof(localFmt) - 32]; size = dp - endp - 1) {
+    for (cp = fmt, size = sizeof(localFmt) - 1; *cp && dp < &localFmt[sizeof(localFmt) - 32]; size = endp - dp - 1) {
         if (*cp == '%') {
             *dp++ = *cp++;
 again:
@@ -25404,25 +25389,8 @@ again:
                 break;
 
             case 'z':
-#if OLD && UNUSED
-                _get_timezone(&timezone);
-                sign = (timezone >= 0) ? "-": "";
-                if (timezone < 0) {
-                    timezone = -timezone;
-                }
-                timezone /= 60;
-                if (tp->tm_isdst == 1) {
-                    TIME_ZONE_INFORMATION  tinfo;
-                    GetTimeZoneInformation(&tinfo);
-                    timezone += (tinfo.DaylightBias);
-                }
-                mprSprintf(tz, sizeof(tz), "%s%02d%02d", sign, timezone / 60, timezone % 60);
-                len = strlen(tz);
-                if (&dp[len] >= &localFmt[sizeof(localFmt) - 9]) {
-                    break;
-                }
-#endif
-                value = mprGetTimeZoneOffset(ctx, mprMakeTime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
+                when = makeTime(ctx, tp);
+                value = mprGetTimeZoneOffset(ctx, makeTime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
                 sign = (value < 0) ? "-" : "";
                 if (value < 0) {
                     value = -value;
@@ -25771,7 +25739,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
             break;
 
         case 'z':
-            value = mprGetTimeZoneOffset(ctx, mprMakeTime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
+            value = mprGetTimeZoneOffset(ctx, makeTime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
             if (value < 0) {
                 mprPutCharToBuf(buf, '-');
                 value = -value;
@@ -26290,7 +26258,7 @@ static bool isLeapYear(int year)
 }
 
 
-int dateToDaysFrom1970(int year, int month, int day)
+MprTime dateToDaysFrom1970(int year, int month, int day)
 {
     MprTime yearday;
     int     monthday;
@@ -26348,24 +26316,35 @@ static MprTime getTimeZone(struct tm *tp)
 
 /*
     Return the timezone offset (including DST) in msec. local == (UTC + offset)
+    Assumes a valid "tm" with isdst correctly set.
  */
+int mprGetTimeZoneOffsetFromTm(MprCtx ctx, struct tm *tp)
+{
+#if BLD_WIN_LIKE
+    MprTime                 offset;
+    TIME_ZONE_INFORMATION   tinfo;
+    GetTimeZoneInformation(&tinfo);
+    offset = tinof.Bias;
+    if (tp->tm_isdst == 1) {
+        offset += tinfo.DaylightBias;
+    } else {
+        offset += tinfo.StandardBias;
+    }
+    return offset;
+#else
+    return tp->tm_gmtoff * MPR_TICKS_PER_SEC;
+#endif
+}
+
+
 int mprGetTimeZoneOffset(MprCtx ctx, MprTime when)
 {
     struct tm   t;
 
+    /* Use this to set tm_gmtoff and tm_isdst */
     t.tm_isdst = -1;
     mprDecodeLocalTime(ctx, &t, when);
-
-#if BLD_WIN_LIKE
-    if (t.tm_isdst == 1) {
-        TIME_ZONE_INFORMATION  tinfo;
-        GetTimeZoneInformation(&tinfo);
-        return tinfo.Bias + tinfo.DaylightBias;
-    }
-    return offset;
-#else
-    return t.tm_gmtoff * MPR_TICKS_PER_SEC;
-#endif
+    return mprGetTimeZoneOffsetFromTm(ctx, &t);
 }
 
 
