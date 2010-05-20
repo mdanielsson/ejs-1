@@ -24788,13 +24788,6 @@ cchar *mprGetCurrentThreadName(MprCtx ctx) { return "main"; }
 
 
 
-
-#if WINCE
-    #define HAS_STRFTIME 0
-#else
-    #define HAS_STRFTIME 1
-#endif
-
 /*
     Token types ored inot the TimeToken value
  */
@@ -24898,6 +24891,12 @@ static TimeToken offsets[] = {
 };
 
 static int timeSep = ':';
+
+#if WINCE
+    #define HAS_STRFTIME 0
+#else
+    #define HAS_STRFTIME 1
+#endif
 
 #if !HAS_STRFTIME
 static char *abbrevDay[] = {
@@ -25251,8 +25250,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
 {
     cchar   *cp, *pat;
     char    tz[80], *sign, *dp, *endp;
-    long    timezone;
-    int     len, size, value;
+    int     size, value;
 
     /*
         Simulate: D, T, z
@@ -25424,10 +25422,9 @@ again:
                     break;
                 }
 #endif
-                value = mprGetTimeZoneOffset(ctx, mprMaketime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
+                value = mprGetTimeZoneOffset(ctx, mprMakeTime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
                 sign = (value < 0) ? "-" : "";
                 if (value < 0) {
-                    mprPutCharToBuf(buf, '-');
                     value = -value;
                 }
                 mprSprintf(dp, size, "%s%02d%02d", sign, value / 60, value % 60);
@@ -25774,7 +25771,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
             break;
 
         case 'z':
-            value = mprGetTimeZoneOffset(ctx, mprMaketime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
+            value = mprGetTimeZoneOffset(ctx, mprMakeTime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
             if (value < 0) {
                 mprPutCharToBuf(buf, '-');
                 value = -value;
@@ -26248,24 +26245,26 @@ static int gettimeofday(struct timeval *tv, struct timezone *tz)
 #endif
 
 
-//  MOB - double
 static MprTime daysFrom1970ToYear(int year)
 {
+    //  MOB -- cleanup
     // The Gregorian Calendar rules for leap years:
     // Every fourth year is a leap year.  2004, 2008, and 2012 are leap years.
     // However, every hundredth year is not a leap year.  1900 and 2100 are not leap years.
     // Every four hundred years, there's a leap year after all.  2000 and 2400 are leap years.
 
-    static const int leapDaysBefore1971By4Rule = 1970 / 4;
-    static const int excludedLeapDaysBefore1971By100Rule = 1970 / 100;
-    static const int leapDaysBefore1971By400Rule = 1970 / 400;
+    static int leapDaysBefore1971By4Rule = 1970 / 4;
+    static int excludedLeapDaysBefore1971By100Rule = 1970 / 100;
+    static int leapDaysBefore1971By400Rule = 1970 / 400;
 
-    const MprTime yearMinusOne = year - 1;
-    const MprTime yearsToAddBy4Rule = floor(yearMinusOne / 4.0) - leapDaysBefore1971By4Rule;
-    const MprTime yearsToExcludeBy100Rule = floor(yearMinusOne / 100.0) - excludedLeapDaysBefore1971By100Rule;
-    const MprTime yearsToAddBy400Rule = floor(yearMinusOne / 400.0) - leapDaysBefore1971By400Rule;
+    MprTime yearMinusOne, yearsToAddBy4Rule, yearsToExcludeBy100Rule, yearsToAddBy400Rule;
 
-    return 365.0 * (year - 1970) + yearsToAddBy4Rule - yearsToExcludeBy100Rule + yearsToAddBy400Rule;
+    yearMinusOne = year - 1;
+    yearsToAddBy4Rule = (yearMinusOne / 4) - leapDaysBefore1971By4Rule;
+    yearsToExcludeBy100Rule = (yearMinusOne / 100) - excludedLeapDaysBefore1971By100Rule;
+    yearsToAddBy400Rule = (yearMinusOne / 400) - leapDaysBefore1971By400Rule;
+
+    return ((MprTime) 365) * (year - 1970) + yearsToAddBy4Rule - yearsToExcludeBy100Rule + yearsToAddBy400Rule;
 }
 
 
@@ -26302,8 +26301,7 @@ int dateToDaysFrom1970(int year, int month, int day)
         month += 12;
         --year;
     }
-    //  MOB -- floor ? need define if not using double
-    yearday = floor(daysFrom1970ToYear(year));
+    yearday = daysFrom1970ToYear(year);
     monthday = firstDayOfMonth[isLeapYear(year)][month];
     return yearday + monthday + day - 1;
 }
@@ -26351,7 +26349,7 @@ static MprTime getTimeZone(struct tm *tp)
 /*
     Return the timezone offset (including DST) in msec. local == (UTC + offset)
  */
-MprTime mprGetTimeZoneOffset(MprCtx ctx, MprTime when)
+int mprGetTimeZoneOffset(MprCtx ctx, MprTime when)
 {
     struct tm   t;
 
