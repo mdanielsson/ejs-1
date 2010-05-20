@@ -117,11 +117,12 @@ check(d.format('%OU'), "23")
 check(d.format('%Ow'), "2")
 check(d.format('%OW'), "23")
 check(d.format('%Oy'), "05")
-check(d.format('%OY'), "2005")
 
 //  %P    Lower case national representation of either "ante meridiem" or "post meridiem" as appropriate.
 //  MOB - BUG on MAC - not present
-check(d.format('%P'), "am")
+if (Config.OS != "MACOSX") {
+    check(d.format('%P'), "am")
+}
 
 //  %p    national representation of either "ante meridiem" or "post meridiem" as appropriate.
 check(d.format('%p'), "AM")
