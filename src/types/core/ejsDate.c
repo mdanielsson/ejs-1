@@ -302,17 +302,21 @@ static EjsVar *date_Date(Ejs *ejs, EjsDate *date, int argc, EjsVar **argv)
         tm.tm_isdst = -1;
         vp = ejsGetProperty(ejs, (EjsVar*) args, 0);
         year = getNumber(ejs, vp);
-        if (year < 100) {
+        if (0 <= year && year < 100) {
             year += 1900;
         }
         tm.tm_year = year - 1900;
         if (args->length > 1) {
             vp = ejsGetProperty(ejs, (EjsVar*) args, 1);
             tm.tm_mon = getNumber(ejs, vp);
+        } else {
+            tm.tm_mon = 0;
         }
         if (args->length > 2) {
             vp = ejsGetProperty(ejs, (EjsVar*) args, 2);
             tm.tm_mday = getNumber(ejs, vp);
+        } else {
+            tm.tm_mday = 1;
         }
         if (args->length > 3) {
             vp = ejsGetProperty(ejs, (EjsVar*) args, 3);

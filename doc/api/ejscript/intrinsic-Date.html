@@ -485,7 +485,7 @@ the O/S strftime routine and so not all the format specifiers are available on a
 <dl><dt>Description</dt><dd>If <a href='#dateString'>dateString</a> does not contain a timezone, the date string will be interpreted as a local date/time.</dd></dl>
 <dl><dt>Parameters</dt>
 <dd><table class='parameters' summary ='parameters'>
-<tr class='param'><td class='param'>dateString: <a href='intrinsic-String.html'>String</a> </td><td>The string to parse.</td></tr></table></dd>
+<tr class='param'><td class='param'>dateString: <a href='intrinsic-String.html'>String</a> </td><td>The string to parse. See <a href='#parseDate'>parseDate</a> for supported formats.</td></tr></table></dd>
 </dl><dl><dt>Returns</dt>
 <dd>Return a new date number.</dd></dl>
 </div>
@@ -502,7 +502,7 @@ the date string will be interpreted as a local date/time.  This is similar to pa
 date object.</dd></dl>
 <dl><dt>Parameters</dt>
 <dd><table class='parameters' summary ='parameters'>
-<tr class='param'><td class='param'>dateString: <a href='intrinsic-String.html'>String</a> </td><td>The date string to parse.</td></tr><tr class='param'><td class='param'>defaultDate: <a href='intrinsic-Date.html'>Date</a> </td><td>Default date to use to fill out missing items in the date string. [default: null]</td></tr></table></dd>
+<tr class='param'><td class='param'>dateString: <a href='intrinsic-String.html'>String</a> </td><td>The date string to parse. The date parsing logic uses heuristics and attempts to intelligently parse a range of dates. Some of the possible formats are: <ul> <li>07/28/2010</li> <li>07/28/08</li> <li>Jan/28/2010</li> <li>Jaunuary-28-2010</li> <li>28-jan-2010</li> <li>[29] Jan [15] [2010]</li> <li>dd/mm/yy, dd.mm.yy, dd-mm-yy</li> <li>mm/dd/yy, mm.dd.yy, mm-dd-yy</li> <li>yyyy/mm/dd, yyyy.mm.dd, yyyy-mm-dd</li> <li>10:52[:23]</li> <li>2009-05-21t16:06:05.000z (ISO date)</li> <li>[GMT|UTC][+-]NN[:]NN (timezone)</li> </ul></td></tr><tr class='param'><td class='param'>defaultDate: <a href='intrinsic-Date.html'>Date</a> </td><td>Default date to use to fill out missing items in the date string. [default: null]</td></tr></table></dd>
 </dl><dl><dt>Returns</dt>
 <dd>Return a new Date.</dd></dl>
 <dl><dt>Specified</dt>
@@ -520,7 +520,7 @@ date object.</dd></dl>
 the date string will be interpreted as a UTC date/time.</dd></dl>
 <dl><dt>Parameters</dt>
 <dd><table class='parameters' summary ='parameters'>
-<tr class='param'><td class='param'>dateString: <a href='intrinsic-String.html'>String</a> </td><td>UTC date string to parse.</td></tr><tr class='param'><td class='param'>defaultDate: <a href='intrinsic-Date.html'>Date</a> </td><td>Default date to use to fill out missing items in the date string. [default: null]</td></tr></table></dd>
+<tr class='param'><td class='param'>dateString: <a href='intrinsic-String.html'>String</a> </td><td>UTC date string to parse. See <a href='#parseDate'>parseDate</a> for supported formats.</td></tr><tr class='param'><td class='param'>defaultDate: <a href='intrinsic-Date.html'>Date</a> </td><td>Default date to use to fill out missing items in the date string. [default: null]</td></tr></table></dd>
 </dl><dl><dt>Returns</dt>
 <dd>Return a new Date.</dd></dl>
 <dl><dt>Specified</dt>

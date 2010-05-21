@@ -372,6 +372,22 @@ module ejs {
                 the date string will be interpreted as a local date/time.  This is similar to parse() but it returns a
                 date object.
             @param dateString The date string to parse.
+            The date parsing logic uses heuristics and attempts to intelligently parse a range of dates. Some of the
+            possible formats are:
+            <ul>
+                <li>07/28/2010</li>
+                <li>07/28/08</li>
+                <li>Jan/28/2010</li>
+                <li>Jaunuary-28-2010</li>
+                <li>28-jan-2010</li>
+                <li>[29] Jan [15] [2010]</li>
+                <li>dd/mm/yy, dd.mm.yy, dd-mm-yy</li>
+                <li>mm/dd/yy, mm.dd.yy, mm-dd-yy</li>
+                <li>yyyy/mm/dd, yyyy.mm.dd, yyyy-mm-dd</li>
+                <li>10:52[:23]</li>
+                <li>2009-05-21t16:06:05.000z (ISO date)</li>
+                <li>[GMT|UTC][+-]NN[:]NN (timezone)</li>
+            </ul>
             @param defaultDate Default date to use to fill out missing items in the date string.
             @return Return a new Date.
             @spec ejs
@@ -381,7 +397,7 @@ module ejs {
         /**
             Parse a date string and Return a new Date object. If $dateString does not contain a timezone,
                 the date string will be interpreted as a UTC date/time.
-            @param dateString UTC date string to parse.
+            @param dateString UTC date string to parse. See $parseDate for supported formats.
             @param defaultDate Default date to use to fill out missing items in the date string.
             @return Return a new Date.
             @spec ejs
@@ -391,7 +407,7 @@ module ejs {
         /**
             Parse a date string and return the number of milliseconds since midnight, January 1st, 1970 UTC. 
             If $dateString does not contain a timezone, the date string will be interpreted as a local date/time.
-            @param dateString The string to parse
+            @param dateString The string to parse. See $parseDate for supported formats.
             @return Return a new date number.
          */
         static native function parse(dateString: String): Number

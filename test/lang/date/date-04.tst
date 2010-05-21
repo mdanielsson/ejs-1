@@ -183,7 +183,3 @@ if (d.format) {
         assert(d.getTimezoneOffset() == 480)
     }
 }
-
-// if (this.assert) {
-// print(d.format("%Y, %m, %d, %H, %M, %S, %Z, %z"))
-// }

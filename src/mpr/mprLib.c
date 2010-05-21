@@ -25389,7 +25389,7 @@ again:
                 break;
 
             case 'z':
-                when = makeTime(ctx, tp);
+                dp--;
                 value = mprGetTimeZoneOffset(ctx, makeTime(ctx, tp)) / (MPR_TICKS_PER_SEC * 60);
                 sign = (value < 0) ? "-" : "";
                 if (value < 0) {
@@ -25863,7 +25863,7 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
     char            *str, *next, *token, *cp, *sep;
     int64           value;
     int             kind, hour, min, negate, value1, value2, value3, alpha, alpha2, alpha3;
-    int             dateSep, offset, zoneOffset, explicitZone;
+    int             dateSep, offset, zoneOffset, explicitZone, fullYear;
 
     mpr = mprGetMpr(ctx);
 
@@ -25873,6 +25873,7 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
     sep = ", \t";
     cp = 0;
     next = 0;
+    fullYear = 0;
 
     /*
         Set these mandatory values to -1 so we can tell if they are set to valid values
@@ -25914,7 +25915,10 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
                 mprFree(str);
                 return 0;
             } else if (value > 32 || (tm.tm_mday >= 0 && tm.tm_year < 0)) {
-                tm.tm_year = (int) value;
+                if (value >= 1000) {
+                    fullYear = 1;
+                }
+                tm.tm_year = (int) value - 1900;
             } else if (tm.tm_mday < 0) {
                 tm.tm_mday = (int) value;
             }
@@ -26030,7 +26034,7 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
     /*
         Y2K fix and rebias
      */
-    if (0 <= tm.tm_year && tm.tm_year < 100) {
+    if (0 <= tm.tm_year && tm.tm_year < 100 && !fullYear) {
         if (tm.tm_year < 50) {
             tm.tm_year += 2000;
         } else {
@@ -26044,7 +26048,9 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
     /*
         Convert back to origin 0 for months
      */
-    tm.tm_mon--;
+    if (tm.tm_mon > 0) {
+        tm.tm_mon--;
+    }
 
     /*
         Validate and fill in missing items with defaults
@@ -26056,9 +26062,6 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
     } else {
         *time = mprMakeUniversalTime(ctx, &tm);
         *time += -(zoneOffset * 60 * MPR_TICKS_PER_SEC);
-    }
-    if (*time < 0) {
-        return MPR_ERR_WONT_FIT;
     }
     *time += (offset * MPR_TICKS_PER_SEC);
     return 0;
@@ -26103,7 +26106,7 @@ static void validateTime(MprCtx ctx, struct tm *tm, struct tm *defaults)
     /*
         Get weekday, if before today then make next week
      */
-    if (tm->tm_wday >= 0 && tm->tm_year == 0 && tm->tm_mon < 0 && tm->tm_mday < 0) {
+    if (tm->tm_wday >= 0 && tm->tm_year == -1 && tm->tm_mon < 0 && tm->tm_mday < 0) {
         tm->tm_mday = defaults->tm_mday + (tm->tm_wday - defaults->tm_wday + 7) % 7;
         tm->tm_mon = defaults->tm_mon;
         tm->tm_year = defaults->tm_year;
@@ -26113,7 +26116,7 @@ static void validateTime(MprCtx ctx, struct tm *tm, struct tm *defaults)
         Get month, if before this month then make next year
      */
     if (tm->tm_mon >= 0 && tm->tm_mon <= 11 && tm->tm_mday < 0) {
-        if (tm->tm_year < 0) {
+        if (tm->tm_year == -1) {
             tm->tm_year = defaults->tm_year + (((tm->tm_mon - defaults->tm_mon) < 0) ? 1 : 0);
         }
         tm->tm_mday = defaults->tm_mday;
@@ -26122,13 +26125,13 @@ static void validateTime(MprCtx ctx, struct tm *tm, struct tm *defaults)
     /*
         Get date, if before current time then make tomorrow
      */
-    if (tm->tm_hour >= 0 && tm->tm_year < 0 && tm->tm_mon < 0 && tm->tm_mday < 0) {
+    if (tm->tm_hour >= 0 && tm->tm_year == -1 && tm->tm_mon < 0 && tm->tm_mday < 0) {
         tm->tm_mday = defaults->tm_mday + ((tm->tm_hour - defaults->tm_hour) < 0 ? 1 : 0);
         tm->tm_mon = defaults->tm_mon;
         tm->tm_year = defaults->tm_year;
     }
 
-    if (tm->tm_year < 0) {
+    if (tm->tm_year == -1) {
         tm->tm_year = defaults->tm_year;
     }
     if (tm->tm_mon < 0) {
@@ -26275,45 +26278,6 @@ MprTime dateToDaysFrom1970(int year, int month, int day)
 }
 
 
-#if UNUSED
-//  MOB -- VXWORKS, SOLARIS, BSD
-//  MOB -- this is not right
-static MprTime getTimeZone(struct tm *tp)
-{
-#if WIN
-    long    timezone;
-    _get_timezone(&timezone);
-    //  MOB -- can't be right
-    if (timezone < 0) {
-        timezone = -timezone;
-    }
-    timezone /= 60;
-    if (tp->tm_isdst == 1) {
-        TIME_ZONE_INFORMATION  tinfo;
-        GetTimeZoneInformation(&tinfo);
-        timezone += (tinfo.DaylightBias);
-    }
-    return timezone;
-#elif LINUX || MACOSX
-{
-#if MOB
-    struct tm t = *tp;
-    if (t.tm_year < || t.tm_year > ) {
-    } else {
-        mprDecodeLocalTime(MprCtx ctx, struct tm *timep, MprTime time)
-        return tp->tm_gmtoff / 60;
-    }
-#endif
-    return tp->tm_gmtoff / 60;
-}
-#else
-    mprAssert(0);
-    return 0;
-#endif
-}
-#endif
-
-
 /*
     Return the timezone offset (including DST) in msec. local == (UTC + offset)
     Assumes a valid "tm" with isdst correctly set.
@@ -26324,13 +26288,13 @@ int mprGetTimeZoneOffsetFromTm(MprCtx ctx, struct tm *tp)
     MprTime                 offset;
     TIME_ZONE_INFORMATION   tinfo;
     GetTimeZoneInformation(&tinfo);
-    offset = tinof.Bias;
+    offset = tinfo.Bias;
     if (tp->tm_isdst == 1) {
         offset += tinfo.DaylightBias;
     } else {
         offset += tinfo.StandardBias;
     }
-    return offset;
+    return -offset * 60 * MPR_TICKS_PER_SEC;
 #else
     return tp->tm_gmtoff * MPR_TICKS_PER_SEC;
 #endif
