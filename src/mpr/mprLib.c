@@ -25078,22 +25078,20 @@ MprTime mprMakeUniversalTime(MprCtx ctx, struct tm *tp)
 
 
 
-//  MOB -- reconsider return code
-static struct tm *localTime(MprCtx ctx, struct tm *timep, MprTime time)
+static int localTime(MprCtx ctx, struct tm *timep, MprTime time)
 {
 #if BLD_UNIX_LIKE || WINCE
     time_t when = (time_t) (time / MS_PER_SEC);
-    return localtime_r(&when, timep);
+    return localtime_r(&when, timep) != 0;
 #else
     struct tm   *tp;
     //  MOB -- thread safe?
     time_t when = (time_t) (time / MS_PER_SEC);
     if ((tp = localtime(&when)) == 0) {
-		mprAssert(0);
-        return 0;
+        return MPR_ERR;
     }
     *timep = *tp;
-    return timep;
+    return 0;
 #endif
 }
 
