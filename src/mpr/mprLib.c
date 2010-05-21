@@ -25115,7 +25115,7 @@ struct tm *universalTime(MprCtx ctx, struct tm *timep, MprTime time)
 static int getTimeZoneOffsetFromTm(MprCtx ctx, struct tm *tp)
 {
 #if BLD_WIN_LIKE
-    MprTime                 offset;
+    int                     offset;
     TIME_ZONE_INFORMATION   tinfo;
     GetTimeZoneInformation(&tinfo);
     offset = tinfo.Bias;
@@ -25195,7 +25195,7 @@ static int getYear(MprTime when)
     MprTime     ms;
     int         year;
 
-    year = 1970 + (when / MS_PER_YEAR);
+    year = 1970 + (int) (when / MS_PER_YEAR);
     ms = daysSinceEpoch(year) * MS_PER_DAY;
     if (ms > when) {
         return year - 1;
@@ -25230,7 +25230,9 @@ static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
             localTime(ctx, &t, when);
             offset = getTimeZoneOffsetFromTm(ctx, &t);
             dst = t.tm_isdst;
+#if BLD_UNIX_LIKE
             zoneName = t.tm_zone;
+#endif
         }
         when += offset;
     }
@@ -25241,16 +25243,18 @@ static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
     tp->tm_min      = (when / MS_PER_MIN) % 60;
     tp->tm_sec      = (when / MS_PER_SEC) % 60;
     tp->tm_wday     = ((when / MS_PER_DAY) + 4) % 7;
-    tp->tm_yday     = (when / MS_PER_DAY) - daysSinceEpoch(year);
+    tp->tm_yday     = (int) ((when / MS_PER_DAY) - daysSinceEpoch(year));
     tp->tm_mon      = getMonth(year, tp->tm_yday);
     if (leapYear(year)) {
         tp->tm_mday = tp->tm_yday - leapMonthStart[tp->tm_mon] + 1;
     } else {
         tp->tm_mday = tp->tm_yday - normalMonthStart[tp->tm_mon] + 1;
     }
-    tp->tm_gmtoff   = offset / MS_PER_SEC;
     tp->tm_isdst    = dst != 0;
+#if BLD_UNIX_LIKE
+    tp->tm_gmtoff   = offset / MS_PER_SEC;
     tp->tm_zone     = zoneName;
+#endif
 
     if (tp->tm_hour < 0) {
         tp->tm_hour += 24;
