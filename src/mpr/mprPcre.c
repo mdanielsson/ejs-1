@@ -2359,10 +2359,9 @@ extern int mprCreateTimeService(MprCtx ctx);
  *  @param ctx Any memory context allocated by mprAlloc or mprCreate.
  *  @param timep Pointer to a tm structure to hold the result
  *  @param time Time to format
- *  @return Returns a pointer to the tmBuf.
  *  @ingroup MprDate
  */
-extern struct tm *mprDecodeLocalTime(MprCtx ctx, struct tm *timep, MprTime time);
+extern void mprDecodeLocalTime(MprCtx ctx, struct tm *timep, MprTime time);
 
 /**
  *  Decode a time value into a tokenized UTC time structure.
@@ -2371,10 +2370,9 @@ extern struct tm *mprDecodeLocalTime(MprCtx ctx, struct tm *timep, MprTime time)
  *  @param ctx Any memory context allocated by mprAlloc or mprCreate.
  *  @param timep Pointer to a tm structure to hold the result.
  *  @param time The time to format
- *  @return Returns the tm structure reference
  *  @ingroup MprDate
  */
-extern struct tm *mprDecodeUniversalTime(MprCtx ctx, struct tm *timep, MprTime time);
+extern void mprDecodeUniversalTime(MprCtx ctx, struct tm *timep, MprTime time);
 
 /**
  *  Convert a time value to local time and format as a string.

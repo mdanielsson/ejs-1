@@ -12,17 +12,6 @@ if (!this.assert) {
 
 //  Lines to parse. The first item is the gregorian equivalent.
 
-print(Date("1959"))
-print(Date("Fri Jan 01 1960 00:00:00"))
-
-/*
-d = Date.parseDate("Fri Jan 01 2500 00:00:00")
-print(d)
-d = new Date("Fri Jan 01 2500 00:00:00")
-print(d)
-*/
-
-/*
 var items = [
     [ 16725254400000, "Fri Jan 01 2500 00:00:00" ],
     [ 16409721600000, "Sun Jan 01 2490 00:00:00" ],
@@ -183,4 +172,3 @@ for each (line in items) {
     d = new Date(str)
     assert(d == when)
 }
-*/
