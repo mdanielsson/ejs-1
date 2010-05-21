@@ -24761,8 +24761,14 @@ cchar *mprGetCurrentThreadName(MprCtx ctx) { return "main"; }
 #define MS_PER_HOUR (60 * 60 * MPR_TICKS_PER_SEC)
 #define MS_PER_MIN  (60 * MPR_TICKS_PER_SEC)
 #define MS_PER_DAY  (86400 * MPR_TICKS_PER_SEC)
+#define MS_PER_YEAR (INT64(31556952000))
+
 #define MAX_TIME    (((time_t) -1) & ~(((time_t) 1) << ((sizeof(time_t) * 8) - 1)))
-#define MS_PER_YEAR (31556952000)
+#if BLD_UNIX_LIKE
+#define MIN_TIME    (((time_t) -1) & ~(((time_t) 1) << ((sizeof(time_t) * 8) - 1)))
+#else
+#define MIN_TIME    0
+#endif
 
 /*
     Token types ored inot the TimeToken value
@@ -25083,6 +25089,7 @@ static struct tm *localTime(MprCtx ctx, struct tm *timep, MprTime time)
     //  MOB -- thread safe?
     time_t when = (time_t) (time / MS_PER_SEC);
     if ((tp = localtime(&when)) == 0) {
+		mprAssert(0);
         return 0;
     }
     *timep = *tp;
@@ -25115,7 +25122,7 @@ struct tm *universalTime(MprCtx ctx, struct tm *timep, MprTime time)
 static int getTimeZoneOffsetFromTm(MprCtx ctx, struct tm *tp)
 {
 #if BLD_WIN_LIKE
-    MprTime                 offset;
+    int                     offset;
     TIME_ZONE_INFORMATION   tinfo;
     GetTimeZoneInformation(&tinfo);
     offset = tinfo.Bias;
@@ -25195,7 +25202,7 @@ static int getYear(MprTime when)
     MprTime     ms;
     int         year;
 
-    year = 1970 + (when / MS_PER_YEAR);
+    year = 1970 + (int) (when / MS_PER_YEAR);
     ms = daysSinceEpoch(year) * MS_PER_DAY;
     if (ms > when) {
         return year - 1;
@@ -25211,6 +25218,7 @@ static int getYear(MprTime when)
  */
 static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
 {
+    MprTime     alternate;
     struct tm   t;
     char        *zoneName;
     int         year, offset, dst;
@@ -25220,18 +25228,22 @@ static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
 
     if (local) {
         //  MOB -- cache the results somehow
-        if (when < -MAX_TIME || when > MAX_TIME) {
-            /* Can't easily determine if DST was or will be inforce at that time. Get zone from current time. */
-            t.tm_isdst = 0;
-            localTime(ctx, &t, mprGetTime(ctx));
-            offset = getTimeZoneOffsetFromTm(ctx, &t);
-        } else {
-            t.tm_isdst = -1;
-            localTime(ctx, &t, when);
-            offset = getTimeZoneOffsetFromTm(ctx, &t);
-            dst = t.tm_isdst;
-            zoneName = t.tm_zone;
+        alternate = when;
+        if (when < MIN_TIME || when > MAX_TIME) {
+            /*
+                Can't use localTime on this date. Map to an alternate date with a valid year.
+             */
+            decodeTime(ctx, &t, when, 0);
+            t.tm_year = 110;
+            alternate = makeTime(ctx, &t);
         }
+        t.tm_isdst = -1;
+        localTime(ctx, &t, alternate);
+        offset = getTimeZoneOffsetFromTm(ctx, &t);
+        dst = t.tm_isdst;
+#if BLD_UNIX_LIKE
+        zoneName = t.tm_zone;
+#endif
         when += offset;
     }
     year = getYear(when);
@@ -25241,16 +25253,18 @@ static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
     tp->tm_min      = (when / MS_PER_MIN) % 60;
     tp->tm_sec      = (when / MS_PER_SEC) % 60;
     tp->tm_wday     = ((when / MS_PER_DAY) + 4) % 7;
-    tp->tm_yday     = (when / MS_PER_DAY) - daysSinceEpoch(year);
+    tp->tm_yday     = (int) ((when / MS_PER_DAY) - daysSinceEpoch(year));
     tp->tm_mon      = getMonth(year, tp->tm_yday);
     if (leapYear(year)) {
         tp->tm_mday = tp->tm_yday - leapMonthStart[tp->tm_mon] + 1;
     } else {
         tp->tm_mday = tp->tm_yday - normalMonthStart[tp->tm_mon] + 1;
     }
-    tp->tm_gmtoff   = offset / MS_PER_SEC;
     tp->tm_isdst    = dst != 0;
+#if BLD_UNIX_LIKE
+    tp->tm_gmtoff   = offset / MS_PER_SEC;
     tp->tm_zone     = zoneName;
+#endif
 
     if (tp->tm_hour < 0) {
         tp->tm_hour += 24;
