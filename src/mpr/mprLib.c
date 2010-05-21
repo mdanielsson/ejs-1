@@ -25242,7 +25242,7 @@ static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
         offset = getTimeZoneOffsetFromTm(ctx, &t);
         dst = t.tm_isdst;
 #if BLD_UNIX_LIKE
-        zoneName = t.tm_zone;
+        zoneName = (char*) t.tm_zone;
 #endif
         when += offset;
     }
