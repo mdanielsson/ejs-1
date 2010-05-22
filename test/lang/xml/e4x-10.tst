@@ -23,7 +23,9 @@ var xml: XML =
 </order>
 
 
+assert(xml.customer.address.name() == "address")
 assert(xml.customer.address.parent().name() == "customer")
 assert(xml.elements().length() == 2)
 assert(xml.customer[0].address.street.attributes() == "verified")
 assert(xml.customer[0].address.street.attribute("status") == "verified")
+assert(xml.parent() == null)

@@ -612,7 +612,7 @@ static EjsVar *xml_elements(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv)
  */
 static EjsVar *xml_parent(Ejs *ejs, EjsXML *xml, int argc, EjsVar **argv)
 {
-    return xml->parent ? (EjsVar*) xml->parent : (EjsVar*) ejs->nullValue;
+    return (xml->parent && xml != xml->parent) ? (EjsVar*) xml->parent : (EjsVar*) ejs->nullValue;
 }
 
 /****************************** Support Routines ****************************/
