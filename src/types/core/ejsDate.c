@@ -11,6 +11,7 @@
 #include    "ejs.h"
 
 /***************************** Forward Declarations ***************************/
+
 #if BLD_FEATURE_FLOATING_POINT
 #define fixed(n) ((int64) (floor(n)))
 #else
@@ -309,8 +310,6 @@ static EjsVar *date_Date(Ejs *ejs, EjsDate *date, int argc, EjsVar **argv)
         if (args->length > 1) {
             vp = ejsGetProperty(ejs, (EjsVar*) args, 1);
             tm.tm_mon = getNumber(ejs, vp);
-        } else {
-            tm.tm_mon = 0;
         }
         if (args->length > 2) {
             vp = ejsGetProperty(ejs, (EjsVar*) args, 2);
