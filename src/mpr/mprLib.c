@@ -19088,6 +19088,12 @@ static char *sprintfCore(MprCtx ctx, char *buf, int maxsize, cchar *spec, va_lis
 
             case 'X':
                 fmt.flags |= SPRINTF_UPPER_CASE;
+#if MPR_64_BIT
+                fmt.flags &= ~(SPRINTF_SHORT|SPRINTF_LONG);
+                fmt.flags |= SPRINTF_INT64;
+#else
+                fmt.flags &= ~(SPRINTF_INT64);
+#endif
                 /*  Fall through  */
             case 'o':
             case 'x':
@@ -19277,6 +19283,7 @@ static void outFloat(MprCtx ctx, Format *fmt, char specChar, double value)
     BPUTNULL(ctx, fmt);
 }
 
+
 int mprIsNan(double value) {
 #if WIN
     return _fpclass(value) & (_FPCLASS_SNAN | _FPCLASS_QNAN);
@@ -19392,6 +19399,7 @@ char *mprDtoa(MprCtx ctx, double value, int ndigits, int mode, int flags)
             if (mode == MPR_DTOA_N_FRACTION_DIGITS) {
                 /* Count of digits */
                 if (period <= 0) {
+                    /* Leading fractional zeros required */
                     mprPutStringToBuf(buf, "0.");
                     mprPutPadToBuf(buf, '0', -period);
                     mprPutStringToBuf(buf, ip);
@@ -19399,7 +19407,9 @@ char *mprDtoa(MprCtx ctx, double value, int ndigits, int mode, int flags)
 
                 } else {
                     count = min(len, period);
+                    /* Leading integral digits */
                     mprPutSubStringToBuf(buf, ip, count);
+                    /* Trailing zero pad */
                     mprPutPadToBuf(buf, '0', period - len);
                     totalDigits = count + ndigits;
                     if (period < totalDigits) {
@@ -19440,6 +19450,7 @@ char *mprDtoa(MprCtx ctx, double value, int ndigits, int mode, int flags)
 }
 #endif /* BLD_FEATURE_FLOATING_POINT */
 
+
 /*
     Grow the buffer to fit new data. Return 1 if the buffer can grow. 
     Grow using the growBy size specified when creating the buffer. 
@@ -19455,11 +19466,11 @@ static int growBuf(MprCtx ctx, Format *fmt)
     }
     if (fmt->growBy <= 0) {
         /*
-         *  User supplied buffer
+            User supplied buffer
          */
         return 0;
     }
-
+    mprAssert(ctx);
     newbuf = (uchar*) mprAlloc(ctx, buflen + fmt->growBy);
     if (newbuf == 0) {
         return MPR_ERR_NO_MEMORY;
@@ -24771,7 +24782,7 @@ cchar *mprGetCurrentThreadName(MprCtx ctx) { return "main"; }
 #endif
 
 /*
-    Token types ored inot the TimeToken value
+    Token types or'd into the TimeToken value
  */
 #define TOKEN_DAY       0x01000000
 #define TOKEN_MONTH     0x02000000
@@ -24928,7 +24939,7 @@ static int leapYear(int year);
 static MprTime makeTime(MprCtx ctx, struct tm *tp);
 static void validateTime(MprCtx ctx, struct tm *tm, struct tm *defaults);
 
-#if BLD_WIN_LIKE || VXWORKS
+#if BLD_WIN_LIKE
 static int gettimeofday(struct timeval *tv, struct timezone *tz);
 #endif
 
@@ -25085,7 +25096,6 @@ static int localTime(MprCtx ctx, struct tm *timep, MprTime time)
     return localtime_r(&when, timep) != 0;
 #else
     struct tm   *tp;
-    //  MOB -- thread safe?
     time_t when = (time_t) (time / MS_PER_SEC);
     if ((tp = localtime(&when)) == 0) {
         return MPR_ERR;
@@ -25130,6 +25140,21 @@ static int getTimeZoneOffsetFromTm(MprCtx ctx, struct tm *tp)
         offset += tinfo.StandardBias;
     }
     return -offset * 60 * MS_PER_SEC;
+#elif VXWORKS
+    char  *tze, *p;
+    int   offset;
+
+    if ((tze = getenv("TIMEZONE")) != 0) {
+        if ((p = strchr(tze, ':')) != 0) {
+            if ((p = strchr(tze, ':')) != 0) {
+                offset = -mprAtoi(++p, 10) * MS_PER_MIN;
+            }
+        }
+        if (tp->tm_isdst) {
+            offset += MS_PER_HOUR;
+        }
+    }
+    return offset;
 #else
     return tp->tm_gmtoff * MS_PER_SEC;
 #endif
@@ -25225,7 +25250,6 @@ static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
     offset = dst = 0;
 
     if (local) {
-        //  MOB -- cache the results somehow
         alternate = when;
         if (when < MIN_TIME || when > MAX_TIME) {
             /*
@@ -25603,7 +25627,6 @@ static void digits(MprBuf *buf, int count, int fill, int value)
 static char *getTimeZoneName(MprCtx ctx, struct tm *tp)
 {
 #if BLD_WIN_LIKE
-    //MOB1 - is tp->tm_zone set for windows?
     TIME_ZONE_INFORMATION   tz;
     WCHAR                   *wzone;
     GetTimeZoneInformation(&tz);
@@ -26096,7 +26119,7 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
 
                 case TOKEN_OFFSET:
                     /* Named timezones or symbolic names like: tomorrow, yesterday, next week ... */ 
-//  MOB -- what are the units
+                    /* Units are seconds */
                     offset += (int) value;
                     break;
 
@@ -26202,7 +26225,6 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
         *time = mprMakeUniversalTime(ctx, &tm);
         *time += -(zoneOffset * MS_PER_MIN);
     }
-//  MOB -- what are the units for offset
     *time += (offset * MS_PER_SEC);
     return 0;
 }
@@ -26293,7 +26315,7 @@ static void validateTime(MprCtx ctx, struct tm *tm, struct tm *defaults)
 /*
     Compatibility for windows and VxWorks
  */
-#if BLD_WIN_LIKE || VXWORKS
+#if BLD_WIN_LIKE
 static int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
     #if BLD_WIN_LIKE
@@ -26350,7 +26372,7 @@ static int gettimeofday(struct timeval *tv, struct timezone *tz)
         return rc;
     #endif
 }
-#endif /* BLD_WIN_LIKE || VXWORKS */
+#endif /* BLD_WIN_LIKE */
 
 /*
     High resolution timer
