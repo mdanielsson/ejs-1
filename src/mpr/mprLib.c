@@ -24775,11 +24775,9 @@ cchar *mprGetCurrentThreadName(MprCtx ctx) { return "main"; }
 #define MS_PER_YEAR (INT64(31556952000))
 
 #define MAX_TIME    (((time_t) -1) & ~(((time_t) 1) << ((sizeof(time_t) * 8) - 1)))
-#if BLD_UNIX_LIKE
 #define MIN_TIME    (((time_t) 1) << ((sizeof(time_t) * 8) - 1))
-#else
-#define MIN_TIME    0
-#endif
+#define MIN_YEAR    (MIN_TIME / MS_PER_YEAR)
+#define MAX_YEAR    (MAX_TIME / MS_PER_YEAR)
 
 /*
     Token types or'd into the TimeToken value
@@ -25100,22 +25098,25 @@ int mprGetTimeZoneOffset(MprCtx ctx, MprTime when)
  */
 MprTime mprMakeTime(MprCtx ctx, struct tm *tp)
 {
-    MprTime     when, secs, alternate;
-    struct tm   tmp;
+    MprTime     when, alternate;
+    struct tm   t;
+    int         offset, year;
 
-    alternate = when = makeTime(ctx, tp);
-    secs = when / MS_PER_SEC;
-    if (secs < MIN_TIME || secs > MAX_TIME) {
-        /*
-            Some platforms can't handle dates before 1970 or beyond 2037. Since we need the O/S to determine if DST 
-            is in force, set the year to 2010 to ensure that mprGetTimeZoneOffset/localTime will not fail.
-         */
-        tmp = *tp;
-        tmp.tm_year = 110;
-        alternate = makeTime(ctx, &tmp);
+//  MOB
+year = MIN_YEAR;
+year = MAX_YEAR;
+    when = makeTime(ctx, tp);
+    if (MIN_YEAR <= tp->tm_year && tp->tm_year <= MAX_YEAR) {
+        localTime(ctx, &t, when);
+        offset = getTimeZoneOffsetFromTm(ctx, &t);
+    } else {
+        t = *tp;
+        t.tm_year = 110;
+        alternate = makeTime(ctx, tp);
+        localTime(ctx, &t, alternate);
+        offset = getTimeZoneOffsetFromTm(ctx, &t);
     }
-    when -= mprGetTimeZoneOffset(ctx, alternate);
-    return when;
+    return when - offset;
 }
 
 
@@ -25285,7 +25286,7 @@ static int getYear(MprTime when)
  */
 static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
 {
-    MprTime     alternate;
+    MprTime     timeForZoneCalc;
     struct tm   t;
     char        *zoneName;
     int         year, offset, dst;
@@ -25294,17 +25295,17 @@ static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
     offset = dst = 0;
 
     if (local) {
-        alternate = when;
+        timeForZoneCalc = when;
         if (when < MIN_TIME || when > MAX_TIME) {
             /*
                 Can't use localTime on this date. Map to an alternate date with a valid year.
              */
             decodeTime(ctx, &t, when, 0);
             t.tm_year = 110;
-            alternate = makeTime(ctx, &t);
+            timeForZoneCalc = makeTime(ctx, &t);
         }
         t.tm_isdst = -1;
-        if (localTime(ctx, &t, alternate) == 0) {
+        if (localTime(ctx, &t, timeForZoneCalc) == 0) {
             offset = getTimeZoneOffsetFromTm(ctx, &t);
             dst = t.tm_isdst;
         }
