@@ -25074,34 +25074,47 @@ MprTime mprGetElapsedTime(MprCtx ctx, MprTime mark)
  */
 int mprGetTimeZoneOffset(MprCtx ctx, MprTime when)
 {
-    MprTime     alternate;
+    MprTime     alternate, secs;
     struct tm   t;
-    time_t      secs;
+    int         offset;
 
     alternate = when;
-
     secs = when / MS_PER_SEC;
     if (secs < MIN_TIME || secs > MAX_TIME) {
-        /* Can't use localTime on this date. Map to an alternate date with a valid year.  */
+        /* secs overflows time_t on this platform. Need to map to an alternate valid year */
         decodeTime(ctx, &t, when, 0);
         t.tm_year = 110;
         alternate = makeTime(ctx, &t);
     }
     t.tm_isdst = -1;
-    localTime(ctx, &t, alternate);
-    return getTimeZoneOffsetFromTm(ctx, &t);
+    if (localTime(ctx, &t, alternate) < 0) {
+        localTime(ctx, &t, time(0) * MS_PER_SEC);
+    }
+    offset = getTimeZoneOffsetFromTm(ctx, &t);
+    return offset;
 }
 
 
 /*
     Make a time value interpreting "tm" as a local time
  */
-MprTime mprMakeTime(MprCtx ctx, struct tm *tm)
+MprTime mprMakeTime(MprCtx ctx, struct tm *tp)
 {
-    MprTime     when;
+    MprTime     when, secs, alternate;
+    struct tm   tmp;
 
-    when = makeTime(ctx, tm);
-    when -= mprGetTimeZoneOffset(ctx, when);
+    alternate = when = makeTime(ctx, tp);
+    secs = when / MS_PER_SEC;
+    if (secs < MIN_TIME || secs > MAX_TIME) {
+        /*
+            Some platforms can't handle dates before 1970 or beyond 2037. Since we need the O/S to determine if DST 
+            is in force, set the year to 2010 to ensure that mprGetTimeZoneOffset/localTime will not fail.
+         */
+        tmp = *tp;
+        tmp.tm_year = 110;
+        alternate = makeTime(ctx, &tmp);
+    }
+    when -= mprGetTimeZoneOffset(ctx, alternate);
     return when;
 }
 
@@ -25117,7 +25130,9 @@ static int localTime(MprCtx ctx, struct tm *timep, MprTime time)
 {
 #if BLD_UNIX_LIKE || WINCE
     time_t when = (time_t) (time / MS_PER_SEC);
-    return localtime_r(&when, timep) != 0;
+    if (localtime_r(&when, timep) < 0) {
+        return MPR_ERR;
+    }
 #else
     struct tm   *tp;
     time_t when = (time_t) (time / MS_PER_SEC);
@@ -25125,8 +25140,8 @@ static int localTime(MprCtx ctx, struct tm *timep, MprTime time)
         return MPR_ERR;
     }
     *timep = *tp;
-    return 0;
 #endif
+    return 0;
 }
 
 struct tm *universalTime(MprCtx ctx, struct tm *timep, MprTime time)
@@ -25289,9 +25304,10 @@ static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
             alternate = makeTime(ctx, &t);
         }
         t.tm_isdst = -1;
-        localTime(ctx, &t, alternate);
-        offset = getTimeZoneOffsetFromTm(ctx, &t);
-        dst = t.tm_isdst;
+        if (localTime(ctx, &t, alternate) == 0) {
+            offset = getTimeZoneOffsetFromTm(ctx, &t);
+            dst = t.tm_isdst;
+        }
 #if BLD_UNIX_LIKE && !CYGWIN
         zoneName = (char*) t.tm_zone;
 #endif
