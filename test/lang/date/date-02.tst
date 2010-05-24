@@ -62,10 +62,8 @@ assert(d.format('%m/%d/%y %H:%M:%S') == "06/07/05 10:10:00")
 assert(d.format('%b %d %Y %T') == "Jun 07 2005 10:10:00")
 assert(d.format('%d %b %Y %T') == "07 Jun 2005 10:10:00")
 
-/*  Different on various platforms
-    assert(d.format('%+').startsWith("Tue Jun  7 10:10:00"))
-    assert(d.format('%v') == " 7-Jun-2005")
-*/
+assert(d.format('%+').startsWith("Tue Jun  7 10:10:00"))
+assert(d.format('%v') == " 7-Jun-2005")
 
 if (Config.RegularExpressions) {
     assert(d.format('%d').replace(/^0/,'') == d.date)
