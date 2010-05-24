@@ -25115,9 +25115,11 @@ MprTime mprMakeTime(MprCtx ctx, struct tm *tp)
     struct tm   t;
     int         offset;
 
-//  MOB
+#if UNUSED || 1
+//  MOB UNUSED
 year = MIN_YEAR;
 year = MAX_YEAR;
+#endif
     when = makeTime(ctx, tp);
     year = tp->tm_year;
     if (MIN_YEAR <= year && year <= MAX_YEAR) {
@@ -25126,7 +25128,7 @@ year = MAX_YEAR;
     } else {
         t = *tp;
         t.tm_year = 110;
-        alternate = makeTime(ctx, tp);
+        alternate = makeTime(ctx, &t);
         localTime(ctx, &t, alternate);
         offset = getTimeZoneOffsetFromTm(ctx, &t);
     }
