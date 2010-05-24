@@ -24774,10 +24774,23 @@ cchar *mprGetCurrentThreadName(MprCtx ctx) { return "main"; }
 #define MS_PER_DAY  (86400 * MPR_TICKS_PER_SEC)
 #define MS_PER_YEAR (INT64(31556952000))
 
+/*
+    On some platforms, time_t is only 32 bits (linux-32). This means there is a minimum and maximum
+    year that can be analysed using the O/S localtime routines. We want to use the O/S calculations
+    for daylight savings time, so when a date is outside the range time_t can represent, we must
+    use some trickery to remap the year to a valid year when using localtime.
+    FYI: 32 bit time_t expires at: 03:14:07 UTC on Tuesday, 19 January 2038
+ */
 #define MAX_TIME    (((time_t) -1) & ~(((time_t) 1) << ((sizeof(time_t) * 8) - 1)))
 #define MIN_TIME    (((time_t) 1) << ((sizeof(time_t) * 8) - 1))
-#define MIN_YEAR    (MIN_TIME / MS_PER_YEAR)
-#define MAX_YEAR    (MAX_TIME / MS_PER_YEAR)
+
+/*
+    Approximate, conservative min and max year. The 31556952 constant is approx sec/year (365.2425 * 86400)
+    Reduce by one to ensure no overflow. Note: this does not reduce actual date range representations and is
+    only used in DST calculations.
+ */
+#define MIN_YEAR    ((MIN_TIME / 31556952) + 1)
+#define MAX_YEAR    ((MAX_TIME / 31556952) - 1)
 
 /*
     Token types or'd into the TimeToken value
@@ -25098,15 +25111,16 @@ int mprGetTimeZoneOffset(MprCtx ctx, MprTime when)
  */
 MprTime mprMakeTime(MprCtx ctx, struct tm *tp)
 {
-    MprTime     when, alternate;
+    MprTime     when, alternate, year;
     struct tm   t;
-    int         offset, year;
+    int         offset;
 
 //  MOB
 year = MIN_YEAR;
 year = MAX_YEAR;
     when = makeTime(ctx, tp);
-    if (MIN_YEAR <= tp->tm_year && tp->tm_year <= MAX_YEAR) {
+    year = tp->tm_year;
+    if (MIN_YEAR <= year && year <= MAX_YEAR) {
         localTime(ctx, &t, when);
         offset = getTimeZoneOffsetFromTm(ctx, &t);
     } else {
