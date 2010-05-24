@@ -25179,7 +25179,7 @@ static int getTimeZoneOffsetFromTm(MprCtx ctx, struct tm *tp)
     }
     return offset;
 #elif BLD_UNIX_LIKE && !CYGWIN
-    return tp->tm_gmtoff * MS_PER_MIN;
+    return tp->tm_gmtoff * MS_PER_SEC;
 #else
     struct timezone     tz;
     struct timeval      tv;
