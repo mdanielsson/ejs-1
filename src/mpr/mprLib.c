@@ -11044,13 +11044,13 @@ static int getPathInfo(MprDiskFileSystem *fileSystem, cchar *path, MprPath *info
     info->perms = s.st_mode & 07777;
 #ifdef S_ISLNK
     info->isLink = S_ISLNK(s.st_mode);
-	if (info->isLink) {
-		struct stat realInfo;
-		if (stat((char*) path, &realInfo) < 0) {
-			return MPR_ERR_CANT_ACCESS;
-		}
-		info->size = realInfo.st_size;
-	}
+    if (info->isLink) {
+        struct stat realInfo;
+        if (stat((char*) path, &realInfo) < 0) {
+            return MPR_ERR_CANT_ACCESS;
+        }
+        info->size = realInfo.st_size;
+    }
 #endif
 
     if (strcmp(path, "/dev/null") == 0) {
@@ -24775,14 +24775,20 @@ cchar *mprGetCurrentThreadName(MprCtx ctx) { return "main"; }
 #define MS_PER_YEAR (INT64(31556952000))
 
 /*
-    On some platforms, time_t is only 32 bits (linux-32). This means there is a minimum and maximum
-    year that can be analysed using the O/S localtime routines. We want to use the O/S calculations
-    for daylight savings time, so when a date is outside the range time_t can represent, we must
-    use some trickery to remap the year to a valid year when using localtime.
+    On some platforms, time_t is only 32 bits (linux-32) and on some 64 bit systems, time calculations
+    outside the range of 32 bits are unreliable. This means there is a minimum and maximum year that 
+    can be analysed using the O/S localtime routines. However, we really want to use the O/S 
+    calculations for daylight savings time, so when a date is outside a 32 bit time_t range, we use
+    some trickery to remap the year to a valid year when using localtime.
     FYI: 32 bit time_t expires at: 03:14:07 UTC on Tuesday, 19 January 2038
  */
+#if UNUSED
 #define MAX_TIME    (((time_t) -1) & ~(((time_t) 1) << ((sizeof(time_t) * 8) - 1)))
 #define MIN_TIME    (((time_t) 1) << ((sizeof(time_t) * 8) - 1))
+#else
+#define MAX_TIME    (((time_t) -1) & ~(((time_t) 1) << 31))
+#define MIN_TIME    (((time_t) 1) << 31)
+#endif
 
 #if UNUSED
 /*
@@ -25469,7 +25475,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
                 break;
 
             case 'C':
-				dp--;
+                dp--;
                 mprItoa(dp, size, (int64) (1900 + tp->tm_year) / 100, 10);
                 dp += strlen(dp);
                 cp++;
@@ -25482,7 +25488,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
                 break;
 
             case 'e':                       /* day of month (1-31). Single digits preceeded by blanks */
-				dp--;
+                dp--;
                 if (tp->tm_mday < 10) {
                     *dp++ = ' ';
                 }
@@ -25502,13 +25508,13 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
                 cp++;
                 break;
 
-			case 'h':
-				*dp++ = 'b';
-				cp++;
-				break;
+            case 'h':
+                *dp++ = 'b';
+                cp++;
+                break;
 
             case 'k':
-				dp--;
+                dp--;
                 if (tp->tm_hour < 10) {
                     *dp++ = ' ';
                 }
@@ -25518,7 +25524,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
                 break;
 
             case 'l':
-				dp--;
+                dp--;
                 value = tp->tm_hour;
                 if (value < 10) {
                     *dp++ = ' ';
@@ -25542,7 +25548,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
                 goto again;
             
             case 'P':
-				dp--;
+                dp--;
                 strcpy(dp, (tp->tm_hour > 11) ? "pm" : "am");
                 dp += 2;
                 cp++;
@@ -25561,7 +25567,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
                 break;
 
             case 's':
-				dp--;
+                dp--;
                 mprItoa(dp, size, (int64) mprMakeTime(ctx, tp) / MS_PER_SEC, 10);
                 dp += strlen(dp);
                 cp++;
@@ -25578,20 +25584,20 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
                 cp++;
                 break;
 
-			case 'u':
-				dp--;
-				value = tp->tm_wday;
-				if (value == 0) {
-					value = 7;
-				}
+            case 'u':
+                dp--;
+                value = tp->tm_wday;
+                if (value == 0) {
+                    value = 7;
+                }
                 mprItoa(dp, size, (int64) value, 10);
                 dp += strlen(dp);
                 cp++;
-				break;
+                break;
 
             case 'v':
                 /* Inline '%e' */
-				dp--;
+                dp--;
                 if (tp->tm_mday < 10) {
                     *dp++ = ' ';
                 }
@@ -25617,10 +25623,10 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
             default: 
                 if (strchr(VALID_FMT, (int) *cp) != 0) {
                     *dp++ = *cp++;
-				} else {
-					dp--;
-					cp++;
-				}
+                } else {
+                    dp--;
+                    cp++;
+                }
                 break;
             }
         } else {
@@ -25629,9 +25635,9 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
     }
     *dp = '\0';
     fmt = localFmt;
-	if (*fmt == '\0') {
-		fmt = "%a %b %d %H:%M:%S %Z %Y";
-	}
+    if (*fmt == '\0') {
+        fmt = "%a %b %d %H:%M:%S %Z %Y";
+    }
     if (strftime(buf, sizeof(buf) - 1, fmt, tp) > 0) {
         buf[sizeof(buf) - 1] = '\0';
         return mprStrdup(ctx, buf);
