@@ -25075,10 +25075,11 @@ MprTime mprGetElapsedTime(MprCtx ctx, MprTime mark)
 int mprGetTimeZoneOffset(MprCtx ctx, MprTime when)
 {
     MprTime     alternate;
-    int         secs;
     struct tm   t;
+    time_t      secs;
 
     alternate = when;
+
     secs = when / MS_PER_SEC;
     if (secs < MIN_TIME || secs > MAX_TIME) {
         /* Can't use localTime on this date. Map to an alternate date with a valid year.  */
@@ -25114,17 +25115,13 @@ MprTime mprMakeUniversalTime(MprCtx ctx, struct tm *tp)
 
 static int localTime(MprCtx ctx, struct tm *timep, MprTime time)
 {
-    int     rc;
 #if BLD_UNIX_LIKE || WINCE
     time_t when = (time_t) (time / MS_PER_SEC);
-    rc = localtime_r(&when, timep) != 0;
-    mprAssert(rc == 0);
-    return rc;
+    return localtime_r(&when, timep) != 0;
 #else
     struct tm   *tp;
     time_t when = (time_t) (time / MS_PER_SEC);
     if ((tp = localtime(&when)) == 0) {
-        mprAssert(tp);
         return MPR_ERR;
     }
     *timep = *tp;
@@ -25188,6 +25185,7 @@ static int getTimeZoneOffsetFromTm(MprCtx ctx, struct tm *tp)
     struct timeval      tv;
     gettimeofday(&tv, &tz);
     return -tz.tz_minuteswest * MS_PER_MIN;
+    return mprGetMpr(ctx)->timezone + (tp->tm_isdst * MS_PER_MIN);
 #endif
 }
 
