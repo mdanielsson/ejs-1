@@ -24784,13 +24784,18 @@ cchar *mprGetCurrentThreadName(MprCtx ctx) { return "main"; }
 #define MAX_TIME    (((time_t) -1) & ~(((time_t) 1) << ((sizeof(time_t) * 8) - 1)))
 #define MIN_TIME    (((time_t) 1) << ((sizeof(time_t) * 8) - 1))
 
+#if UNUSED
 /*
     Approximate, conservative min and max year. The 31556952 constant is approx sec/year (365.2425 * 86400)
     Reduce by one to ensure no overflow. Note: this does not reduce actual date range representations and is
-    only used in DST calculations.
+    only used in DST calculations. Use 1900 for the minimum as 
  */
 #define MIN_YEAR    ((MIN_TIME / 31556952) + 1)
 #define MAX_YEAR    ((MAX_TIME / 31556952) - 1)
+#else
+#define MIN_YEAR    1901
+#define MAX_YEAR    2037
+#endif
 
 /*
     Token types or'd into the TimeToken value
@@ -25111,25 +25116,20 @@ int mprGetTimeZoneOffset(MprCtx ctx, MprTime when)
  */
 MprTime mprMakeTime(MprCtx ctx, struct tm *tp)
 {
-    MprTime     when, alternate, year;
+    MprTime     when, alternate;
     struct tm   t;
-    int         offset;
+    int         offset, year, rc;
 
-#if UNUSED || 1
-//  MOB UNUSED
-year = MIN_YEAR;
-year = MAX_YEAR;
-#endif
     when = makeTime(ctx, tp);
     year = tp->tm_year;
     if (MIN_YEAR <= year && year <= MAX_YEAR) {
-        localTime(ctx, &t, when);
+        rc = localTime(ctx, &t, when);
         offset = getTimeZoneOffsetFromTm(ctx, &t);
     } else {
         t = *tp;
         t.tm_year = 110;
         alternate = makeTime(ctx, &t);
-        localTime(ctx, &t, alternate);
+        rc = localTime(ctx, &t, alternate);
         offset = getTimeZoneOffsetFromTm(ctx, &t);
     }
     return when - offset;
@@ -25147,7 +25147,7 @@ static int localTime(MprCtx ctx, struct tm *timep, MprTime time)
 {
 #if BLD_UNIX_LIKE || WINCE
     time_t when = (time_t) (time / MS_PER_SEC);
-    if (localtime_r(&when, timep) < 0) {
+    if (localtime_r(&when, timep) == 0) {
         return MPR_ERR;
     }
 #else
@@ -26046,13 +26046,13 @@ static bool allDigits(cchar *token)
 } 
 
 
-static void swapDayMonth(struct tm *tm)
+static void swapDayMonth(struct tm *tp)
 {
     int     tmp;
 
-    tmp = tm->tm_mday;
-    tm->tm_mday = tm->tm_mon;
-    tm->tm_mon = tmp;
+    tmp = tp->tm_mday;
+    tp->tm_mday = tp->tm_mon;
+    tp->tm_mon = tmp;
 }
 
 
@@ -26086,6 +26086,10 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
      */
     tm.tm_isdst = tm.tm_year = tm.tm_mon = tm.tm_mday = tm.tm_hour = tm.tm_sec = tm.tm_min = tm.tm_wday = -1;
     tm.tm_min = tm.tm_sec = tm.tm_yday = -1;
+#if BLD_UNIX_LIKE && !CYGWIN
+    tm.tm_gmtoff = 0;
+    tm.tm_zone = 0;
+#endif
 
     /*
         Set to -1 to cause mktime will try to determine if DST is in effect
@@ -26274,21 +26278,21 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
 }
 
 
-static void validateTime(MprCtx ctx, struct tm *tm, struct tm *defaults)
+static void validateTime(MprCtx ctx, struct tm *tp, struct tm *defaults)
 {
     struct tm   empty;
 
     /*
         Fix apparent day-mon-year ordering issues. Can't fix everything!
      */
-    if ((12 <= tm->tm_mon && tm->tm_mon <= 31) && 0 <= tm->tm_mday && tm->tm_mday <= 11) {
+    if ((12 <= tp->tm_mon && tp->tm_mon <= 31) && 0 <= tp->tm_mday && tp->tm_mday <= 11) {
         /*
             Looks like day month are swapped
          */
-        swapDayMonth(tm);
+        swapDayMonth(tp);
     }
 
-    if (tm->tm_year >= 0 && tm->tm_mon >= 0 && tm->tm_mday >= 0 && tm->tm_hour >= 0) {
+    if (tp->tm_year >= 0 && tp->tm_mon >= 0 && tp->tm_mday >= 0 && tp->tm_hour >= 0) {
         /*  Everything defined */
         return;
     }
@@ -26302,56 +26306,60 @@ static void validateTime(MprCtx ctx, struct tm *tm, struct tm *defaults)
         empty.tm_mday = 1;
         empty.tm_year = 70;
     }
-    if (tm->tm_hour < 0 && tm->tm_min < 0 && tm->tm_sec < 0) {
-        tm->tm_hour = defaults->tm_hour;
-        tm->tm_min = defaults->tm_min;
-        tm->tm_sec = defaults->tm_sec;
+    if (tp->tm_hour < 0 && tp->tm_min < 0 && tp->tm_sec < 0) {
+        tp->tm_hour = defaults->tm_hour;
+        tp->tm_min = defaults->tm_min;
+        tp->tm_sec = defaults->tm_sec;
     }
 
     /*
         Get weekday, if before today then make next week
      */
-    if (tm->tm_wday >= 0 && tm->tm_year == -1 && tm->tm_mon < 0 && tm->tm_mday < 0) {
-        tm->tm_mday = defaults->tm_mday + (tm->tm_wday - defaults->tm_wday + 7) % 7;
-        tm->tm_mon = defaults->tm_mon;
-        tm->tm_year = defaults->tm_year;
+    if (tp->tm_wday >= 0 && tp->tm_year == -1 && tp->tm_mon < 0 && tp->tm_mday < 0) {
+        tp->tm_mday = defaults->tm_mday + (tp->tm_wday - defaults->tm_wday + 7) % 7;
+        tp->tm_mon = defaults->tm_mon;
+        tp->tm_year = defaults->tm_year;
     }
 
     /*
         Get month, if before this month then make next year
      */
-    if (tm->tm_mon >= 0 && tm->tm_mon <= 11 && tm->tm_mday < 0) {
-        if (tm->tm_year == -1) {
-            tm->tm_year = defaults->tm_year + (((tm->tm_mon - defaults->tm_mon) < 0) ? 1 : 0);
+    if (tp->tm_mon >= 0 && tp->tm_mon <= 11 && tp->tm_mday < 0) {
+        if (tp->tm_year == -1) {
+            tp->tm_year = defaults->tm_year + (((tp->tm_mon - defaults->tm_mon) < 0) ? 1 : 0);
         }
-        tm->tm_mday = defaults->tm_mday;
+        tp->tm_mday = defaults->tm_mday;
     }
 
     /*
         Get date, if before current time then make tomorrow
      */
-    if (tm->tm_hour >= 0 && tm->tm_year == -1 && tm->tm_mon < 0 && tm->tm_mday < 0) {
-        tm->tm_mday = defaults->tm_mday + ((tm->tm_hour - defaults->tm_hour) < 0 ? 1 : 0);
-        tm->tm_mon = defaults->tm_mon;
-        tm->tm_year = defaults->tm_year;
+    if (tp->tm_hour >= 0 && tp->tm_year == -1 && tp->tm_mon < 0 && tp->tm_mday < 0) {
+        tp->tm_mday = defaults->tm_mday + ((tp->tm_hour - defaults->tm_hour) < 0 ? 1 : 0);
+        tp->tm_mon = defaults->tm_mon;
+        tp->tm_year = defaults->tm_year;
     }
-    if (tm->tm_year == -1) {
-        tm->tm_year = defaults->tm_year;
+    if (tp->tm_year == -1) {
+        tp->tm_year = defaults->tm_year;
     }
-    if (tm->tm_mon < 0) {
-        tm->tm_mon = defaults->tm_mon;
+    if (tp->tm_mon < 0) {
+        tp->tm_mon = defaults->tm_mon;
     }
-    if (tm->tm_mday < 0) {
-        tm->tm_mday = defaults->tm_mday;
+    if (tp->tm_mday < 0) {
+        tp->tm_mday = defaults->tm_mday;
     }
-    if (tm->tm_hour < 0) {
-        tm->tm_hour = defaults->tm_hour;
+    if (tp->tm_yday < 0) {
+        tp->tm_yday = (leapYear(tp->tm_year + 1900) ? 
+            leapMonthStart[tp->tm_mon] : normalMonthStart[tp->tm_mon]) + tp->tm_mday - 1;
     }
-    if (tm->tm_min < 0) {
-        tm->tm_min = defaults->tm_min;
+    if (tp->tm_hour < 0) {
+        tp->tm_hour = defaults->tm_hour;
     }
-    if (tm->tm_sec < 0) {
-        tm->tm_sec = defaults->tm_sec;
+    if (tp->tm_min < 0) {
+        tp->tm_min = defaults->tm_min;
+    }
+    if (tp->tm_sec < 0) {
+        tp->tm_sec = defaults->tm_sec;
     }
 }
 
