@@ -25339,10 +25339,10 @@ static void decodeTime(MprCtx ctx, struct tm *tp, MprTime when, bool local)
     year = getYear(when);
 
     tp->tm_year     = year - 1900;
-    tp->tm_hour     = (when / MS_PER_HOUR) % 24;
-    tp->tm_min      = (when / MS_PER_MIN) % 60;
-    tp->tm_sec      = (when / MS_PER_SEC) % 60;
-    tp->tm_wday     = ((when / MS_PER_DAY) + 4) % 7;
+    tp->tm_hour     = (int) ((when / MS_PER_HOUR) % 24);
+    tp->tm_min      = (int) ((when / MS_PER_MIN) % 60);
+    tp->tm_sec      = (int) ((when / MS_PER_SEC) % 60);
+    tp->tm_wday     = (int) (((when / MS_PER_DAY) + 4) % 7);
     tp->tm_yday     = (int) ((when / MS_PER_DAY) - daysSinceEpoch(year));
     tp->tm_mon      = getMonth(year, tp->tm_yday);
     if (leapYear(year)) {
@@ -25448,7 +25448,7 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
 {
     struct tm       tm;
     char            localFmt[MPR_MAX_STRING];
-    cchar           *cp, *pat;
+    cchar           *cp;
     char            *dp, *endp, *sign;
     char            buf[MPR_MAX_STRING];
     int             value, size;
@@ -25468,9 +25468,13 @@ char *mprFormatTime(MprCtx ctx, cchar *fmt, struct tm *tp)
         again:
             switch (*cp) {
             case '+':
-                pat = "a %b %e %H:%M:%S %Z %Y";
-                strcpy(dp, pat);
-                dp += strlen(pat);
+                if (tp->tm_mday < 10) {
+                    /* Some platforms don't support 'e' so avoid it here. Put a double space before %d */
+                    mprSprintf(dp, size, "%s  %d %s", "a %b", tp->tm_mday, "%H:%M:%S %Z %Y");
+                } else {
+                    strcpy(dp, "a %b %d %H:%M:%S %Z %Y");
+                }
+                dp += strlen(dp);
                 cp++;
                 break;
 
@@ -26090,7 +26094,7 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
         Set these mandatory values to -1 so we can tell if they are set to valid values
         WARNING: all the calculations use tm_year with origin 0, not 1900. It is fixed up below.
      */
-    tm.tm_isdst = tm.tm_year = tm.tm_mon = tm.tm_mday = tm.tm_hour = tm.tm_sec = tm.tm_min = tm.tm_wday = -1;
+    tm.tm_year = tm.tm_mon = tm.tm_mday = tm.tm_hour = tm.tm_sec = tm.tm_min = tm.tm_wday = -1;
     tm.tm_min = tm.tm_sec = tm.tm_yday = -1;
 #if BLD_UNIX_LIKE && !CYGWIN
     tm.tm_gmtoff = 0;
