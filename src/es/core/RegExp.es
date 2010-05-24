@@ -10,7 +10,6 @@ module ejs {
 
     /**
      *  Regular expressions per ECMA-262. The following special characters are supported:
-     *  @spec evolving
      *  <table class="itemTable">
      *      <tr><td>\\</td><td>Reverse whether a character is treated literally or not.</td></tr>
      *      <tr><td>^</td><td>Match to the start of input. If matching multiline, match starting after a line break.</td></tr>
@@ -48,6 +47,7 @@ module ejs {
      *      <tr><td>\xYY</td><td>Match the character code YY.</td></tr>
      *      <tr><td>\xYYYY</td><td>Match the character code YYYY.</td></tr>
      *  </table>
+     *  @spec evolving
      */
     native final class RegExp {
 

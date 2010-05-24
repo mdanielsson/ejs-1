@@ -192,12 +192,7 @@ if (Config.OS == "WIN") {
 check(d.format('%z'), "-0700")
 
 //  %+    national representation of the date and time (the format is similar to that produced by date(1)).
-//        This format is platform dependent.
-if (Config.OS == "WIN") {
-    check(d.format('%+'), "Tue Jun  7 10:09:00 Pacific Daylight Time 2005")
-} else {
-    check(d.format('%+'), "Tue Jun  7 10:09:00 PDT 2005")
-}
+assert(d.format('%+').startsWith("Tue Jun  7 10:09:00 "))
 
 //  %%    Literal percent.
 check(d.format('%%'), "%")

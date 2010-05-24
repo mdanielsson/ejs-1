@@ -1957,6 +1957,7 @@ static EjsDoc *crackDoc(EjsMod *mp, EjsDoc *doc, EjsName *qname)
         line = skipAtWord(token);
 
         if (token > &start[2] && token[-2] == '\\') {
+            mprAssert(0);
             continue;
         }
         if (match(token, "duplicate")) {
@@ -2224,10 +2225,11 @@ static char *wikiFormat(Ejs *ejs, char *start)
             }
             mprPutCharToBuf(buf, ' ');
 
+#if UNUSED
         } else if (*str == '\\' && str[-1] != '\\' && str[1]) {
             str++;
             mprPutCharToBuf(buf, *str);
-
+#endif
         } else {
             mprPutCharToBuf(buf, *str);
         }
