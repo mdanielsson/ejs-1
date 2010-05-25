@@ -199,11 +199,11 @@ pgo:
 
 redo:
 	hg pull ; hg update -C
-	make TRACE=0 release clean depend compile install-binary test
+	$(MAKE) TRACE=0 release clean depend compile install-binary test
 
 update:
 	hg pull ; hg update -C
-	make TRACE=0 clean depend compile install-binary test
+	$(MAKE) TRACE=0 clean depend compile install-binary test
 
 debug:
 	open projects/MACOSX/ejs-all/ejs-all.xcodeproj

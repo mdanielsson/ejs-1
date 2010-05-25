@@ -103,11 +103,11 @@ compileExtra: $(PRE_TARGETS)
 		$(call log) "[Note]" "Core slots may have changed, rebuilding compiler with current slot definitions." ; \
 		rm -f $(BLD_LIB_DIR)/libejs$(BLD_LIB) ; \
 		T=compile ; D="$(PRE_DIRS)" ; $(DO_RECURSE) ; \
-		make TRACE=$(TRACE) $(BLD_LIB_DIR)/libejs$(BLD_LIB) ; \
+		$(MAKE) TRACE=$(TRACE) $(BLD_LIB_DIR)/libejs$(BLD_LIB) ; \
 		T=compile ; D="$(MID_DIRS)" ; $(DO_RECURSE) ; \
 	fi
 	@if [ "$(RETRY)" = "" ] ; then \
-		make RETRY=1 TRACE=$(TRACE) -C ./es modules ; \
+		$(MAKE) RETRY=1 TRACE=$(TRACE) -C ./es modules ; \
 	fi
 
 compileFinal: $(TARGETS)
