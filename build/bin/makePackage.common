@@ -174,7 +174,7 @@ getDefaultMode() {
 #
 cpy() {
     local argc optind arg target baseDir mode v expand files owner group f check src dirPortion pattern base 
-    local rest isDir depth d parent windows
+    local rest isDir d parent windows
 
     expand=0
     mode=0
@@ -269,31 +269,21 @@ cpy() {
                 files=$baseDir/$files
             fi
         fi
+        rm -f .cpy_copied
 
         if [ -d "${files}" ] ; then
             isDir=1
             dirPortion=${files}
             pattern="*"
-            depth=9999
-        else
-            isDir=0
-            dirPortion=${files%/*}
-            pattern=${files##*/}
-            depth=1
-        fi
-
-        [ $v -gt 1 ] && echo -e "find ${dirPortion}" -name \""$pattern"\" \| egrep -v \""$filter"\" \| egrep \""$check"\"
-
-        rm -f .cpy_copied
-
-        if [ $depth -eq 1 ] ; then
-            ls ${dirPortion}/$pattern | egrep -v "$stndFilter"  | egrep -v "$filter" | \
-               egrep "$check"
-        else
             find ${dirPortion} -name "$pattern" | egrep -v "$stndFilter" | egrep -v "$filter" | \
                egrep "$check"
+        else
+            isDir=0
+            dirPortion=`dirname "$files"`
+            pattern=${files##*/}
+            ls ${dirPortion}/$pattern | egrep -v "$stndFilter"  | egrep -v "$filter" | \
+               egrep "$check"
         fi | while read src ; do
-
             [ -d "${src#}" ] && continue
 
             #
