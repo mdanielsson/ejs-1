@@ -31,7 +31,7 @@ static char *makeModuleName(MprCtx ctx, cchar *name);
 static int  readNumber(Ejs *ejs, MprFile *file, int *number);
 static int  readWord(Ejs *ejs, MprFile *file, int *number);
 static char *search(Ejs *ejs, char *filename, int minVersion, int maxVersion);
-static double swapDouble(Ejs *ejs, double a);
+static double swapDoubleWord(Ejs *ejs, double a);
 static int  swapWord(Ejs *ejs, int word);
 static char *tokenToString(EjsModule *mp, int   token);
 
@@ -1650,7 +1650,7 @@ double ejsDecodeDouble(Ejs *ejs, uchar **pp)
     double   value;
 
     memcpy(&value, *pp, sizeof(double));
-    value = swapDouble(ejs, value);
+    value = swapDoubleWord(ejs, value);
     *pp += sizeof(double);
     return value;
 }
@@ -1736,7 +1736,7 @@ int ejsEncodeWord(uchar *pos, int number)
 
 int ejsEncodeDouble(Ejs *ejs, uchar *pos, double number)
 {
-    number = swapDouble(ejs, number);
+    number = swapDoubleWord(ejs, number);
     memcpy(pos, &number, sizeof(double));
     return sizeof(double);
 }
@@ -1848,7 +1848,7 @@ static int swapWord(Ejs *ejs, int word)
 }
 
 
-static double swapDouble(Ejs *ejs, double a)
+static double swapDoubleWord(Ejs *ejs, double a)
 {
     int64   low, high;
 
