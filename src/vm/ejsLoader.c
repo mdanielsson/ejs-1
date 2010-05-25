@@ -31,6 +31,7 @@ static char *makeModuleName(MprCtx ctx, cchar *name);
 static int  readNumber(Ejs *ejs, MprFile *file, int *number);
 static int  readWord(Ejs *ejs, MprFile *file, int *number);
 static char *search(Ejs *ejs, char *filename, int minVersion, int maxVersion);
+static double swapDouble(Ejs *ejs, double a);
 static int  swapWord(Ejs *ejs, int word);
 static char *tokenToString(EjsModule *mp, int   token);
 
@@ -1644,11 +1645,12 @@ static int readNumber(Ejs *ejs, MprFile *file, int *number)
 
 
 #if BLD_FEATURE_FLOATING_POINT
-double ejsDecodeDouble(uchar **pp)
+double ejsDecodeDouble(Ejs *ejs, uchar **pp)
 {
     double   value;
 
     memcpy(&value, *pp, sizeof(double));
+    value = swapDouble(ejs, value);
     *pp += sizeof(double);
     return value;
 }
@@ -1732,15 +1734,10 @@ int ejsEncodeWord(uchar *pos, int number)
 }
 
 
-int ejsEncodeDouble(uchar *pos, double number)
+int ejsEncodeDouble(Ejs *ejs, uchar *pos, double number)
 {
-#if UNUSED
-    double   *ptr;
-    ptr = (double*) pos;
-    *ptr = number;
-#else
+    number = swapDouble(ejs, number);
     memcpy(pos, &number, sizeof(double));
-#endif
     return sizeof(double);
 }
 
@@ -1849,6 +1846,21 @@ static int swapWord(Ejs *ejs, int word)
     }
     return ((word & 0xFF000000) >> 24) | ((word & 0xFF0000) >> 8) | ((word & 0xFF00) << 8) | ((word & 0xFF) << 24);
 }
+
+
+static double swapDouble(Ejs *ejs, double a)
+{
+    int64   low, high;
+
+    if (mprGetEndian(ejs) == MPR_LITTLE_ENDIAN) {
+        return a;
+    }
+    low = ((int64) a) & 0xFFFFFFFF;
+    high = (((int64) a) >> 32) & 0xFFFFFFFF;
+    return  (double) ((low & 0xFF) << 24 | (low & 0xFF00 << 8) | (low & 0xFF0000 >> 8) | (low & 0xFF000000 >> 16) |
+            ((high & 0xFF) << 24 | (high & 0xFF00 << 8) | (high & 0xFF0000 >> 8) | (high & 0xFF000000 >> 16)) << 32);
+}
+
 
 /*
  *  @copy   default

@@ -77,7 +77,7 @@ static void callFunction(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, 
 static void callProperty(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackAdjust);
 
 #define GET_BYTE()      *(FRAME)->pc++
-#define GET_DOUBLE()    ejsDecodeDouble(&(FRAME)->pc)
+#define GET_DOUBLE()    ejsDecodeDouble(ejs, &(FRAME)->pc)
 #define GET_INT()       (int) ejsDecodeNum(&(FRAME)->pc)
 #define GET_NUM()       ejsDecodeNum(&(FRAME)->pc)
 #define GET_NAME()      getNameArg(FRAME)

@@ -1711,7 +1711,8 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
     MprHash         *hp;
     char            ipAddrPort[MPR_MAX_IP_ADDR_PORT];
     char            *name, *path, *prefix, *cp, *tok, *ext, *mimeType, *url, *newUrl, *extensions, *codeStr, *hostName;
-    int             port, rc, code, processed, num, flags, colonCount, len;
+    char            *items, *include, *exclude;
+    int             port, rc, code, processed, num, flags, colonCount, len, mask, level;
 
     mprAssert(state);
     mprAssert(key);
@@ -2163,6 +2164,41 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
                 mprSetLogLevel(server, level);
             }
 #endif
+            return 1;
+
+        } else if (mprStrcmpAnyCase(key, "LogTrace") == 0) {
+            cp = mprStrTok(value, " \t", &tok);
+            level = atoi(cp);
+            if (level < 0 || level > 9) {
+                mprError(server, "Bad LogTrace level %d, must be 0-9", level);
+                return MPR_ERR_BAD_SYNTAX;
+            }
+            items = mprStrTok(0, "\n", &tok);
+            mprStrLower(items);
+            mask = 0;
+            if (strstr(items, "headers")) {
+                mask |= MA_TRACE_HEADERS;
+            }
+            if (strstr(items, "body")) {
+                mask |= MA_TRACE_BODY;
+            }
+            if (strstr(items, "request")) {
+                mask |= MA_TRACE_REQUEST;
+            }
+            if (strstr(items, "response")) {
+                mask |= MA_TRACE_RESPONSE;
+            }
+            maSetHostTrace(host, level, mask);
+            return 1;
+
+        } else if (mprStrcmpAnyCase(key, "LogTraceFilter") == 0) {
+            cp = mprStrTok(value, " \t", &tok);
+            len = atoi(cp);
+            include = mprStrTok(0, " \t", &tok);
+            exclude = mprStrTok(0, " \t", &tok);
+            include = mprStrTrim(include, "\"");
+            exclude = mprStrTrim(exclude, "\"");
+            maSetHostTraceFilter(host, len, include, exclude);
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "LoadModulePath") == 0) {
@@ -3341,6 +3377,7 @@ void maPrepConnection(MaConn *conn)
     conn->requestFailed = 0;
     conn->request = 0;
     conn->response = 0;
+    conn->trace = 0;
     conn->state =  MPR_HTTP_STATE_BEGIN;
     conn->flags &= ~MA_CONN_CLEAN_MASK;
     conn->expire = conn->time + conn->host->keepAliveTimeout;
@@ -3774,7 +3811,7 @@ static void addPacketForNet(MaQueue *q, MaPacket *packet)
     MaResponse  *resp;
     MaConn      *conn;
     MprIOVec    *iovec;
-    int         index;
+    int         index, mask;
 
     conn = q->conn;
     resp = conn->response;
@@ -3789,6 +3826,10 @@ static void addPacketForNet(MaQueue *q, MaPacket *packet)
     }
     if (maGetPacketLength(packet) > 0) {
         addToNetVector(q, mprGetBufStart(packet->content), mprGetBufLength(packet->content));
+    }
+    mask = MA_TRACE_RESPONSE | ((packet->flags & MA_PACKET_HEADER) ? MA_TRACE_HEADERS : MA_TRACE_BODY);
+    if (maShouldTrace(conn, mask)) {
+        maTraceContent(conn, packet, 0, resp->bytesWritten, mask);
     }
 }
 
@@ -4132,6 +4173,7 @@ static void addPacketForSend(MaQueue *q, MaPacket *packet)
     MaResponse  *resp;
     MaConn      *conn;
     MprIOVec    *iovec;
+    int         mask;
 
     conn = q->conn;
     resp = conn->response;
@@ -4156,6 +4198,10 @@ static void addPacketForSend(MaQueue *q, MaPacket *packet)
             q->ioFileEntry = 1;
             q->ioFileOffset += maGetPacketLength(packet);
         }
+    }
+    mask = (packet->flags & MA_PACKET_HEADER) ? MA_TRACE_HEADERS : MA_TRACE_BODY;
+    if (maShouldTrace(conn, mask)) {
+        maTraceContent(conn, packet, 0, resp->bytesWritten, mask);
     }
 }
 
@@ -9844,6 +9890,10 @@ MaHost *maCreateHost(MaServer *server, cchar *ipAddrPort, MaLocation *location)
     host->httpVersion = MPR_HTTP_1_1;
     host->timeout = MA_SERVER_TIMEOUT;
     host->limits = &server->http->limits;
+    
+    host->traceMask = MA_TRACE_REQUEST | MA_TRACE_RESPONSE | MA_TRACE_HEADERS;
+    host->traceLevel = 3;
+    host->traceMaxLength = INT_MAX;
 
     host->keepAliveTimeout = MA_KEEP_TIMEOUT;
     host->maxKeepAlive = MA_MAX_KEEP_ALIVE;
@@ -9903,6 +9953,16 @@ MaHost *maCreateVirtualHost(MaServer *server, cchar *ipAddrPort, MaHost *parent)
     host->keepAlive = parent->keepAlive;
     host->accessLog = parent->accessLog;
     host->location = maCreateLocation(host, parent->location);
+
+    host->traceMask = parent->traceMask;
+    host->traceLevel = parent->traceLevel;
+    host->traceMaxLength = parent->traceMaxLength;
+    if (parent->traceInclude) {
+        host->traceInclude = mprCopyHash(host, parent->traceInclude);
+    }
+    if (parent->traceExclude) {
+        host->traceExclude = mprCopyHash(host, parent->traceExclude);
+    }
 
     maAddLocation(host, host->location);
     updateCurrentDate(host);
@@ -10047,6 +10107,62 @@ void maSecureHost(MaHost *host, struct MprSsl *ssl)
         }
 #endif
     }
+}
+
+
+void maSetHostTrace(MaHost *host, int level, int mask)
+{
+    host->traceMask = mask;
+    host->traceLevel = level;
+}
+
+
+void maSetHostTraceFilter(MaHost *host, int len, cchar *include, cchar *exclude)
+{
+    char    *word, *tok, *line;
+
+    host->traceMaxLength = len;
+
+    if (include && strcmp(include, "*") != 0) {
+        host->traceInclude = mprCreateHash(host, 0);
+        line = mprStrdup(host, include);
+        word = mprStrTok(line, ", \t\r\n", &tok);
+        while (word) {
+            if (word[0] == '*' && word[1] == '.') {
+                word += 2;
+            }
+            mprAddHash(host->traceInclude, word, host);
+            word = mprStrTok(NULL, ", \t\r\n", &tok);
+        }
+        mprFree(line);
+    }
+    if (exclude) {
+        host->traceExclude = mprCreateHash(host, 0);
+        line = mprStrdup(host, exclude);
+        word = mprStrTok(line, ", \t\r\n", &tok);
+        while (word) {
+            if (word[0] == '*' && word[1] == '.') {
+                word += 2;
+            }
+            mprAddHash(host->traceExclude, word, host);
+            word = mprStrTok(NULL, ", \t\r\n", &tok);
+        }
+        mprFree(line);
+    }
+}
+
+
+int maSetupTrace(MaHost *host, cchar *ext)
+{
+    if (ext) {
+        if (host->traceInclude && !mprLookupHash(host->traceInclude, ext)) {
+            return 0;
+        }
+        if (host->traceExclude && mprLookupHash(host->traceExclude, ext)) {
+            return 0;
+        }
+    }
+    return host->traceMask;
 }
 
 
@@ -10404,6 +10520,7 @@ void maAddConn(MaHost *host, MaConn *conn)
     lock(host);
     mprAddItem(host->connections, conn);
     conn->started = mprGetTime(conn);
+    conn->seqno = host->connCount++;
 
     if ((host->now + MPR_TICKS_PER_SEC) < conn->started) {
         updateCurrentDate(host);
@@ -10908,7 +11025,7 @@ int maAddHandler(MaHttp *http, MaLocation *location, cchar *name, cchar *extensi
                 word = "";
             }
             mprAddHash(location->extensions, word, handler);
-            word = mprStrTok(0, " \t\r\n", &tok);
+            word = mprStrTok(NULL, " \t\r\n", &tok);
         }
         mprFree(extlist);
 
@@ -12223,10 +12340,11 @@ void maCreatePipeline(MaConn *conn)
     connector = location->connector;
 #if BLD_FEATURE_SEND
     if (resp->handler == http->fileHandler && connector == http->netConnector && 
-            http->sendConnector && !req->ranges && !host->secure && resp->chunkSize <= 0) {
+            http->sendConnector && !req->ranges && !host->secure && resp->chunkSize <= 0 && !conn->trace) {
         /*
-         *  Switch (transparently) to the send connector if serving whole static file content via the net connector
-         */
+            Switch (transparently) to the send connector if serving whole static file content via the net connector
+            and not tracing.
+        */
         connector = http->sendConnector;
     }
 #endif
@@ -13817,10 +13935,6 @@ static bool parseRequest(MaConn *conn, MaPacket *packet);
 static bool processContent(MaConn *conn, MaPacket *packet);
 static void setIfModifiedDate(MaConn *conn, MprTime when, bool ifMod);
 
-#if BLD_DEBUG
-static void traceContent(MaConn *conn, MaPacket *packet, int len);
-#endif
-
 
 MaRequest *maCreateRequest(MaConn *conn)
 {
@@ -13954,7 +14068,10 @@ static bool parseRequest(MaConn *conn, MaPacket *packet)
         maFailConnection(conn, MPR_HTTP_CODE_REQUEST_TOO_LARGE, "Header too big");
         return 0;
     }
+#if UNUSED
     *end = '\0'; mprLog(conn, 3, "\n@@@ Request =>\n%s\n", start); *end = '\r';
+#endif
+
     if (parseFirstLine(conn, packet)) {
         parseHeaders(conn, packet);
     } else {
@@ -13997,14 +14114,15 @@ static bool parseFirstLine(MaConn *conn, MaPacket *packet)
 {
     MaRequest   *req;
     MaResponse  *resp;
+    MaHost      *host;
+    MprBuf      *content;
+    cchar       *endp;
     char        *methodName, *uri, *httpProtocol;
-    int         method;
+    int         method, len;
 
     req = conn->request = maCreateRequest(conn);
     resp = conn->response = maCreateResponse(conn);
-
-    mprLog(req, 4, "New request from %s:%d to %s:%d", conn->remoteIpAddr, conn->remotePort, conn->sock->ipAddr, 
-        conn->sock->port);
+    host = conn->host;
 
     methodName = getToken(conn, " ");
     if (*methodName == '\0') {
@@ -14092,11 +14210,22 @@ static bool parseFirstLine(MaConn *conn, MaPacket *packet)
     req->methodName = methodName;
     req->httpProtocol = httpProtocol;
     
-    mprLog(conn, 2, "%s %s %s", methodName, uri, httpProtocol);
-
     if (maSetRequestUri(conn, uri) < 0) {
         maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad URL format");
         return 0;
+    }
+    if ((conn->trace = maSetupTrace(host, conn->response->extension)) != 0) {
+        if (maShouldTrace(conn, MA_TRACE_REQUEST | MA_TRACE_HEADERS)) {
+            mprLog(req, host->traceLevel, "\n@@@ New request from %s:%d to %s:%d\n%s %s %s", 
+                conn->remoteIpAddr, conn->remotePort, conn->sock->ipAddr, conn->sock->port,
+                methodName, uri, httpProtocol);
+            content = packet->content;
+            endp = strstr((char*) content->start, "\r\n\r\n");
+            len = (endp) ? (endp - mprGetBufStart(content) + 4) : 0;
+            maTraceContent(conn, packet, len, 0, MA_TRACE_REQUEST | MA_TRACE_HEADERS);
+        }
+    } else {
+        mprLog(conn, 2, "%s %s %s", methodName, uri, httpProtocol);
     }
     return 1;
 }
@@ -14466,11 +14595,13 @@ static bool processContent(MaConn *conn, MaPacket *packet)
     MaRequest       *req;
     MaResponse      *resp;
     MaQueue         *q;
+    MaHost          *host;
     MprBuf          *content;
     int             nbytes, remaining;
 
     req = conn->request;
     resp = conn->response;
+    host = conn->host;
     q = &resp->queue[MA_QUEUE_RECEIVE];
 
     mprAssert(packet);
@@ -14492,25 +14623,22 @@ static bool processContent(MaConn *conn, MaPacket *packet)
     }
     nbytes = min(remaining, mprGetBufLength(content));
     mprAssert(nbytes >= 0);
-
-#if BLD_DEBUG
     mprLog(conn, 7, "processContent: packet of %d bytes, remaining %d", mprGetBufLength(content), remaining);
-    if (mprGetLogLevel(conn) >= 5) {
-        traceContent(conn, packet, nbytes);
-    }
-#endif
 
+    if (maShouldTrace(conn, MA_TRACE_REQUEST | MA_TRACE_BODY)) {
+        maTraceContent(conn, packet, 0, 0, MA_TRACE_REQUEST | MA_TRACE_BODY);
+    }
     if (nbytes > 0) {
         mprAssert(maGetPacketLength(packet) > 0);
         remaining -= nbytes;
         req->remainingContent -= nbytes;
         req->receivedContent += nbytes;
 
-        if (req->receivedContent >= conn->host->limits->maxBody) {
+        if (req->receivedContent >= host->limits->maxBody) {
             conn->keepAliveCount = 0;
             maFailConnection(conn, MPR_HTTP_CODE_REQUEST_TOO_LARGE, 
                 "Request content body is too big %d vs limit %d", 
-                req->receivedContent, conn->host->limits->maxBody);
+                req->receivedContent, host->limits->maxBody);
             return 1;
         } 
 
@@ -14602,30 +14730,73 @@ bool maProcessCompletion(MaConn *conn)
 }
 
 
-#if BLD_DEBUG
-static void traceContent(MaConn *conn, MaPacket *packet, int len)
+static void traceBuf(MaConn *conn, cchar *buf, int len, int mask)
 {
-    char    *data, *buf;
-    int     i, printable;
+    cchar   *cp, *tag, *digits;
+    char    *data, *dp;
+    int     level, i, printable;
 
-    buf = mprGetBufStart(packet->content);
+    level = conn->host->traceLevel;
 
     for (printable = 1, i = 0; i < len; i++) {
         if (!isascii(buf[i])) {
             printable = 0;
         }
     }
+    tag = (mask & MA_TRACE_RESPONSE) ? "Response" : "Request";
     if (printable) {
         data = mprAlloc(conn, len + 1);
         memcpy(data, buf, len);
         data[len] = '\0';
-        mprRawLog(conn, 5, "@@@ Content =>\n%s\n", data);
+        mprRawLog(conn, level, "%s packet, conn %d, len %d >>>>>>>>>>\n%s", tag, conn->seqno, len, data);
         mprFree(data);
     } else {
-        mprRawLog(conn, 5, "@@@ Content => Binary\n");
+        mprRawLog(conn, level, "%s packet, conn %d, len %d >>>>>>>>>> (binary)\n", tag, conn->seqno, len);
+        data = mprAlloc(conn, len * 3 + ((len / 16) + 1) + 1);
+        digits = "0123456789ABCDEF";
+        for (i = 0, cp = buf, dp = data; cp < &buf[len]; cp++) {
+            *dp++ = digits[(*cp >> 4) & 0x0f];
+            *dp++ = digits[*cp++ & 0x0f];
+            *dp++ = ' ';
+            if ((++i % 16) == 0) {
+                *dp++ = '\n';
+            }
+        }
+        *dp++ = '\n';
+        *dp = '\0';
+        mprRawLog(conn, level, "%s", data);
+    }
+    mprRawLog(conn, level, "<<<<<<<<<< %s packet end, conn %d\n\n", tag, conn->seqno);
+}
+
+
+void maTraceContent(MaConn *conn, MaPacket *packet, int size, int offset, int mask)
+{
+    MaHost  *host;
+    int     len;
+
+    mprAssert(conn->trace);
+    host = conn->host;
+
+    if (offset >= host->traceMaxLength) {
+        mprLog(conn, conn->host->traceLevel, "Abbreviating response trace for conn %d", conn->seqno);
+        conn->trace = 0;
+        return;
+    }
+    if (size <= 0) {
+        size = INT_MAX;
+    }
+    if (packet->prefix) {
+        len = mprGetBufLength(packet->prefix);
+        len = min(len, size);
+        traceBuf(conn, mprGetBufStart(packet->prefix), len, mask);
+    }
+    if (packet->content) {
+        len = mprGetBufLength(packet->content);
+        len = min(len, size);
+        traceBuf(conn, mprGetBufStart(packet->content), len, mask);
     }
 }
-#endif
 
 
 static void reportFailure(MaConn *conn, int code, cchar *fmt, va_list args)
@@ -15272,8 +15443,9 @@ void maFillHeaders(MaConn *conn, MaPacket *packet)
     }
     resp->headerSize = mprGetBufLength(buf);
     resp->flags |= MA_RESP_HEADERS_CREATED;
-
+#if UNUSED
     mprLog(conn, 3, "\n@@@ Response => \n%s", mprGetBufStart(buf));
+#endif
 }
 
 
