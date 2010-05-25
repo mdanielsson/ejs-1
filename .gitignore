@@ -70,3 +70,8 @@ releases/*.dmg
 projects/WIN/ejs*/Win32
 *.deb
 lib/lib*
+test/tmp/
+test/web/273.ejs
+test/web/s.xml
+test/web/ss.xml
+test/ss.es
