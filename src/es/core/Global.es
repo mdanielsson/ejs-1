@@ -173,6 +173,7 @@ module ejs {
      *  Replace the base type of a type with an exact clone. 
      *  @param klass Class in which to replace the base class.
      *  @spec ejs
+     *  @hide
      */
     native function cloneBase(klass: Type): Void
 
