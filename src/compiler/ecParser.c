@@ -8571,12 +8571,13 @@ static char *makeHighlight(EcCompiler *cp, char *src, int col)
     /*
      *  Cover the case where the ^ must go after the end of the input
      */
-    dest[col] = '^';
-    if (p == &dest[col]) {
-        ++p;
+    if (col >= 0) {
+        dest[col] = '^';
+        if (p == &dest[col]) {
+            ++p;
+        }
+        *p = '\0';
     }
-    *p = '\0';
-
     return dest;
 }
 
@@ -8816,7 +8817,6 @@ static EcNode *createNode(EcCompiler *cp, int kind)
         }
         np->lineNumber = token->lineNumber;
         np->column = token->column;
-
         mprLog(np, 9, "At line %d, token \"%s\", line %s", token->lineNumber, token->text, np->currentLine);
     }
 
