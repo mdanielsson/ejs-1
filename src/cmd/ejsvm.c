@@ -148,6 +148,8 @@ static int  loadModuleFile(Ejs *ejs, char *fileName);
     if (!err && ejsRunProgram(ejs, className, methodName) < 0) {
         err++;
     }
+    mprStop(mpr);
+    mprFree(mpr);
     return err;
 }
 
