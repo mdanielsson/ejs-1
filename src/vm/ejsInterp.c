@@ -2215,7 +2215,7 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
             mprAssert(0);
             BREAK;
 
-#if !BLD_UNIX_LIKE && !FREEBSD
+#if !BLD_UNIX_LIKE && !VXWORKS
         }
         if (ejs->attention && !payAttention(ejs)) {
             goto done;
