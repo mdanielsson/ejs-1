@@ -892,7 +892,6 @@ static EjsVar *printable(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
     if (nonprint == 0) {
         return (EjsVar*) sp;
     }
-
     result = ejsCreateBareString(ejs, sp->length + (nonprint * 6) + 1);
     if (result == 0) {
         return 0;

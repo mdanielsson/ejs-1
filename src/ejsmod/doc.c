@@ -1901,10 +1901,9 @@ static EjsDoc *crackDoc(EjsMod *mp, EjsDoc *doc, EjsName *qname)
         return doc;
     }
     prepText(str);
-    if (strstr(str, "@hide")) {
+    if (strstr(str, "@hide") || strstr(str, "@hidden")) {
         doc->hide = 1;
     }
-
     doc->description = "";
     doc->brief = "";
 
@@ -2034,7 +2033,7 @@ static EjsDoc *crackDoc(EjsMod *mp, EjsDoc *doc, EjsName *qname)
                 mprAddItem(doc->defaults, pair);
             }
 
-        } else if (match(token, "hide")) {
+        } else if (match(token, "hide") || match(token, "hidden")) {
             doc->hide = 1;
 
         } else if (match(token, "spec")) {
