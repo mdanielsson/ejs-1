@@ -19,6 +19,7 @@ module ejs {
 
     /**
      *  The public namespace used to make entities visible accross modules.
+     *  @hide
      */
     public namespace public
 
@@ -39,6 +40,7 @@ module ejs {
 
     /**
      *  The CONFIG namespace used to defined conditional compilation directives.
+     *  @hide
      */
     public namespace CONFIG
 
@@ -55,21 +57,25 @@ module ejs {
 
     /** 
      *  Conditional compilation constant. Used to disable compilation of certain elements.
+     *  @hide
      */  
     const FUTURE: Boolean = false
 
     /** 
      *  Conditional compilation constant. Used to disable compilation of certain elements.
+     *  @hide
      */  
     const ASC: Boolean = false
 
     /** 
      *  Conditional compilation constant. Used to enable the compilation of elements only for creating the API documentation.
+     *  @hide
      */  
     const DOC_ONLY: Boolean = false
 
     /** 
      *  Conditional compilation constant. Used to deprecate elements.
+     *  @hide
      */  
     const DEPRECATED: Boolean = false
 
@@ -90,6 +96,7 @@ module ejs {
 
     /**
      *  Alias for the Number type
+     *  @hide
      *  @spec ejs
      */
     native const num: Type = Number
