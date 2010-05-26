@@ -20,4 +20,4 @@ var order : XML = <order>
 
 assert(order..qty.length() == 2)
 assert(order..city == "New York")
-assert(order..@* == "rush, low, normal")
+assert(order..@* == "rush low normal")
