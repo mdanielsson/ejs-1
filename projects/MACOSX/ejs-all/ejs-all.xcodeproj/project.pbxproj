@@ -3426,6 +3426,351 @@
 			};
 			name = Release;
 		};
+		C999327011ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				COPY_PHASE_STRIP = NO;
+				ES = $SRCROOT/../../../src/es;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_GENERATE_TEST_COVERAGE_FILES = YES;
+				GCC_INSTRUMENT_PROGRAM_FLOW_ARCS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG_IDE=1";
+				HEADER_SEARCH_PATHS = (
+					../../../src/include,
+					../../..,
+				);
+				OTHER_LDFLAGS = (
+					"-lgcov",
+					"-lcrypto",
+					"-lssl",
+				);
+				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
+				SRC = $SRCROOT/../../../src;
+				TOP = $SRCROOT/../../..;
+			};
+			name = Coverage;
+		};
+		C999327111ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = Untitled;
+			};
+			name = Coverage;
+		};
+		C999327211ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/bin;
+				PREBINDING = NO;
+				PRODUCT_NAME = ejs;
+			};
+			name = Coverage;
+		};
+		C999327311ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/bin;
+				PREBINDING = NO;
+				PRODUCT_NAME = ejsc;
+			};
+			name = Coverage;
+		};
+		C999327411ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/bin;
+				PREBINDING = NO;
+				PRODUCT_NAME = ejsmod;
+			};
+			name = Coverage;
+		};
+		C999327511ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/bin;
+				PREBINDING = NO;
+				PRODUCT_NAME = ejssql;
+			};
+			name = Coverage;
+		};
+		C999327611ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/bin;
+				PREBINDING = NO;
+				PRODUCT_NAME = ejscgi;
+			};
+			name = Coverage;
+		};
+		C999327711ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/bin;
+				PREBINDING = NO;
+				PRODUCT_NAME = ejsvm;
+			};
+			name = Coverage;
+		};
+		C999327811ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				HEADER_SEARCH_PATHS = (
+					../../../extensions/matrixssl/latest,
+					../../../src/include,
+					../../..,
+				);
+				INSTALL_PATH = /usr/local/bin;
+				PREBINDING = NO;
+				PRODUCT_NAME = ejswebserver;
+			};
+			name = Coverage;
+		};
+		C999327911ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				PREBINDING = NO;
+				PRODUCT_NAME = libmpr;
+			};
+			name = Coverage;
+		};
+		C999327A11ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				PREBINDING = NO;
+				PRODUCT_NAME = libpcre;
+			};
+			name = Coverage;
+		};
+		C999327B11ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				HEADER_SEARCH_PATHS = (
+					../../../extensions/openssl/latest,
+					../../../extensions/matrixssl/latest,
+					../../../src/include,
+					../../..,
+				);
+				INSTALL_PATH = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_1)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_2)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_3)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_1 = "\"$(SRCROOT)/../../../lib\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_2 = "\"$(SRCROOT)/../../../lib\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_3 = "\"$(SRCROOT)/../../../lib\"";
+				OTHER_LDFLAGS = (
+					"-lcrypto",
+					"-lssl",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = libmprssl;
+			};
+			name = Coverage;
+		};
+		C999327C11ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				PREBINDING = NO;
+				PRODUCT_NAME = libsqlite;
+			};
+			name = Coverage;
+		};
+		C999327D11ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				PREBINDING = NO;
+				PRODUCT_NAME = libec;
+			};
+			name = Coverage;
+		};
+		C999327E11ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				PREBINDING = NO;
+				PRODUCT_NAME = libejs;
+			};
+			name = Coverage;
+		};
+		C999327F11ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				PREBINDING = NO;
+				PRODUCT_NAME = ejs.web;
+			};
+			name = Coverage;
+		};
+		C999328011ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_PREFIX = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				PREBINDING = NO;
+				PRODUCT_NAME = ejs.db.sqlite;
+			};
+			name = Coverage;
+		};
+		C999328111ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = ejs.mod;
+			};
+			name = Coverage;
+		};
+		C999328211ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = ejs.db.mod;
+			};
+			name = Coverage;
+		};
+		C999328311ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = ejs.db.sqlite.mod;
+			};
+			name = Coverage;
+		};
+		C999328411ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = ejs.web.mod;
+			};
+			name = Coverage;
+		};
+		C999328511ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = ejsweb.mod;
+			};
+			name = Coverage;
+		};
+		C999328611ADCED300CDB65F /* Coverage */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = clean;
+			};
+			name = Coverage;
+		};
 		C9E2B7D80FD5A1290046823C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -3454,6 +3799,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C9222E530FD5813F00AFA5A4 /* Debug */,
+				C999328111ADCED300CDB65F /* Coverage */,
 				C9222E540FD5813F00AFA5A4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3463,6 +3809,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97623C20FD06EC4009C78E1 /* Debug */,
+				C999327011ADCED300CDB65F /* Coverage */,
 				C97623C30FD06EC4009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3472,6 +3819,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97623D50FD06EE7009C78E1 /* Debug */,
+				C999327211ADCED300CDB65F /* Coverage */,
 				C97623D60FD06EE7009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3481,6 +3829,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97623DD0FD06EF5009C78E1 /* Debug */,
+				C999327311ADCED300CDB65F /* Coverage */,
 				C97623DE0FD06EF5009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3490,6 +3839,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97623E40FD06EFD009C78E1 /* Debug */,
+				C999327411ADCED300CDB65F /* Coverage */,
 				C97623E50FD06EFD009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3499,6 +3849,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97623EB0FD06F04009C78E1 /* Debug */,
+				C999327511ADCED300CDB65F /* Coverage */,
 				C97623EC0FD06F04009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3508,6 +3859,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97623FD0FD06F1B009C78E1 /* Debug */,
+				C999327611ADCED300CDB65F /* Coverage */,
 				C97623FE0FD06F1B009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3517,6 +3869,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97624040FD06F23009C78E1 /* Debug */,
+				C999327711ADCED300CDB65F /* Coverage */,
 				C97624050FD06F23009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3526,6 +3879,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C976240B0FD06F2F009C78E1 /* Debug */,
+				C999327811ADCED300CDB65F /* Coverage */,
 				C976240C0FD06F2F009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3535,6 +3889,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97625460FD071E5009C78E1 /* Debug */,
+				C999327111ADCED300CDB65F /* Coverage */,
 				C97625470FD071E5009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3544,6 +3899,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97627A70FD077A8009C78E1 /* Debug */,
+				C999327911ADCED300CDB65F /* Coverage */,
 				C97627A80FD077A8009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3553,6 +3909,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97627B00FD077C4009C78E1 /* Debug */,
+				C999327A11ADCED300CDB65F /* Coverage */,
 				C97627B10FD077C4009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3562,6 +3919,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97627B70FD077E7009C78E1 /* Debug */,
+				C999327B11ADCED300CDB65F /* Coverage */,
 				C97627B80FD077E7009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3571,6 +3929,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97627BE0FD077FD009C78E1 /* Debug */,
+				C999327C11ADCED300CDB65F /* Coverage */,
 				C97627BF0FD077FD009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3580,6 +3939,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97627C50FD0780F009C78E1 /* Debug */,
+				C999327D11ADCED300CDB65F /* Coverage */,
 				C97627C60FD0780F009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3589,6 +3949,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97627CC0FD07829009C78E1 /* Debug */,
+				C999327E11ADCED300CDB65F /* Coverage */,
 				C97627CD0FD07829009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3598,6 +3959,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C97627DA0FD07850009C78E1 /* Debug */,
+				C999327F11ADCED300CDB65F /* Coverage */,
 				C97627DB0FD07850009C78E1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3607,6 +3969,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C98111150FD58CD00066CD8B /* Debug */,
+				C999328211ADCED300CDB65F /* Coverage */,
 				C98111160FD58CD00066CD8B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3616,6 +3979,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C981112B0FD58DC50066CD8B /* Debug */,
+				C999328411ADCED300CDB65F /* Coverage */,
 				C981112C0FD58DC50066CD8B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3625,6 +3989,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C98111370FD58EE70066CD8B /* Debug */,
+				C999328511ADCED300CDB65F /* Coverage */,
 				C98111380FD58EE70066CD8B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3634,6 +3999,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C98761310FD87D7300311B7A /* Debug */,
+				C999328011ADCED300CDB65F /* Coverage */,
 				C98761320FD87D7300311B7A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3643,6 +4009,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C98761410FD87E6700311B7A /* Debug */,
+				C999328311ADCED300CDB65F /* Coverage */,
 				C98761420FD87E6700311B7A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -3652,6 +4019,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C9E2B7D80FD5A1290046823C /* Debug */,
+				C999328611ADCED300CDB65F /* Coverage */,
 				C9E2B7D90FD5A1290046823C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
