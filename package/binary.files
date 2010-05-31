@@ -7,7 +7,7 @@
 usePrefixes BIN CFG JEM LIB MOD PRD VER
 
 if [ "${TASK}" = Remove -a -f "${BLD_BIN_PREFIX}/linkup" ] ; then
-    cp ${BLD_BIN_PREFIX}/linkup /tmp/linkup$$
+    cp "${BLD_BIN_PREFIX}/linkup" /tmp/linkup$$
 fi
 
 cpy -t -w -e doc/licenses/LICENSE.TXT doc/product/README.TXT COPYRIGHT.TXT "${BLD_VER_PREFIX}"
@@ -55,8 +55,8 @@ if [ $BLD_FEATURE_APPWEB = 1 ] ; then
 fi
 
 if [ "${TASK}" = Install ] ; then
-    bash ${BLD_BIN_PREFIX}/linkup $TASK
+    bash "${BLD_BIN_PREFIX}/linkup" $TASK
 elif [ -f /tmp/linkup$$ ] ; then
     bash /tmp/linkup$$ $TASK
-    echo MOB rm -f /tmp/linkup$$
+    rm -f /tmp/linkup$$
 fi

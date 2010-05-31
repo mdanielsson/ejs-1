@@ -22,6 +22,6 @@ if [ $BLD_UNIX_LIKE ] ; then
     cpy -z -d doc/man ejs.1 ejsc.1 ejsmod.1 ejsvm.1 ejsweb.1 "${BLD_MAN_PREFIX}/man1"
 fi
 
-if [ ${TASK} = Install -a ${BLD_HOST_OS} != "WIN" ] ; then
-    ${BLD_BIN_PREFIX}/linkup
+if [ ${TASK} = Install -a ${BLD_HOST_OS} != "WIN" -a -f "${BLD_BIN_PREFIX}/linkup" ] ; then
+    "${BLD_BIN_PREFIX}/linkup" $TASK
 fi
