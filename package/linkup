@@ -18,9 +18,16 @@ else
 fi
 
 prefix=/usr/lib/${PRODUCT}
-version=`ls $prefix | egrep -v '[a-zA-Z@!_\-]' | sort -n -r | head -1`
+version=
+for v in `ls $prefix | egrep -v '[a-zA-Z@!_\-]' | sort -n -r`
+do
+    if [ -x "$prefix/$v/bin/ejs" ] ; then
+        version=$v
+        break
+    fi
+done
 
-if [ "$TASK" = "Remove" ] ; then
+if [ "$version" = "" ] ; then
     for name in $PROGRAMS
     do
         rm -f "${BIN}/$name"
@@ -36,8 +43,8 @@ else
     for name in $PROGRAMS
     do
         name=${name}${EXE}
+        rm -f "${BIN}/${name}"
         if [ -f "${bin}/${name}" ] ; then
-            rm -f "${BIN}/${name}"
             ln -s "${bin}/${name}" "${BIN}/${name}"
         fi
     done
