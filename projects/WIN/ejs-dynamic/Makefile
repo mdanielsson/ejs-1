@@ -35,7 +35,9 @@ endif
 compileExtra: prep $(PROJECTS)
 
 prep:
+ifeq ($(BLD_FEATURE_STATIC),0)
 	cp ../../../bin/*.def .
+endif
 
 libmpr.vcproj: Makefile buildConfig.override
 	@makeVsProj --project libmpr.vcproj --library mpr --dflags "$(DFLAGS)" \
