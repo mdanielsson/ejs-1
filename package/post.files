@@ -13,6 +13,8 @@ if [ $TASK = Install -a "${PACKS}" != "${PACKS/binary}" ] ; then
         launchBrowser
     fi
 elif [ $TASK = Remove ] ; then
+    # Legacy
     ${RM} -f "${BLD_CFG_PREFIX}/${BLD_PRODUCT}Install.conf"
+    ${RM} -f "${BLD_PRD_PREFIX}/install.conf"
 fi
 

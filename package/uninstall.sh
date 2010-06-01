@@ -183,27 +183,24 @@ postClean() {
 
 	rm -f ${BLD_VER_PREFIX}/install.conf
 
+	if [ "$removedev" = "Y" ] ; then
+		if [ -d "$BLD_MAN_PREFIX" ] ; then
+			rm -rf "$BLD_MAN_PREFIX"/man*
+		fi
+		cleanDir "$BLD_MAN_PREFIX"
+		cleanDir "$BLD_SAM_PREFIX"
+		cleanDir "$BLD_INC_PREFIX"
+		cleanDir "$BLD_DOC_PREFIX"
+	fi
 	if [ "$removebin" = "Y" ] ; then
 		cleanDir "$BLD_CFG_PREFIX"
 		cleanDir "$BLD_VER_PREFIX"
 		cleanDir "$BLD_LIB_PREFIX"
 		cleanDir "$BLD_WEB_PREFIX"
-
-		if [ -d "$BLD_MAN_PREFIX" ] ; then
-			rm -f "$BLD_MAN_PREFIX/${BLD_PRODUCT}.1.gz"
-		fi
 	fi
-
-	if [ "$removedev" = "Y" ] ; then
-		cleanDir "$BLD_SAM_PREFIX"
-		cleanDir "$BLD_INC_PREFIX"
-		cleanDir "$BLD_DOC_PREFIX"
-	fi
-
 	if [ "$removesrc" = "Y" ] ; then
 		cleanDir "$BLD_SRC_PREFIX"
 	fi
-
 	if [ $BLD_HOST_OS != WIN ] ; then
         if [ -x /usr/share/$BLD_PRODUCT ] ; then
             cleanDir /usr/share/$BLD_PRODUCT
@@ -212,6 +209,12 @@ postClean() {
             cleanDir /var/$BLD_PRODUCT
         fi
         rmdir /usr/share/${BLD_PRODUCT} >/dev/null 2>&1
+        rmdir "$BLD_WEB_PREFIX" >/dev/null 2>&1
+        rmdir "$BLD_MAN_PREFIX" >/dev/null 2>&1
+        rmdir "$BLD_INC_PREFIX" >/dev/null 2>&1
+        rmdir "$BLD_DOC_PREFIX" >/dev/null 2>&1
+        rmdir "$BLD_PRD_PREFIX" >/dev/null 2>&1
+        rmdir "$BLD_CFG_PREFIX" >/dev/null 2>&1
     fi
     /tmp/linkup$$ Remove
     rm -f /tmp/linkup$$
