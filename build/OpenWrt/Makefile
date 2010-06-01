@@ -4,7 +4,7 @@
 #	Copyright (C) 2009 Embedthis Software
 #
 #	This software is licensed under the GPLv2. Commercial and other licenses 
-#   are available from http://www.embedthis.com.
+#   are available from http://embedthis.com.
 #
 #  	$Id$
 #
@@ -14,13 +14,13 @@ PKG_NAME:=ejs
 PKG_RELEASE:=1
 
 #
-#    Build 1.0.0-6-repos
+#    Build 1.0.2-1
 #
-PKG_SOURCE_URL:=http://www.ejscript.org/software/
-PKG_VERSION:=1.0.0-6-repos
-PKG_MD5SUM:=a8dd4107bd2b7c105080d20005f58303
+PKG_SOURCE_URL:=http://ejscript.org/software/
+PKG_VERSION:=1.0.2-1
+PKG_LIB_DIR:= /usr/lib/ejs/1.0.2
+PKG_MD5SUM:=b30e2e541cf4d92e41aafd4f45696075
 PKG_SOURCE:=$(PKG_NAME)-src-$(PKG_VERSION).tar.gz
-PKG_LIB_DIR:= /usr/lib/ejs/1.0.0
 
 #
 #    Build the latest snapshot from the default trunk
@@ -45,7 +45,7 @@ define Package/ejs/Default
 	SECTION:=lang
 	CATEGORY:=Languages
 	TITLE:=Ejscript programming language
-	URL:=http://www.ejscript.org/
+	URL:=http://ejscript.org/
 endef
 
 define Package/ejs/Default/description
@@ -157,6 +157,7 @@ endef
 
 define Package/libejs/install
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/
+	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/modules/
 	$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/libmpr*.so $(1)$(PKG_LIB_DIR)/lib/
@@ -179,35 +180,40 @@ define Package/libejs/install
 	if [ -f $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/modules/ejs.db.so ] ; then \
 		$(CP) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/modules/ejs.db.so $(1)$(PKG_LIB_DIR)/modules/ ; \
 	fi
+	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/bin/linkup $(1)$(PKG_LIB_DIR)/bin/
 endef
 
 define Package/ejs/install
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
 	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/bin/ejs $(1)$(PKG_LIB_DIR)/bin/
+	$(CP) $(PKG_STAGE_DIR)/CONTROL/* $(1)/CONTROL
 endef
 
 define Package/ejsc/install
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
 	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/bin/{ejsc,ejsvm} $(1)$(PKG_LIB_DIR)/bin/
+	$(CP) $(PKG_STAGE_DIR)/CONTROL/* $(1)/CONTROL
 endef
 
 define Package/ejstools/install
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
 	$(INSTALL_BIN) $(PKG_STAGE_DIR)/${PKG_LIB_DIR}/bin/{ejsmod,ejssql} $(1)$(PKG_LIB_DIR)/bin/
+	$(CP) $(PKG_STAGE_DIR)/CONTROL/* $(1)/CONTROL
 endef
 
 define Package/ejsweb/install
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/
-	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/default-web/
 	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/bin/ejsweb $(1)$(PKG_LIB_DIR)/bin/
 	$(CP) -r $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/default-web $(1)$(PKG_LIB_DIR)/lib/
+	$(CP) $(PKG_STAGE_DIR)/CONTROL/* $(1)/CONTROL
 endef
 
 define Package/ejscgi/install
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/bin/
 	$(INSTALL_BIN) $(PKG_STAGE_DIR)/usr/bin/ejscgi $(1)$(PKG_LIB_DIR)/bin/
+	$(CP) $(PKG_STAGE_DIR)/CONTROL/* $(1)/CONTROL
 endef
 
 define Package/ejswebserver/install
@@ -215,6 +221,7 @@ define Package/ejswebserver/install
 	$(INSTALL_DIR) $(1)$(PKG_LIB_DIR)/lib/
 	$(INSTALL_BIN) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/bin/ejswebserver $(1)$(PKG_LIB_DIR)/bin/
 	$(INSTALL_DATA) $(PKG_STAGE_DIR)$(PKG_LIB_DIR)/lib/{mime.types,ejswebserver.conf} $(1)$(PKG_LIB_DIR)/lib/
+	$(CP) $(PKG_STAGE_DIR)/CONTROL/* $(1)/CONTROL
 endef
 
 $(eval $(call BuildPackage,libejs))

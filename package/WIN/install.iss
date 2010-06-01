@@ -117,6 +117,7 @@ end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
+    app:            String;
 	bin:			String;
 begin
 	if CurUninstallStep = usUninstall then begin
@@ -124,6 +125,10 @@ begin
 		// AddPath('EJSPATH', bin);
 		AddPath('Path', bin);
 	end;
+	if CurUninstallStep = usDone then begin
+	    app := ExpandConstant('{app}');			
+        RemoveDir(app);
+    end;
 end;
 
 
