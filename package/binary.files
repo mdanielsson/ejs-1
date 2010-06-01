@@ -11,7 +11,9 @@ if [ "${TASK}" = Remove -a -f "${BLD_BIN_PREFIX}/linkup" ] ; then
 fi
 
 cpy -t -w -e doc/licenses/LICENSE.TXT doc/product/README.TXT COPYRIGHT.TXT "${BLD_VER_PREFIX}"
-cpy -e -m 0755 package/uninstall.sh "${BLD_VER_PREFIX}/uninstall"
+if [ "$WITH_OPENWRT" != 1 ] ; then
+    cpy -e -m 0755 package/uninstall.sh "${BLD_VER_PREFIX}/uninstall"
+fi
 cpy -e -m 0755 package/linkup "${BLD_BIN_PREFIX}/linkup"
 
 cpy -m 755 -s -d ${BLD_BIN_DIR} ejs${BLD_EXE} ejsvm${BLD_EXE} "${BLD_BIN_PREFIX}"
@@ -39,6 +41,12 @@ if [ $BLD_LIB_DIR != $BLD_MOD_DIR ] ; then
 	fi
 fi
 
+if [ `id -u` = 0 -o "$ROOT_DIR" != "" ] ; then
+    if [ "$WITH_OPENWRT" = 1 ] ; then
+        makeDir "${BLD_ROOT_PREFIX}/CONTROL"
+        cpy -e -m 0755 package/LINUX/deb.bin/p* "${BLD_ROOT_PREFIX}/CONTROL"
+    fi
+fi
 if [ $BLD_HOST_OS = WIN ] ; then
     clversion=$BLD_CC_CL_VERSION
     if [ "$clversion" = 15 -a -f lib/msvcrt/$BLD_CC_CL_VERSION/msvcr90.dll ] ; then
