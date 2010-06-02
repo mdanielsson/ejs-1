@@ -149,8 +149,9 @@ static int  loadModuleFile(Ejs *ejs, char *fileName);
         err++;
     }
     mprFree(ejs);
-    mprStop(mpr);
-    mprFree(mpr);
+    if (mprStop(mpr)) {
+        mprFree(mpr);
+    }
     return err;
 }
 

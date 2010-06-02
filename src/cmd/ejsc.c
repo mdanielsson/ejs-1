@@ -301,8 +301,9 @@ static int preloadModules(EcCompiler *cp, MprList *modules);
         err++;
     }
     mprFree(ejs);
-    mprStop(mpr);
-    mprFree(mpr);
+    if (mprStop(mpr)) {
+        mprFree(mpr);
+    }
     return err;
 }
 

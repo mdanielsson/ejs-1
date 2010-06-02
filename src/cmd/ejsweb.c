@@ -50,8 +50,9 @@
         return EJS_ERR;
     }
     mprFree(ejs);
-    mprStop(mpr);
-    mprFree(mpr);
+    if (mprStop(mpr)) {
+        mprFree(mpr);
+    }
     return (rc == 0) ? 0 : 1;
 }
 
