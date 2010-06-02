@@ -335,6 +335,7 @@ EXPORTS
   httpAvailable
   markHttpVar
   markType
+  pa_mimeType
   peekNextJsonToken
   quickSort
   setHttpCallback

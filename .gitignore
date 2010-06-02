@@ -75,3 +75,4 @@ test/web/273.ejs
 test/web/s.xml
 test/web/ss.xml
 test/ss.es
+bin/*.manifest

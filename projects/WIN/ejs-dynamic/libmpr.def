@@ -23,6 +23,7 @@ EXPORTS
   dtoa
   freedtoa
   gethex
+  gettimeofday
   mprActivateWorker
   mprAddDuplicateHash
   mprAddFileSystem
@@ -447,6 +448,7 @@ EXPORTS
   mprStopModuleService
   mprStopOsService
   mprStopSocketService
+  mprStopThreadService
   mprStopWorkerService
   mprStrLower
   mprStrTok
