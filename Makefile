@@ -11,9 +11,6 @@
 #		make compile				# Compiles the source
 #		make depend					# Generates the make dependencies
 #		make test 					# Runs unit tests
-#		make leakTest 				# Runs memory leak tests
-#		make loadTest 				# Runs load tests
-#		make benchmark 				# Runs benchmarks
 #		make package				# Creates an installable package
 #
 #	Installation targets. Use "make ROOT_DIR=myDir" to do a custom local install:
