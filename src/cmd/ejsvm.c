@@ -148,10 +148,12 @@ static int  loadModuleFile(Ejs *ejs, char *fileName);
     if (!err && ejsRunProgram(ejs, className, methodName) < 0) {
         err++;
     }
+#if VXWORKS
     mprFree(ejs);
     if (mprStop(mpr)) {
         mprFree(mpr);
     }
+#endif
     return err;
 }
 
