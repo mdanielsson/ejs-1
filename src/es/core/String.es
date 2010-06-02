@@ -241,7 +241,7 @@ module ejs {
             Extract a substring.
             @param start The position of the first character to slice.
             @param end The position one after the last character. Negative indicies are measured from the end of the string.
-            @param step Extract every "step" character.
+            @param step Extract every "step" character. Step can be negative.
          */ 
         native function slice(start: Number, end: Number = -1, step: Number = 1): String
 

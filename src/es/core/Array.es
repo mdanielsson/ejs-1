@@ -311,7 +311,8 @@ module ejs {
             @param end The array index at which to end. This is one beyond the index of the last element to extract. If 
                 end is negative, it is measured from the end of the array, so use -1 to mean up to but not including the 
                 last element of the array.
-            @param step Slice every step (nth) element. The step value may be negative.
+            @param step Slice every step (nth) element. If the step value is negative, the copying begins at the start
+                index down to the (and not including) the end index.
             @return A new array that is a subset of the original array.
          */
         native function slice(start: Number, end: Number = -1, step: Number = 1): Array 
