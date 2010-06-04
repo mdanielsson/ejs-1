@@ -63,13 +63,13 @@ ecLib.c: $(EJS_HEADERS) $(EC_HEADERS) $(EC_SOURCES)
 	echo '#include "ec.h"' >>ecLib.c
 	all-in-one $(EC_SOURCES) | egrep -v '#inc.*ejs|#inc.*ec|#inc.*sql' >>ecLib.c
 
-ejsc.c: $(EJS_HEADERS) $(EC_HEADERS)
+ejsc.c: $(EJS_HEADERS) $(EC_HEADERS) ../src/cmd/ejsc.c
 	@$(call log) "[Generate]" all/ejsc.c
 	echo '#include "ejs.h"' >ejsc.c
 	echo '#include "ec.h"' >>ejsc.c
 	all-in-one ../src/cmd/ejsc.c | egrep -v '#inc.*ejs|#inc.*ec|#inc.*sql' >>ejsc.c
 
-ejs.c: $(EJS_HEADERS) $(EC_HEADERS)
+ejs.c: $(EJS_HEADERS) $(EC_HEADERS) ../src/cmd/ejs.c
 	@$(call log) "[Generate]" all/ejsc.c
 	echo '#include "ejs.h"' >ejs.c
 	echo '#include "ec.h"' >>ejs.c
