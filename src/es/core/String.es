@@ -74,7 +74,8 @@ module ejs {
         native function endsWith(test: String): Boolean
 
         /**
-            Format arguments as a string. Use the string as a format specifier.
+            Format arguments as a string. Use the string as a format specifier. The format specifier has the form:
+            %[-+ #,][width][precision][type]. See printf(1) for the meaning of the various fields.
             @param args Array containing the data to format. 
             @return Formatted string.
             @example
