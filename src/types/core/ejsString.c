@@ -502,7 +502,6 @@ static EjsVar *formatString(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
         if (c != '%') {
             continue;
         }
-
         if (i > last) {
             catString(ejs, result, &sp->value[last], i - last);
         }

@@ -19308,6 +19308,7 @@ static void outNum(MprCtx ctx, Format *fmt, cchar *prefix, uint64 value)
 static void outFloat(MprCtx ctx, Format *fmt, char specChar, double value)
 {
     char    numBuf[MPR_MAX_STRING], *cp;
+    int     ndigits;
 
     numBuf[0] = '\0';
     if (specChar == 'f') {
@@ -19329,8 +19330,14 @@ static void outFloat(MprCtx ctx, Format *fmt, char specChar, double value)
     BPUTNULL(ctx, fmt);
     mprFree(result);
 #endif
+    ndigits = strlen(numBuf);
     for (cp = numBuf; *cp; cp++) {
         BPUT(ctx, fmt, *cp);
+        if (fmt->flags & SPRINTF_COMMA) {
+            if ((--ndigits % 3) == 0 && ndigits > 0) {
+                BPUT(ctx, fmt, ',');
+            }
+        }
     }
     BPUTNULL(ctx, fmt);
 }
