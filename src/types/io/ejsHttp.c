@@ -1033,8 +1033,8 @@ static EjsVar *getStringHeader(Ejs *ejs, EjsHttp *hp, cchar *key)
 
 
 /*
- *  Prepare form data as a series of key-value pairs. Data is formatted according to www-url-encoded specs by 
- *  mprSetHttpFormData. Objects are flattened into a one level key/value pairs. Keys can have embedded "." separators.
+ *  Prepare form data as a series of key-value pairs. Data is an object with properties becoming keys in a 
+ *  www-url-encoded string. Objects are flattened into a one level key/value pairs by using JSON encoding. 
  *  E.g.  name=value&address=77%20Park%20Lane
  */
 static void prepForm(Ejs *ejs, EjsHttp *hp, char *prefix, EjsVar *data)
@@ -1055,7 +1055,7 @@ static void prepForm(Ejs *ejs, EjsHttp *hp, char *prefix, EjsVar *data)
         if (vp == 0) {
             continue;
         }
-        if (ejsGetPropertyCount(ejs, vp) > 0) {
+        if (ejsGetPropertyCount(ejs, vp) > 0 && !ejsIsArray(vp)) {
             if (prefix) {
                 newPrefix = mprAsprintf(hp, -1, "%s.%s", prefix, qname.name);
                 prepForm(ejs, hp, newPrefix, vp);
@@ -1064,7 +1064,8 @@ static void prepForm(Ejs *ejs, EjsHttp *hp, char *prefix, EjsVar *data)
                 prepForm(ejs, hp, (char*) qname.name, vp);
             }
         } else {
-            value = ejsToString(ejs, vp);
+            //  MOB -- need a better C API for JSON. Should be non-pretty json.
+            value = ejsToJson(ejs, vp);
             sep = (hp->requestContent) ? "&" : "";
             if (prefix) {
                 newKey = mprStrcat(hp, -1, prefix, ".", key, NULL);

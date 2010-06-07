@@ -795,7 +795,7 @@ void ejsDefineWebParam(Ejs *ejs, cchar *key, cchar *value)
      */
     if (strchr(key, '.') == 0) {
         ejsName(&qname, "", key);
-        ejsSetPropertyByName(ejs, where, &qname, (EjsVar*) ejsCreateString(ejs, value));
+        ejsSetPropertyByName(ejs, where, &qname, ejsDeserialize(ejs, ejsCreateString(ejs, value)));
 
     } else {
         subkey = mprStrdup(ejs, key);
@@ -807,12 +807,11 @@ void ejsDefineWebParam(Ejs *ejs, cchar *key, cchar *value)
                 slotNum = ejsSetPropertyByName(ejs, where, &qname, (EjsVar*) ejsCreateObject(ejs, ejs->objectType, 0));
                 vp = ejsGetProperty(ejs, where, slotNum);
             }
-
             where = vp;
         }
         mprAssert(where);
         ejsName(&qname, "", subkey);
-        ejsSetPropertyByName(ejs, where, &qname, (EjsVar*) ejsCreateString(ejs, value));
+        ejsSetPropertyByName(ejs, where, &qname, ejsDeserialize(ejs, ejsCreateString(ejs, value)));
     }
 }
 
