@@ -1064,8 +1064,11 @@ static void prepForm(Ejs *ejs, EjsHttp *hp, char *prefix, EjsVar *data)
                 prepForm(ejs, hp, (char*) qname.name, vp);
             }
         } else {
-            //  MOB -- need a better C API for JSON. Should be non-pretty json.
-            value = ejsToJson(ejs, vp);
+            if (ejsIsArray(vp)) {
+                value = ejsToJson(ejs, vp);
+            } else {
+                value = ejsToString(ejs, vp);
+            }
             sep = (hp->requestContent) ? "&" : "";
             if (prefix) {
                 newKey = mprStrcat(hp, -1, prefix, ".", key, NULL);
@@ -1076,6 +1079,8 @@ static void prepForm(Ejs *ejs, EjsHttp *hp, char *prefix, EjsVar *data)
             }
             encodedValue = mprUrlEncode(hp, value->value);
             hp->requestContent = mprReallocStrcat(hp, -1, hp->requestContent, sep, encodedKey, "=", encodedValue, NULL);
+            mprFree(encodedKey);
+            mprFree(encodedValue);
         }
     }
 }

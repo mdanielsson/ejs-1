@@ -777,11 +777,11 @@ static void createCookie(Ejs *ejs, EjsVar *cookies, cchar *name, cchar *value, c
 /*
  *  Define a form variable as an ejs property in the params[] collection. Support a.b.c syntax
  */
-void ejsDefineWebParam(Ejs *ejs, cchar *key, cchar *value)
+void ejsDefineWebParam(Ejs *ejs, cchar *key, cchar *svalue)
 {
     EjsName     qname;
     EjsWeb      *web;
-    EjsVar      *where, *vp;
+    EjsVar      *where, *vp, *value;
     char        *subkey, *end;
     int         slotNum;
 
@@ -790,12 +790,18 @@ void ejsDefineWebParam(Ejs *ejs, cchar *key, cchar *value)
     where = web->params;
     mprAssert(where);
 
+    if (*svalue == '[') {
+        value = ejsDeserialize(ejs, ejsCreateString(ejs, svalue));
+    } else {
+        value = (EjsVar*) ejsCreateString(ejs, svalue);
+    }
+
     /*
      *  name.name.name
      */
     if (strchr(key, '.') == 0) {
         ejsName(&qname, "", key);
-        ejsSetPropertyByName(ejs, where, &qname, ejsDeserialize(ejs, ejsCreateString(ejs, value)));
+        ejsSetPropertyByName(ejs, where, &qname, value);
 
     } else {
         subkey = mprStrdup(ejs, key);
@@ -811,7 +817,7 @@ void ejsDefineWebParam(Ejs *ejs, cchar *key, cchar *value)
         }
         mprAssert(where);
         ejsName(&qname, "", subkey);
-        ejsSetPropertyByName(ejs, where, &qname, ejsDeserialize(ejs, ejsCreateString(ejs, value)));
+        ejsSetPropertyByName(ejs, where, &qname, value);
     }
 }
 

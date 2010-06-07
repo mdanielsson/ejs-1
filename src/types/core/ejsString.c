@@ -458,9 +458,8 @@ static EjsVar *endsWith(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
  *
  *  function format(...args): String
  *
- *  Format:         %[modifier][width][precision][bits][type]
+ *  Format:         %[modifier][width][precision][type]
     Modifiers:      +- #,
-    Bits:           hlL
  */
 static EjsVar *formatString(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
 {
