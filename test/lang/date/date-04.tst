@@ -170,7 +170,10 @@ for (y = 2500; y > 1000; y -= 10) {
     d = new Date(y, 0, 1)
     offset = d - 0
     line = offset + " " + y + " " + d
-    // print(line)
+    print(line)
+    print(line.replace(/:00 .*/, ":00"))
+    print(results[i])
+    print()
     assert(line.replace(/:00 .*/, ":00") == results[i++])
 }
 
