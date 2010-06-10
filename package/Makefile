@@ -30,9 +30,13 @@ uninstall uninstall-%: prep
 		$(BLD_TOP)/build/bin/makeInstall --root=$(ROOT_DIR) --remove $$packs post
 	
 packageExtra:
-	fakePriv "OPTIONS=$(OPTIONS) TRACE=$(TRACE) \
-		$(BLD_TOP)/build/bin/makeInstall --root=$(PKG_DIR) --package $(PACKS) && \
-		$(BLD_TOOLS_DIR)/makePackage --root=$(PKG_DIR)"
+	if [ "$(BUILD_DEPTH)" -ge 2 ] ; then \
+		fakePriv "OPTIONS=$(OPTIONS) TRACE=$(TRACE) \
+			$(BLD_TOP)/build/bin/makeInstall --root=$(PKG_DIR) --package $(PACKS) && \
+			$(BLD_TOOLS_DIR)/makePackage --root=$(PKG_DIR)" ; \
+	else \
+		echo "Packaging skipped at build depth $(BUILD_DEPTH)" ; \
+	fi
 
 packageOnly:
 	fakePriv $(BLD_TOOLS_DIR)/makePackage --root=$(PKG_DIR) $(PACKS)
