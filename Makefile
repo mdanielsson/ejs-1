@@ -194,14 +194,11 @@ pgo:
 	$(MAKE) -C src/test/bench src/test
 	rm -f obj/*.gcda obj/*.gcno
 
-redo:
-	hg pull ; hg update -C
-	$(MAKE) TRACE=0 release clean depend compile install-binary test
+testExtra: test-projects
 
-update:
-	hg pull ; hg update -C
-	$(MAKE) TRACE=0 clean depend compile install-binary test
-
-debug:
-	open projects/MACOSX/ejs-all/ejs-all.xcodeproj
-
+test-projects:
+ifeq    ($(BLD_HOST_OS),WIN)
+	if [ "$(BUILD_DEPTH)" -ge 3 ] ; then \
+		$(BLD_TOOLS_DIR)/nativeBuild ; \
+	fi
+endif
