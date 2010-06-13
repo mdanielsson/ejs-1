@@ -2,8 +2,9 @@
     Date parsing and formatting
  */
 
-//  Parsing
 
+
+//  Parsing
 assert(Date.parseDate("August 25 2008").date == 25)
 assert(Date.parseDate("August 25, 2008").date == 25)
 assert((Date.parseDate("1/1/08")).year == 2008)
@@ -69,7 +70,7 @@ if (Config.RegularExpressions) {
     assert(d.format('%d').replace(/^0/,'') == d.date)
 }
 
-//  Format UTC
+//  FormatUTC
 var d = Date.parseUTCDate("1/1/2010")
 assert(d.formatUTC('%m/%d/%y %H:%M:%S') == "01/01/10 00:00:00")
 assert(d.formatUTC('%b %d %Y %T') == "Jan 01 2010 00:00:00")

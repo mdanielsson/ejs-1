@@ -1,9 +1,9 @@
 /*
-	Test date accessors
+    Test date accessors
  */
 
-// Property accessors 
 
+// Property accessors 
 d = new Date
 assert(0 <= d.day && d.day <= 6)
 assert(0 <= d.dayOfYear && d.dayOfYear <= 366)
@@ -23,9 +23,14 @@ assert(d.getMonth() == 0)
 assert(d.hours == 0)
 assert(d.getHours() == 0)
 
-
 // Misc
-
 assert(d.elapsed >= 0)
 
 
+//  Test wrapping modifications
+d = new Date("1/1/2010")
+assert(d.day == 5)
+assert(d.year == 2010)
+d.day += 365
+assert(d.day == 6)
+assert(d.year == 2011)

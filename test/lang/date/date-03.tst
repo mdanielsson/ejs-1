@@ -7,7 +7,6 @@ d = new Date(2005, 5, 7, 10, 9)
 function check(actual, expected) {
     if (actual != expected) {
         // print ("Mismatch \n\nActual   => \"" + actual + "\"\nExpected => \"" + expected + "\"\n")
-        // breakpoint()
         throw new Error("Mismatch \n\nActual   => \"" + actual + "\"\nExpected => \"" + expected + "\"\n")
     }
 }
@@ -137,7 +136,8 @@ check(d.format('%r'), "10:09:00 AM")
 check(d.format('%S'), "00")
 
 //  %s    the number of seconds since the Epoch, UTC (see mktime(3)).
-check(d.format('%s'), "1118164140")
+utcd = new Date(Date.UTC(2005, 5, 7, 10, 9))
+check(utcd.format('%s'), "1118138940")
 
 //  %T    is equivalent to ``%H:%M:%S''.
 check(d.format('%T'), "10:09:00")
@@ -179,20 +179,22 @@ check(d.format('%Y'), "2005")
 check(d.format('%y'), "05")
 
 //  %Z    the time zone name.
-if (Config.OS == "WIN") {
-    check(d.format('%Z'), "Pacific Daylight Time")
-} else {
-    check(d.format('%Z'), "PDT")
+if (Date().format('%z') == "-0700") {
+    if (Config.OS == "WIN") {
+        check(d.format('%Z'), "Pacific Daylight Time")
+    } else {
+        check(d.format('%Z'), "PDT")
+    }
+
+    //  %z    the time zone offset from UTC; a leading plus sign stands for east of UTC, a minus
+    //        sign for west of UTC, hours and minutes follow with two digits each and no delimiter between them
+    //        (common form for RFC 822 date headers).
+    check(d.format('%z'), "-0700")
 }
 
-//  MOB -- windows says -800
-//  %z    the time zone offset from UTC; a leading plus sign stands for east of UTC, a minus
-//        sign for west of UTC, hours and minutes follow with two digits each and no delimiter between them
-//        (common form for RFC 822 date headers).
-check(d.format('%z'), "-0700")
-
 //  %+    national representation of the date and time (the format is similar to that produced by date(1)).
-assert(d.format('%+').startsWith("Tue Jun  7 10:09:00 "))
+//        This format is platform dependent.
+assert(d.format('%+').startsWith("Tue Jun  7 10:09:00"))
 
 //  %%    Literal percent.
 check(d.format('%%'), "%")
