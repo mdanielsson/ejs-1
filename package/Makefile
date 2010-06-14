@@ -7,6 +7,7 @@
 include 		.makedep 
 
 PRE_DIRS		= $(BLD_HOST_OS)
+BUILD_DEPTH		?= 2
 BASE_NAME		:= "$(BLD_PRODUCT)-$(BLD_VERSION)-$(BLD_NUMBER)-$(BLD_HOST_DIST)-$(BLD_HOST_OS)-$(BLD_HOST_CPU)"
 PACKS			:= binary dev source
 PKG_DIR			:= `pwd`/../staging
