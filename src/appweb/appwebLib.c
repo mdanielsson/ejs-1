@@ -3293,11 +3293,9 @@ static MaConn *createConn(MprCtx ctx, MaHost *host, MprSocket *sock, cchar *ipAd
     if (conn == 0) {
         return 0;
     }
-
     if (host->keepAlive) {
         conn->keepAliveCount = host->maxKeepAlive;
     }
-
     conn->http = host->server->http;
     conn->sock = sock;
     mprStealBlock(conn, sock);
@@ -3309,7 +3307,6 @@ static MaConn *createConn(MprCtx ctx, MaHost *host, MprSocket *sock, cchar *ipAd
     conn->address = address;
     conn->host = host;
     conn->originalHost = host;
-    conn->input = 0;
     conn->expire = mprGetTime(conn) + host->timeout;
 
     maInitSchedulerQueue(&conn->serviceq);
@@ -3597,7 +3594,6 @@ static inline MaPacket *getPacket(MaConn *conn, int *bytesToRead)
             len = mprGetBufSpace(content);
         }
     }
-    mprAssert(packet == conn->input);
     mprAssert(len > 0);
     *bytesToRead = len;
     return packet;
@@ -13249,13 +13245,16 @@ MaPacket *maCreatePacket(MprCtx ctx, int size)
 MaPacket *maCreateConnPacket(MaConn *conn, int size)
 {
     MaPacket    *packet;
+    MaRequest   *req;
 
     if (conn->state == MPR_HTTP_STATE_COMPLETE) {
         return maCreatePacket((MprCtx) conn, size);
     }
-    if (conn->request) {
-        if ((packet = conn->freePackets) != NULL && size <= packet->content->buflen) {
-            conn->freePackets = packet->next; 
+    req = conn->request;
+    if (req) {
+        /* These packets are all owned by the request */
+        if ((packet = req->freePackets) != NULL && size <= packet->content->buflen) {
+            req->freePackets = packet->next; 
             packet->next = 0;
             return packet;
         }
@@ -13266,11 +13265,13 @@ MaPacket *maCreateConnPacket(MaConn *conn, int size)
 
 void maFreePacket(MaQueue *q, MaPacket *packet)
 {
-    MaConn  *conn;
+    MaConn      *conn;
+    MaRequest   *req;
 
     conn = q->conn;
+    req = conn->request;
 
-    if (packet->content == 0 || packet->content->buflen < MA_BUFSIZE || mprGetParent(packet) == conn) {
+    if (req == 0 || packet->content == 0 || packet->content->buflen < MA_BUFSIZE || mprGetParent(packet) == conn) {
         /* 
          *  Don't bother recycling non-content, small packets or packets owned by the connection
          *  We only store packets owned by the request and not by the connection on the free list.
@@ -13290,8 +13291,8 @@ void maFreePacket(MaQueue *q, MaPacket *packet)
     packet->suffix = 0;
     packet->entityLength = 0;
     packet->flags = 0;
-    packet->next = conn->freePackets;
-    conn->freePackets = packet;
+    packet->next = req->freePackets;
+    req->freePackets = packet;
 } 
 
 
@@ -13615,6 +13616,8 @@ bool maPacketTooBig(MaQueue *q, MaPacket *packet)
 int maResizePacket(MaQueue *q, MaPacket *packet, int size)
 {
     MaPacket    *tail;
+    MaConn      *conn;
+    MprCtx      ctx;
     int         len;
     
     if (size <= 0) {
@@ -13636,7 +13639,9 @@ int maResizePacket(MaQueue *q, MaPacket *packet, int size)
     if (size == len) {
         return 0;
     }
-    tail = maSplitPacket(q->conn, packet, size);
+    conn = q->conn;
+    ctx = conn->request ? (MprCtx) conn->request : (MprCtx) conn;
+    tail = maSplitPacket(ctx, packet, size);
     if (tail == 0) {
         return MPR_ERR_NO_MEMORY;
     }
@@ -13764,9 +13769,8 @@ int maJoinPacket(MaPacket *packet, MaPacket *p)
  *  Split a packet at a given offset and return a new packet containing the data after the offset.
  *  The suffix data migrates to the new packet. 
  */
-MaPacket *maSplitPacket(MaConn *conn, MaPacket *orig, int offset)
+MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
 {
-    MprCtx      ctx;
     MaPacket    *packet;
     int         count, size;
 
@@ -13778,7 +13782,6 @@ MaPacket *maSplitPacket(MaConn *conn, MaPacket *orig, int offset)
     size = max(count, MA_BUFSIZE);
     size = MA_PACKET_ALIGN(size);
     
-    ctx = conn->request ? (MprCtx) conn->request : (MprCtx) conn;
     if ((packet = maCreateDataPacket(ctx, orig->entityLength ? 0: size)) == 0) {
         return 0;
     }
@@ -13969,7 +13972,16 @@ MaRequest *maCreateRequest(MaConn *conn)
 
 int destroyRequest(MaRequest *req)
 {
-    maPrepConnection(req->conn);
+    MaConn  *conn;
+
+    conn = req->conn;
+    maPrepConnection(conn);
+    if (conn->input) {
+        /* Left over packet */
+        if (mprGetParent(conn->input) != conn) {
+            conn->input = maSplitPacket(conn, conn->input, 0);
+        }
+    }
     return 0;
 }
 
@@ -14643,7 +14655,7 @@ static bool processContent(MaConn *conn, MaPacket *packet)
 
         if (packet == req->headerPacket) {
             /* Preserve headers if more data to come. Otherwise handlers may free the packet and destory the headers */
-            packet = maSplitPacket(conn, packet, 0);
+            packet = maSplitPacket(resp, packet, 0);
         } else {
             mprStealBlock(resp, packet);
         }
@@ -14654,6 +14666,7 @@ static bool processContent(MaConn *conn, MaPacket *packet)
              */
             mprLog(conn, 7, "processContent: Split packet of %d at %d", maGetPacketLength(packet), nbytes);
             conn->input = maSplitPacket(conn, packet, nbytes);
+            mprAssert(mprGetParent(conn->input) == conn);
         }
         if ((q->count + maGetPacketLength(packet)) > q->max) {
             conn->keepAliveCount = 0;
@@ -14715,6 +14728,7 @@ bool maProcessCompletion(MaConn *conn)
     if (mprGetParent(packet) != conn) {
         if (more) {
             conn->input = maSplitPacket(conn, packet, 0);
+            mprAssert(mprGetParent(conn->input) == conn);
         } else {
             conn->input = 0;
         }
@@ -14724,7 +14738,6 @@ bool maProcessCompletion(MaConn *conn)
      *  This will free the request, response, pipeline and call maPrepConnection to reset the state.
      */
     mprFree(req->arena);
-    conn->freePackets = NULL;
     return (conn->disconnected) ? 0 : more;
 }
 
@@ -15182,6 +15195,8 @@ static char *getToken(MaConn *conn, cchar *delim)
     MprBuf  *buf;
     char    *token, *nextToken;
     int     len;
+
+    mprAssert(mprGetParent(conn->input) == conn);
 
     buf = conn->input->content;
     len = mprGetBufLength(buf);
