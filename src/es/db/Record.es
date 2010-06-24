@@ -1091,6 +1091,9 @@ module ejs.db {
     }
 }
 
+/* To ease forward compatibility */
+module ejs.db.mapper {}
+
 
 /*
     @copy   default

@@ -337,8 +337,7 @@ module ejs {
 /*
     Added to ease forward compatibility
  */
-module ejs.unix {
-}
+module ejs.unix { }
 
 
 /*
