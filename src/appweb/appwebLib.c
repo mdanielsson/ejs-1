@@ -10539,7 +10539,7 @@ static void updateCurrentDate(MaHost *host)
 
     mprDecodeUniversalTime(host, &tm, host->now + (86400 * 1000));
     oldDate = host->expiresDate;
-    host->expiresDate = mprFormatTime(host, MPR_RFC_DATE, &tm);
+    host->expiresDate = mprFormatTime(host, MPR_HTTP_DATE, &tm);
     mprFree(oldDate);
 }
 
@@ -11923,7 +11923,7 @@ char *maGetDateString(MprCtx ctx, MprPath *sbuf)
         when = (MprTime) sbuf->mtime * MPR_TICKS_PER_SEC;
     }
     mprDecodeUniversalTime(ctx, &tm, when);
-    return mprFormatTime(ctx, MPR_RFC_DATE, &tm);
+    return mprFormatTime(ctx, MPR_HTTP_DATE, &tm);
 }
 
 /*
@@ -15706,7 +15706,7 @@ void maSetCookie(MaConn *conn, cchar *name, cchar *value, cchar *path, cchar *co
     if (lifetime > 0) {
         mprDecodeUniversalTime(resp, &tm, conn->time + (lifetime * MPR_TICKS_PER_SEC));
         expiresAtt = "; expires=";
-        expires = mprFormatTime(resp, MPR_RFC_DATE, &tm);
+        expires = mprFormatTime(resp, MPR_HTTP_DATE, &tm);
 
     } else {
         expires = expiresAtt = "";
