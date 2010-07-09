@@ -3,7 +3,7 @@
     ProjectType="Visual C++"
     Version="8.00"
     Name="ejsvm"
-    ProjectGUID="976173c4-e314-4291-9e78-aaa88419ad8e"
+    ProjectGUID="111d9519-071d-4268-b4b2-4f22c57d623b"
     RootNamespace=""
     Keyword="Win32Proj"
     TargetFrameworkVersion="0"
@@ -136,7 +136,7 @@
         <Filter
             Name="Source Files"
             Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-            UniqueIdentifier="{785d0bde-e702-43e0-91a6-aeccebadff8c}"
+            UniqueIdentifier="{54a1f484-7583-4331-b8dc-edf543e8ec43}"
             >
             <File
                 RelativePath="..\..\..\src\cmd\ejsvm.c"

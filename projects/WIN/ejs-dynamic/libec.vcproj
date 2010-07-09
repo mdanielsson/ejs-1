@@ -3,7 +3,7 @@
     ProjectType="Visual C++"
     Version="8.00"
     Name="libec"
-    ProjectGUID="887b800e-c816-45cb-a57c-519c7f719289"
+    ProjectGUID="f6ccc2ed-27f2-47af-bdf0-0f209c542d6f"
     RootNamespace=""
     Keyword="Win32Proj"
     TargetFrameworkVersion="0"
@@ -138,7 +138,7 @@
         <Filter
             Name="Header Files"
             Filter="h;hpp;hxx;hm;inl;inc;xsd"
-            UniqueIdentifier="{74cc8a5c-a31b-44b2-8749-4c6e03442447}"
+            UniqueIdentifier="{c3e2feed-f813-4976-9c46-d8c290f5c100}"
             >
             <File
                 RelativePath="..\..\..\buildConfig.h"
@@ -252,7 +252,7 @@
         <Filter
             Name="Source Files"
             Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-            UniqueIdentifier="{c99bfe7b-5ed5-4fac-abeb-ff2543ea961d}"
+            UniqueIdentifier="{0d08abc0-b618-4b3a-8c63-edd6b2e3014e}"
             >
             <File
                 RelativePath="..\..\..\src\compiler\ecAst.c"

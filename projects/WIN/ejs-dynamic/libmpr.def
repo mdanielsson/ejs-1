@@ -21,6 +21,7 @@ EXPORTS
   _mprStrndup
   assertTrue
   dtoa
+  floorDiv
   freedtoa
   gethex
   gettimeofday
