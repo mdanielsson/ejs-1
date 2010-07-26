@@ -287,6 +287,7 @@ static int  preloadModules(EcCompiler *cp, MprList *modules);
     }
 #endif
 #if VXWORKS
+    mprFree(cp);
     mprFree(ejs);
     if (mprStop(mpr)) {
         mprFree(mpr);
