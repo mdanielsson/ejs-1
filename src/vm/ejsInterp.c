@@ -2012,7 +2012,7 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
             } else {
                 if (ejsIsFunction(type)) {
                     fun = (EjsFunction*) type;
-                    if ((type == fun->prototype) == 0) {
+                    if ((type = fun->prototype) == 0) {
                         type = ejsCreatePrototype(ejs, fun, &slotNum);
                     }
                 }
