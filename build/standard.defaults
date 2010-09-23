@@ -87,7 +87,9 @@ BLD_FEATURE_DECIMAL=0
 #
 #	Device or emulator. (PocketPC2003, Smartphone2003)
 #
-BLD_FEATURE_DEVICE=PocketPC2003
+if [ "$BLD_FEATURE_DEVICE" = "" ] ; then
+    BLD_FEATURE_DEVICE=PocketPC2003
+fi
 
 #
 #	Enable building documentation
