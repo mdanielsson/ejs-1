@@ -667,11 +667,7 @@ static EjsVar *concatArray(Ejs *ejs, EjsArray *ap, int argc, EjsVar **argv)
 
     args = ((EjsArray*) argv[0]);
 
-    /*
-     *  Guess the new array size. May exceed this if args has elements that are themselves arrays.
-     */
-    newArray = ejsCreateArray(ejs, ap->length + ((EjsArray*) argv[0])->length);
-
+    newArray = ejsCreateArray(ejs, ap->length);
     src = ap->data;
     dest = newArray->data;
 
@@ -689,7 +685,7 @@ static EjsVar *concatArray(Ejs *ejs, EjsArray *ap, int argc, EjsVar **argv)
         vp = args->data[i];
         if (ejsIsArray(vp)) {
             vpa = (EjsArray*) vp;
-            if (growArray(ejs, newArray, newArray->length + vpa->length - 1) < 0) {
+            if (growArray(ejs, newArray, next + vpa->length) < 0) {
                 ejsThrowMemoryError(ejs);
                 return 0;
             }
@@ -699,6 +695,10 @@ static EjsVar *concatArray(Ejs *ejs, EjsArray *ap, int argc, EjsVar **argv)
                 dest[next++] = vpa->data[k];
             }
         } else {
+            if (growArray(ejs, newArray, next + vpa->length) < 0) {
+                ejsThrowMemoryError(ejs);
+                return 0;
+            }
             dest[next++] = vp;
         }
     }
@@ -1499,7 +1499,7 @@ static int growArray(Ejs *ejs, EjsArray *ap, int len)
         return 0;
     }
     if (len <= ap->length) {
-        return EJS_ERR;
+        return 0;
     }
 
     size = mprGetBlockSize(ap->data) / sizeof(EjsVar*);

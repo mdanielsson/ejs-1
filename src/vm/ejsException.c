@@ -167,7 +167,7 @@ EjsVar *ejsThrowMemoryError(Ejs *ejs)
      */
     if (ejs->exception == 0) {
 		va_list dummy = VA_NULL;
-        return ejsCreateException(ejs, ES_MemoryError, NULL, dummy);
+        return ejsCreateException(ejs, ES_MemoryError, "Memory Error", dummy);
     }
     return ejs->exception;
 }
