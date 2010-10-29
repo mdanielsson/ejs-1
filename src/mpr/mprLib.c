@@ -8515,7 +8515,6 @@ MprCmd *mprCreateCmd(MprCtx ctx)
 #if VXWORKS
 static void vxCmdDestructor(MprCmd *cmd)
 {
-    MprCmdService   *cs;
     MprCmdFile      *files;
     int             i;
 
@@ -8539,20 +8538,22 @@ static void vxCmdDestructor(MprCmd *cmd)
             }
         }
     }
-    cs = mprGetMpr(ctx)->cmdService;
-    mprLock(cs->mutex);
-    mprAddItem(cs->cmds, cmd);
-    mprUnlock(cs->mutex);
 }
 #endif
 
 
 static int cmdDestructor(MprCmd *cmd)
 {
+    MprCmdService   *cs;
+
     resetCmd(cmd);
 #if VXWORKS
     vxCmdDestructor(cmd);
 #endif
+    cs = mprGetMpr(ctx)->cmdService;
+    mprLock(cs->mutex);
+    mprRemoveItem(cs->cmds, cmd);
+    mprUnlock(cs->mutex);
     return 0;
 }
 
