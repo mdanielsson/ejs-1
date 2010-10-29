@@ -64,6 +64,13 @@ static int writePort(MaHost *host);
 static long msgProc(HWND hwnd, uint msg, uint wp, long lp);
 #endif
 
+#ifndef BLD_FEATURE_CONFIG_FILE
+    #define BLD_FEATURE_CONFIG_FILE 0
+#endif
+#ifndef BLD_FEATURE_SERVER_ROOT
+    #define BLD_FEATURE_SERVER_ROOT 0
+#endif
+
 
 MAIN(appweb, int argc, char **argv)
 {
@@ -73,10 +80,8 @@ MAIN(appweb, int argc, char **argv)
     char        *configFile, *ipAddr, *homeDir, *timeText, *ejsPrefix, *ejsPath;
     int         workers, outputVersion, argind, port;
     
-    configFile = 0;
     documentRoot = 0;
     ejsPrefix = ejsPath = 0;
-    homeDir = 0;
     ipAddrPort = 0;
     ipAddr = 0;
     port = -1;
@@ -84,6 +89,9 @@ MAIN(appweb, int argc, char **argv)
     server = 0;
     outputVersion = 0;
     workers = -1;
+
+    configFile = BLD_FEATURE_CONFIG_FILE;
+    homeDir = BLD_FEATURE_SERVER_ROOT;
 
     mpr = mprCreate(argc, argv, memoryFailure);
     argc = mpr->argc;
@@ -118,18 +126,17 @@ MAIN(appweb, int argc, char **argv)
         } else if (strcmp(argp, "--chroot") == 0) {
             if (argind >= argc) {
                 return printUsage(mpr);
-
             }
             homeDir = mprGetAbsPath(mpr, argv[++argind]);
             if (chdir(homeDir) < 0) {
-                mprPrintfError(mpr, "%s: Can't change directory to %s", homeDir);
+                mprPrintfError(mpr, "%s: Can't change directory to %s\n", homeDir);
                 exit(4);
             }
             if (chroot(homeDir) < 0) {
                 if (errno == EPERM) {
-                    mprPrintfError(mpr, "%s: Must be super user to use the --chroot option", mprGetAppName(mpr));
+                    mprPrintfError(mpr, "%s: Must be super user to use the --chroot option\n", mprGetAppName(mpr));
                 } else {
-                    mprPrintfError(mpr, "%s: Can't change change root directory to %s, errno %d",
+                    mprPrintfError(mpr, "%s: Can't change change root directory to %s, errno %d\n",
                         mprGetAppName(mpr), homeDir, errno);
                 }
                 exit(5);
@@ -516,6 +523,7 @@ static int setupUnixSignals(Mpr *mpr)
     sigaction(SIGINT, &act, 0);
     sigaction(SIGQUIT, &act, 0);
     sigaction(SIGTERM, &act, 0);
+    sigaction(SIGUSR1, &act, 0);
     
     /*
      *  Ignore pipe signals
@@ -541,17 +549,20 @@ static void catchSignal(int signo, siginfo_t *info, void *arg)
 
     mpr = _signalMpr;
 
-    mprLog(mpr, 1, "\n%s: Received signal %d\nExiting ...\n", mprGetAppName(mpr), signo);
     if (mpr) {
 #if DEBUG_IDE
-        if (signo != 2) {
+        if (signo == SIGINT) {
+            return;
+        }
+#endif
+        mprLog(mpr, 1, "Received signal %d", signo);
+        if (signo == SIGTERM) {
+            mprLog(mpr, 1, "Exiting immediately ...");
+            mprTerminate(mpr, 0);
+        } else {
+            mprLog(mpr, 1, "Executing a graceful exit. Waiting for all requests to complete");
             mprTerminate(mpr, 1);
         }
-#elif BLD_DEBUG
-        exit(1);
-#else
-        mprTerminate(mpr, 1);
-#endif
     }
 }
 #endif /* BLD_HOST_UNIX */

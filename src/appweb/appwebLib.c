@@ -1143,7 +1143,6 @@ int maConfigureServer(MprCtx ctx, MaHttp *http, MaServer *server, cchar *configF
             mprUserError(ctx, "Can't open server on %s", ipAddr);
             return MPR_ERR_CANT_OPEN;
         }
-
         location = host->location;
 
 #if WIN
@@ -1865,15 +1864,6 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
 
         } else if (mprStrcmpAnyCase(key, "DocumentRoot") == 0) {
             path = maMakePath(host, mprStrTrim(value, "\""));
-#if !VXWORKS
-            /*
-             *  VxWorks stat() is broken if using a network FTP server.
-             */
-            if (!mprPathExists(server, path, X_OK)) {
-                mprError(server, "Can't access DocumentRoot directory");
-                return MPR_ERR_BAD_SYNTAX;
-            }
-#endif
             maSetDocumentRoot(host, path);
             maSetDirPath(dir, path);
             mprLog(server, MPR_CONFIG, "DocRoot (%s): \"%s\"", host->name, path);
@@ -1915,6 +1905,13 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
                 }
 #endif
             }
+            return 1;
+
+        } else if (mprStrcmpAnyCase(key, "Expires") == 0) {
+            char *when, *mimeTypes;
+            value = mprStrTrim(value, "\"");
+            when = mprStrTok(value, " \t", &mimeTypes);
+            maAddLocationExpiry(location, (MprTime) mprAtoi(when, 10), mimeTypes);
             return 1;
         }
         break;
@@ -2133,7 +2130,6 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
                     }
                 }
             }
-
             mprAddItem(server->listens, maCreateListen(server, hostName, port, flags));
 
             /*
@@ -2351,6 +2347,7 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
         } else if (mprStrcmpAnyCase(key, "SetHandler") == 0) {
             /* Scope: server, host, location */
             name = mprStrTok(value, " \t", &extensions);
+            maResetHandlers(state->location);
             if (maSetHandler(http, host, state->location, name) < 0) {
                 mprError(server, "Can't add handler %s", name);
                 return MPR_ERR_CANT_CREATE;
@@ -3463,7 +3460,8 @@ static int ioEvent(MaConn *conn, int mask)
     if (mask & MPR_READABLE) {
         readEvent(conn);
     }
-    if (mprIsSocketEof(conn->sock) || conn->disconnected || (conn->request == 0 && conn->keepAliveCount < 0)) {
+    if (mprIsSocketEof(conn->sock) || conn->disconnected || conn->connectionFailed || 
+            (conn->request == 0 && conn->keepAliveCount < 0)) {
         /*
          *  This will close the connection and free all connection resources. NOTE: we compare keepAliveCount with "< 0" 
          *  so that the client can have one more keep alive request. It should respond to the "Connection: close" and 
@@ -6537,14 +6535,12 @@ static void startCmd(MaQueue *q)
     MaResponse      *resp;
     MaConn          *conn;
     MprCmd          *cmd;
-    MprHashTable    *vars;
     MprHash         *hp;
     cchar           *baseName;
     char            **argv, **envv, *fileName;
     int             index, argc, varCount;
 
     argv = 0;
-    vars = 0;
     argc = 0;
 
     conn = q->conn;
@@ -6552,6 +6548,11 @@ static void startCmd(MaQueue *q)
     resp = conn->response;
 
     cmd = q->queueData = mprCreateCmd(req);
+
+    if (conn->http->forkCallback) {
+        cmd->forkCallback = conn->http->forkCallback;
+        cmd->forkData = conn->http->forkData;
+    }
 
     /*
      *  Build the commmand line arguments
@@ -6570,13 +6571,12 @@ static void startCmd(MaQueue *q)
     }
 
     /*
-     *  Build environment variablesV
+     *  Build environment variables
      */
-    vars = req->headers;
-    varCount = mprGetHashCount(vars);
+    varCount = mprGetHashCount(req->headers) + mprGetHashCount(req->formVars);
+    envv = (char**) mprAlloc(cmd, (varCount + 1) * sizeof(char*));
 
     index = 0;
-    envv = (char**) mprAlloc(cmd, (varCount + 1) * sizeof(char*));
     hp = mprGetFirstHash(req->headers);
     while (hp) {
         if (hp->data) {
@@ -6584,6 +6584,14 @@ static void startCmd(MaQueue *q)
             index++;
         }
         hp = mprGetNextHash(req->headers, hp);
+    }
+    hp = mprGetFirstHash(req->formVars);
+    while (hp) {
+        if (hp->data) {
+            envv[index] = mprStrcat(cmd, -1, hp->key, "=", (char*) hp->data, NULL);
+            index++;
+        }
+        hp = mprGetNextHash(req->formVars, hp);
     }
     envv[index] = 0;
     mprAssert(index <= varCount);
@@ -7508,24 +7516,6 @@ static int parseCgi(MaHttp *http, cchar *key, char *value, MaConfigState *state)
 }
 #endif
 
-#if 0
-int maCgiHandlerInit(MaHttp *http, cchar *path)
-{
-    MaStage     *handler;
-
-    handler = maCreateHandler(http, "cgiHandler", MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO);
-    if (handler == 0) {
-        return MPR_ERR_MEMORY;
-    }
-    handler->open = openCgi; 
-    handler->close = closeCgi; 
-    handler->outgoingService = outgoingCgiService;
-    handler->incomingData = incomingCgiData; 
-    handler->run = runCgi; 
-    handler->parse = parseCgi; 
-    return 0;
-}
-#endif
 
 /*
  *  Dynamic module initialization
@@ -7535,8 +7525,7 @@ MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
     MprModule   *module;
     MaStage     *handler;
 
-    module = mprCreateModule(http, "cgiHandler", BLD_VERSION, NULL, NULL, NULL);
-    if (module == 0) {
+    if ((module = mprCreateModule(http, "cgiHandler", BLD_VERSION, NULL, NULL, NULL)) == NULL) {
         return 0;
     }
     handler = maCreateHandler(http, "cgiHandler", MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO);
@@ -7544,6 +7533,7 @@ MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
         mprFree(module);
         return 0;
     }
+    http->cgiHandler = handler;
     handler->open = openCgi; 
     handler->close = closeCgi; 
     handler->outgoingService = outgoingCgiService;
@@ -8819,7 +8809,8 @@ static void openFile(MaQueue *q)
     MaResponse      *resp;
     MaLocation      *location;
     MaConn          *conn;
-    char            *date;
+    MprPath         ginfo;
+    char            *date, *gfile;
 
     conn = q->conn;
     resp = conn->response;
@@ -8828,6 +8819,16 @@ static void openFile(MaQueue *q)
 
     switch (req->method) {
     case MA_REQ_GET:
+        if (req->acceptEncoding) {
+            if (strstr(req->acceptEncoding, "gzip") != 0) {
+                gfile = mprAsprintf(resp, -1, "%s.gz", resp->filename);
+                if (mprGetPathInfo(resp, gfile, &ginfo) == 0) {
+                    resp->filename = gfile;
+                    resp->fileInfo = ginfo;
+                    maSetHeader(conn, 0, "Content-Encoding", "gzip");
+                }
+            }
+        }
     case MA_REQ_HEAD:
     case MA_REQ_POST:
         if (resp->fileInfo.valid && resp->fileInfo.mtime) {
@@ -9463,6 +9464,48 @@ static void openPhp(MaQueue *q)
 }
 
 
+static bool matchPhp(MaConn *conn, MaStage *handler, cchar *url)
+{
+    MaRequest       *req;
+    MaResponse      *resp;
+    MaLocation      *location;
+    MprPath         *info;
+    MprHash         *hp;
+    char            *path, *uri;
+
+    req = conn->request;
+    resp = conn->response;
+    info = &resp->fileInfo;
+    location = conn->request->location;
+
+    if (resp->filename == 0) {
+        resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
+    }
+    info = &resp->fileInfo;
+    if (!info->checked) {
+        mprGetPathInfo(conn, resp->filename, info);
+    }    
+    if (resp->fileInfo.valid) {
+        return 1;
+    }
+    if (location->handler == conn->http->phpHandler) {
+        for (path = 0, hp = 0; (hp = mprGetNextHash(location->extensions, hp)) != 0; ) {
+            if (*hp->key) {
+                path = mprStrcat(resp, -1, resp->filename, ".", hp->key, NULL);
+                if (mprGetPathInfo(conn, path, &resp->fileInfo) == 0) {
+                    resp->filename = path;
+                    uri = mprStrcat(resp, -1, req->url, ".", hp->key, NULL);
+                    maSetRequestUri(conn, uri);
+                    return 1;
+                }
+                mprFree(path);
+            }
+        }
+    }
+	return 0;
+}
+
+
 static void runPhp(MaQueue *q)
 {
     MaConn              *conn;
@@ -9516,7 +9559,7 @@ static void runPhp(MaQueue *q)
     } zend_end_try();
 
     /*
-     *  Define the header variable
+     *  Define the header variables
      */
     zend_try {
         hp = mprGetFirstHash(req->headers);
@@ -9525,6 +9568,13 @@ static void runPhp(MaQueue *q)
                 php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
             }
             hp = mprGetNextHash(req->headers, hp);
+        }
+        hp = mprGetFirstHash(req->formVars);
+        while (hp) {
+            if (hp->data) {
+                php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
+            }
+            hp = mprGetNextHash(req->formVars, hp);
         }
     } zend_end_try();
 
@@ -9784,8 +9834,10 @@ MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
         mprFree(module);
         return 0;
     }
+    handler->match = matchPhp;
     handler->open = openPhp;
     handler->run = runPhp;
+    http->phpHandler = handler;
     initializePhp(module);
     return module;
 }
@@ -9859,6 +9911,7 @@ MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
 #define lock(host) mprLock(host->mutex)
 #define unlock(host) mprUnlock(host->mutex)
 
+static bool appwebIsIdle(MprCtx ctx);
 static int  getRandomBytes(MaHost *host, char *buf, int bufsize);
 static void hostTimer(MaHost *host, MprEvent *event);
 static void updateCurrentDate(MaHost *host);
@@ -9874,7 +9927,6 @@ MaHost *maCreateHost(MaServer *server, cchar *ipAddrPort, MaLocation *location)
     if (host == 0) {
         return 0;
     }
-
     host->aliases = mprCreateList(host);
     host->dirs = mprCreateList(host);
     host->connections = mprCreateList(host);
@@ -9913,6 +9965,7 @@ MaHost *maCreateHost(MaServer *server, cchar *ipAddrPort, MaLocation *location)
 #if BLD_FEATURE_MULTITHREAD
     host->mutex = mprCreateLock(host);
 #endif
+    mprSetIdleCallback(host, appwebIsIdle);
     return host;
 }
 
@@ -10540,7 +10593,6 @@ void maAddConn(MaHost *host, MaConn *conn)
 
 static void updateCurrentDate(MaHost *host)
 {
-    struct tm   tm;
     char        *oldDate;
 
     oldDate = host->currentDate;
@@ -10548,10 +10600,13 @@ static void updateCurrentDate(MaHost *host)
     host->currentDate = maGetDateString(host, 0);
     mprFree(oldDate);
 
+#if UNUSED
+    struct tm   tm;
     mprDecodeUniversalTime(host, &tm, host->now + (86400 * 1000));
     oldDate = host->expiresDate;
     host->expiresDate = mprFormatTime(host, MPR_HTTP_DATE, &tm);
     mprFree(oldDate);
+#endif
 }
 
 
@@ -10566,6 +10621,43 @@ void maRemoveConn(MaHost *host, MaConn *conn)
 }
 
 
+static bool appwebIsIdle(MprCtx ctx)
+{
+    MaHost      *host;
+    MaConn      *conn;
+    MaHttp      *http;
+    MprTime     now;
+    int         nextHost, next;
+    static MprTime lastTrace = 0;
+
+    now = mprGetTime(ctx);
+    http = (MaHttp*) mprGetMpr(ctx)->appwebHttpService;
+    for (nextHost = 0; (host = mprGetNextItem(http->defaultServer->hosts, &nextHost)) != 0; ) {
+        lock(host);
+        for (next = 0; (conn = mprGetNextItem(host->connections, &next)) != 0; ) {
+            if (conn->state != MPR_HTTP_STATE_BEGIN) {
+                if (lastTrace < now) {
+                    mprLog(ctx, 0, "Waiting for request %s to complete", 
+                           *conn->request->url ? conn->request->url : conn->request->pathInfo);
+                    lastTrace = now;
+                }
+                unlock(host);
+                return 0;
+            }
+        }
+        unlock(host);
+    }
+    if (!mprServicesAreIdle(ctx)) {
+        if (lastTrace < now) {
+            mprLog(ctx, 0, "Waiting for MPR services complete");
+            lastTrace = now;
+        }
+        return 0;
+    }
+    return 1;
+}
+
+
 MaHostAddress *maCreateHostAddress(MprCtx ctx, cchar *ipAddr, int port)
 {
     MaHostAddress   *hostAddress;
@@ -10577,12 +10669,10 @@ MaHostAddress *maCreateHostAddress(MprCtx ctx, cchar *ipAddr, int port)
     if (hostAddress == 0) {
         return 0;
     }
-
     hostAddress->flags = 0;
     hostAddress->ipAddr = mprStrdup(hostAddress, ipAddr);
     hostAddress->port = port;
     hostAddress->vhosts = mprCreateList(hostAddress);
-
     return hostAddress;
 }
 
@@ -10801,46 +10891,41 @@ MaListen *maCreateListen(MaServer *server, cchar *ipAddr, int port, int flags)
     if (listen == 0) {
         return 0;
     }
-
     listen->server = server;
     listen->flags = flags;
     listen->port = port;
     listen->ipAddr = mprStrdup(listen, ipAddr);
     listen->flags = flags;
-
     return listen;
 }
 
 
 int maStartListening(MaListen *listen)
 {
+    MaHttp      *http;
     cchar       *proto;
     char        *ipAddr;
+    int         rc;
 
-#if BLD_FEATURE_SSL
     listen->sock = mprCreateSocket(listen, listen->ssl);
-#else
-    listen->sock = mprCreateSocket(listen, NULL);
-#endif
-
     if (mprOpenServerSocket(listen->sock, listen->ipAddr, listen->port, (MprSocketAcceptProc) maAcceptConn, listen->server,
             MPR_SOCKET_NODELAY | MPR_SOCKET_THREAD) < 0) {
         mprError(listen, "Can't open a socket on %s, port %d", listen->ipAddr, listen->port);
         return MPR_ERR_CANT_OPEN;
     }
-
-    proto = "HTTP";
-#if BLD_FEATURE_SSL
-    if (mprIsSocketSecure(listen->sock)) {
-        proto = "HTTPS";
-    }
-#endif
+    proto = mprIsSocketSecure(listen->sock) ? "HTTPS" : "HTTP";
     ipAddr = listen->ipAddr;
     if (ipAddr == 0 || *ipAddr == '\0') {
         ipAddr = "*";
     }
     mprLog(listen, MPR_CONFIG, "Listening for %s on %s:%d", proto, ipAddr, listen->port);
 
+    http = listen->server->http;
+    if (http->listenCallback) {
+        if ((rc = (http->listenCallback)(http, listen)) < 0) {
+            return rc;
+        }
+    }
     return 0;
 }
 
@@ -10917,10 +11002,10 @@ MaLocation *maCreateBareLocation(MprCtx ctx)
     if (location == 0) {
         return 0;
     }
-
     location->errorDocuments = mprCreateHash(location, MA_ERROR_HASH_SIZE);
     location->handlers = mprCreateList(location);
     location->extensions = mprCreateHash(location, MA_HANDLER_HASH_SIZE);
+    location->expires = mprCreateHash(location, MA_HANDLER_HASH_SIZE);
     location->inputStages = mprCreateList(location);
     location->outputStages = mprCreateList(location);
 
@@ -10930,7 +11015,6 @@ MaLocation *maCreateBareLocation(MprCtx ctx)
 #if BLD_FEATURE_AUTH
     location->auth = maCreateAuth(location, 0);
 #endif
-    
     return location;
 }
 
@@ -10945,12 +11029,10 @@ MaLocation *maCreateLocation(MprCtx ctx, MaLocation *parent)
     if (parent == 0) {
         return maCreateBareLocation(ctx);
     }
-
     location = mprAllocObjZeroed(ctx, MaLocation);
     if (location == 0) {
         return 0;
     }
-    
     location->prefix = mprStrdup(location, parent->prefix);
     location->parent = parent;
     location->prefixLen = parent->prefixLen;
@@ -10959,6 +11041,7 @@ MaLocation *maCreateLocation(MprCtx ctx, MaLocation *parent)
     location->outputStages = parent->outputStages;
     location->handlers = parent->handlers;
     location->extensions = parent->extensions;
+    location->expires = parent->expires;
     location->connector = parent->connector;
     location->errorDocuments = parent->errorDocuments;
     location->sessionTimeout = parent->sessionTimeout;
@@ -11009,13 +11092,11 @@ int maAddHandler(MaHttp *http, MaLocation *location, cchar *name, cchar *extensi
         location->extensions = mprCopyHash(location, location->parent->extensions);
         location->handlers = mprDupList(location, location->parent->handlers);
     }
-    
     handler = maLookupStage(http, name);
     if (handler == 0) {
         mprError(http, "Can't find stage %s", name); 
         return MPR_ERR_NOT_FOUND;
     }
-
     if (extensions && *extensions) {
         /*
          *  Add to the handler extension hash
@@ -11044,13 +11125,11 @@ int maAddHandler(MaHttp *http, MaLocation *location, cchar *name, cchar *extensi
         }
         mprAddItem(location->handlers, handler);
     }
-
     if (extensions && *extensions) {
         mprLog(location, MPR_CONFIG, "Add handler \"%s\" for \"%s\"", name, extensions);
     } else {
         mprLog(location, MPR_CONFIG, "Add handler \"%s\" for \"%s\"", name, location->prefix);
     }
-
     return 0;
 }
 
@@ -11068,17 +11147,14 @@ int maSetHandler(MaHttp *http, MaHost *host, MaLocation *location, cchar *name)
         location->extensions = mprCopyHash(location, location->parent->extensions);
         location->handlers = mprDupList(location, location->parent->handlers);
     }
-    
     handler = maLookupStage(http, name);
     if (handler == 0) {
         mprError(http, "Can't find handler %s", name); 
         return MPR_ERR_NOT_FOUND;
     }
     location->handler = handler;
-
     mprLog(location, MPR_CONFIG, "SetHandler \"%s\" \"%s\", prefix %s", name, (host) ? host->name: "unknown", 
         location->prefix);
-
     return 0;
 }
 
@@ -11159,11 +11235,37 @@ int maSetConnector(MaHttp *http, MaLocation *location, cchar *name)
         mprError(http, "Can't find connector %s", name); 
         return MPR_ERR_NOT_FOUND;
     }
-
     location->connector = stage;
     mprLog(location, MPR_CONFIG, "Set connector \"%s\"", name);
-
     return 0;
+}
+
+
+void maAddLocationExpiry(MaLocation *location, MprTime when, cchar *mimeTypes)
+{
+    char    *types, *mime, *tok;
+
+    if (mimeTypes && *mimeTypes) {
+        if (mprGetParent(location->expires) == location->parent) {
+            location->expires = mprCopyHash(location, location->parent->expires);
+        }
+        types = mprStrdup(location, mimeTypes);
+        mime = mprStrTok(types, " ,\t\r\n", &tok);
+        while (mime) {
+            mprAddHash(location->expires, mime, ITOP(when));
+            mime = mprStrTok(0, " \t\r\n", &tok);
+        }
+        mprFree(types);
+    }
+}
+
+
+void maResetHandlers(MaLocation *location)
+{
+    if (mprGetParent(location->handlers) == location) {
+        mprFree(location->handlers);
+    }
+    location->handlers = mprCreateList(location);
 }
 
 
@@ -12194,12 +12296,12 @@ MprModule *maSslModuleInit(MaHttp *http, cchar *path)
 
 
 static char *addIndexToUrl(MaConn *conn, cchar *index);
+static MaStage *checkStage(MaConn *conn, MaStage *stage);
 static char *getExtension(MaConn *conn);
 static MaStage *findHandlerByExtension(MaConn *conn);
-static MaStage *findLocationHandler(MaConn *conn);
-static char *makeFilename(MaConn *conn, MaAlias *alias, cchar *url, bool skipAliasPrefix);
 static bool mapToFile(MaConn *conn, MaStage *handler, bool *rescan);
 static bool matchFilter(MaConn *conn, MaFilter *filter);
+static bool modifyRequest(MaConn *conn);
 static void openQ(MaQueue *q);
 static void processDirectory(MaConn *conn, bool *rescan);
 static void setEnv(MaConn *conn);
@@ -12234,15 +12336,17 @@ void maMatchHandler(MaConn *conn)
         maRedirect(conn, alias->redirectCode, alias->uri);
         return;
     }
+    location = req->location = maLookupBestLocation(req->host, req->url);
+    mprAssert(location);
+    req->auth = location->auth;
 
     if (conn->requestFailed || conn->request->method & (MA_REQ_OPTIONS | MA_REQ_TRACE)) {
         handler = conn->http->passHandler;
-        location = req->location = maLookupBestLocation(req->host, req->url);
-        mprAssert(location);
-        req->auth = location->auth;        
         return;
     }
-
+    if (modifyRequest(conn)) {
+        return;
+    }
     /*
      *  Get the best (innermost) location block and see if a handler is explicitly set for that location block.
      *  Possibly rewrite the url and retry.
@@ -12250,7 +12354,7 @@ void maMatchHandler(MaConn *conn)
     loopCount = MA_MAX_REWRITE;
     do {
         rescan = 0;
-        if ((handler = findLocationHandler(conn)) == 0) {
+        if ((handler = checkStage(conn, req->location->handler)) == 0) {
             /*
              *  Didn't find a location block handler, so try to match by extension and by handler match() routines.
              *  This may invoke processDirectory which may redirect and thus require reprocessing -- hence the loop.
@@ -12263,7 +12367,6 @@ void maMatchHandler(MaConn *conn)
             }
         }
     } while (handler && rescan && loopCount-- > 0);
-
     if (handler == 0) {
         maFailRequest(conn, MPR_HTTP_CODE_BAD_METHOD, "Requested method %s not supported for URL: %s", 
             req->methodName, req->url);
@@ -12272,6 +12375,48 @@ void maMatchHandler(MaConn *conn)
     resp->handler = handler;
     mprLog(resp, 4, "Select handler: \"%s\" for \"%s\"", handler->name, req->url);
     setEnv(conn);
+}
+
+
+static bool modifyRequest(MaConn *conn)
+{
+    MaStage         *handler;
+    MaLocation      *location;
+    MaResponse      *resp;
+    MaRequest       *req;
+    MprPath         *info;
+    MprHash         *he;
+    int             next;
+
+    req = conn->request;
+    resp = conn->response;
+
+    if (resp->filename == 0) {
+        resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
+    }
+    info = &resp->fileInfo;
+    if (!info->checked) {
+        mprGetPathInfo(conn, resp->filename, info);
+    }
+    location = conn->request->location;
+    if (location) {
+        for (next = 0; (handler = mprGetNextItem(location->handlers, &next)) != 0; ) {
+            if (handler->modify) {
+                if (handler->modify(conn, handler)) {
+                    return 1;
+                }
+            }
+        }
+        for (he = 0; (he = mprGetNextHash(location->extensions, he)) != 0; ) {
+            handler = (MaStage*) he->data;
+            if (handler->modify) {
+                if (handler->modify(conn, handler)) {
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
 }
 
 
@@ -12575,30 +12720,6 @@ static MaStage *checkStage(MaConn *conn, MaStage *stage)
 }
 
 
-int maRewriteUri(MaConn *conn) { return 0; }
-
-static MaStage *findLocationHandler(MaConn *conn)
-{
-    MaRequest   *req;
-    MaResponse  *resp;
-    MaLocation  *location;
-    int         loopCount;
-
-    req = conn->request;
-    resp = conn->response;
-    loopCount = MA_MAX_REWRITE;
-
-    do {
-        location = req->location = maLookupBestLocation(req->host, req->url);
-        mprAssert(location);
-        req->auth = location->auth;
-        resp->handler = checkStage(conn, location->handler);
-    } while (maRewriteUri(conn) && --loopCount > 0);
-
-    return resp->handler;
-}
-
-
 /*
  *  Get an extension used for mime type matching. NOTE: this does not permit any kind of platform specific filename.
  *  Rather only those suitable as mime type extensions (simple alpha numeric extensions)
@@ -12639,6 +12760,15 @@ static MaStage *findHandlerByExtension(MaConn *conn)
     location = req->location;
     
     resp->extension = getExtension(conn);
+#if UNUSED
+    if (resp->filename == 0) {
+        resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
+    }
+    info = &resp->fileInfo;
+    if (!info->checked) {
+        mprGetPathInfo(conn, resp->filename, info);
+    }
+#endif
 
     if (*resp->extension) {
         handler = maGetHandlerByExtension(location, resp->extension);
@@ -12648,9 +12778,8 @@ static MaStage *findHandlerByExtension(MaConn *conn)
     }
 
     /*
-     *  Failed to match by extension, so perform custom handler matching. May need a filename (dir handler)
+     *  Failed to match by extension, so perform custom handler matching
      */
-    resp->filename = makeFilename(conn, req->alias, req->url, 1);
     for (next = 0; (handler = mprGetNextItem(location->handlers, &next)) != 0; ) {
         if (handler->match && handler->match(conn, handler, req->url)) {
             if (checkStage(conn, handler)) {
@@ -12680,7 +12809,7 @@ static MaStage *findHandlerByExtension(MaConn *conn)
 }
 
 
-static char *makeFilename(MaConn *conn, MaAlias *alias, cchar *url, bool skipAliasPrefix)
+char *maMakeFilename(MaConn *conn, MaAlias *alias, cchar *url, bool skipAliasPrefix)
 {
     char        *cleanPath, *path;
 
@@ -12711,7 +12840,7 @@ static bool mapToFile(MaConn *conn, MaStage *handler, bool *rescan)
     resp = conn->response;
 
     if (resp->filename == 0) {
-        resp->filename = makeFilename(conn, req->alias, req->url, 1);
+        resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
     }
     req->dir = maLookupBestDir(req->host, resp->filename);
 
@@ -12753,7 +12882,6 @@ static bool matchFilter(MaConn *conn, MaFilter *filter)
     if (stage->match) {
         return stage->match(conn, stage, req->url);
     }
-
     if (filter->extensions && *resp->extension) {
         return maMatchFilterByExtension(filter, resp->extension);
     }
@@ -12887,7 +13015,7 @@ static void setPathInfo(MaConn *conn)
     MaRequest   *req;
     MaResponse  *resp;
     char        *last, *start, *cp, *pathInfo;
-    int         found, sep;
+    int         found, sep, offset;
 
     req = conn->request;
     resp = conn->response;
@@ -12905,9 +13033,7 @@ static void setPathInfo(MaConn *conn)
              */
             last = 0;
             sep = mprGetPathSeparator(req, resp->filename);
-            resp->filename = makeFilename(conn, alias, req->url, 1);
             for (cp = start = &resp->filename[strlen(alias->filename)]; cp; ) {
-                
                 if ((cp = strchr(cp, sep)) != 0) {
                     *cp = '\0';
                 }
@@ -12927,12 +13053,15 @@ static void setPathInfo(MaConn *conn)
                 }
             }
             if (last) {
-                pathInfo = &req->url[alias->prefixLen + last - start];
-                req->pathInfo = mprStrdup(req, pathInfo);
-                *last = '\0';
-                pathInfo[0] = '\0';
+                offset = alias->prefixLen + last - start;
+                if (offset <= strlen(req->url)) {
+                    pathInfo = &req->url[offset];
+                    req->pathInfo = mprStrdup(req, pathInfo);
+                    *last = '\0';
+                    pathInfo[0] = '\0';
+                }
                 if (req->pathInfo[0]) {
-                    req->pathTranslated = makeFilename(conn, alias, req->pathInfo, 0);
+                    req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0);
                 }
             }
         }
@@ -12940,13 +13069,12 @@ static void setPathInfo(MaConn *conn)
             req->pathInfo = req->url;
             req->url = "";
 
-            if ((cp = strchr(req->pathInfo, '.')) != 0) {
+            if ((cp = strrchr(req->pathInfo, '.')) != 0) {
                 resp->extension = mprStrdup(req, ++cp);
             } else {
                 resp->extension = "";
             }
-            req->pathTranslated = makeFilename(conn, alias, req->pathInfo, 0); 
-            resp->filename = alias->filename;
+            req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0); 
         }
     }
 }
@@ -12969,13 +13097,11 @@ static void setEnv(MaConn *conn)
         resp->extension = getExtension(conn);
     }
     if (resp->filename == 0) {
-        resp->filename = makeFilename(conn, req->alias, req->url, 1);
+        resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
     }
-
     if ((resp->mimeType = (char*) maLookupMimeType(conn->host, resp->extension)) == 0) {
         resp->mimeType = (char*) "text/html";
     }
-
     if (!(resp->handler->flags & MA_STAGE_VIRTUAL)) {
         /*
          *  Define an Etag for physical entities. Redo the file info if not valid now that extra path has been removed.
@@ -12988,15 +13114,16 @@ static void setEnv(MaConn *conn)
             resp->etag = mprAsprintf(resp, -1, "\"%x-%Lx-%Lx\"", info->inode, info->size, info->mtime);
         }
     }
-
     if (handler->flags & MA_STAGE_VARS) {
-        req->formVars = mprCreateHash(req, MA_VAR_HASH_SIZE);
         if (req->parsedUri->query) {
             maAddVars(conn, req->parsedUri->query, (int) strlen(req->parsedUri->query));
         }
     }
     if (handler->flags & MA_STAGE_ENV_VARS) {
         maCreateEnvVars(conn);
+        if (resp->envCallback) {
+            resp->envCallback(conn);
+        }
     }
 }
 
@@ -13009,7 +13136,7 @@ char *maMapUriToStorage(MaConn *conn, cchar *url)
     if (alias == 0) {
         return 0;
     }
-    return makeFilename(conn, alias, url, 1);
+    return maMakeFilename(conn, alias, url, 1);
 }
 
 
@@ -13976,6 +14103,7 @@ MaRequest *maCreateRequest(MaConn *conn)
     req->remainingContent = 0;
     req->method = 0;
     req->headers = mprCreateHash(req, MA_VAR_HASH_SIZE);
+    req->formVars = mprCreateHash(req, MA_VAR_HASH_SIZE);
     req->httpProtocol = "HTTP/1.1";
     return req;
 }
@@ -14201,18 +14329,15 @@ static bool parseFirstLine(MaConn *conn, MaPacket *packet)
         maFailConnection(conn, MPR_HTTP_CODE_BAD_METHOD, "Bad method");
         return 0;
     }
-
     uri = getToken(conn, " ");
     if (*uri == '\0') {
         maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad HTTP request. Bad URI.");
         return 0;
     }
-
     if ((int) strlen(uri) >= conn->http->limits.maxUrl) {
         maFailRequest(conn, MPR_HTTP_CODE_REQUEST_URL_TOO_LARGE, "Bad request. URI too long.");
         return 0;
     }
-
     httpProtocol = getToken(conn, "\r\n");
     if (strcmp(httpProtocol, "HTTP/1.1") == 0) {
         conn->protocol = 1;
@@ -14227,7 +14352,6 @@ static bool parseFirstLine(MaConn *conn, MaPacket *packet)
         maFailConnection(conn, MPR_HTTP_CODE_NOT_ACCEPTABLE, "Unsupported HTTP protocol");
         return 0;
     }
-
     req->method = method;
     req->methodName = methodName;
     req->httpProtocol = httpProtocol;
@@ -15371,6 +15495,9 @@ void maFillHeaders(MaConn *conn, MaPacket *packet)
     MaRange         *range;
     MprHash         *hp;
     MprBuf          *buf;
+    struct tm       tm;
+    char            *hdr;
+    int             expires;
 
     mprAssert(packet->flags == MA_PACKET_HEADER);
 
@@ -15398,6 +15525,18 @@ void maFillHeaders(MaConn *conn, MaPacket *packet)
 
     if (resp->flags & MA_RESP_DONT_CACHE) {
         putHeader(conn, packet, "Cache-Control", "no-cache");
+    } else if (req->location->expires) {
+        expires = PTOI(mprLookupHash(req->location->expires, resp->mimeType));
+        if (expires == 0) {
+            expires = PTOI(mprLookupHash(req->location->expires, ""));
+        }
+        if (expires) {
+            mprDecodeUniversalTime(conn, &tm, mprGetTime(conn) + (expires * MPR_TICKS_PER_SEC));
+            hdr = mprFormatTime(conn, MPR_HTTP_DATE, &tm);
+            putFormattedHeader(conn, packet, "Cache-Control", "max-age=%d", expires);
+            putFormattedHeader(conn, packet, "Expires", "%s", hdr);
+            mprFree(hdr);
+        }
     }
     if (resp->etag) {
         putFormattedHeader(conn, packet, "ETag", "%s", resp->etag);
@@ -15587,6 +15726,10 @@ void maRedirect(MaConn *conn, int code, cchar *targetUri)
     host = req->host;
 
     mprLog(conn, 3, "redirect %d %s", code, targetUri);
+
+    if (resp->redirectCallback) {
+        targetUri = (resp->redirectCallback)(conn, &code, targetUri);
+    }
 
     uri = 0;
     resp->code = code;
@@ -15781,6 +15924,18 @@ void maOmitResponseBody(MaConn *conn)
 }
 
 
+void maSetRedirectCallback(MaConn *conn, MaRedirectCallback redirectCallback)
+{
+    conn->response->redirectCallback = redirectCallback;
+}
+
+
+void maSetEnvCallback(MaConn *conn, MaEnvCallback envCallback)
+{
+    conn->response->envCallback = envCallback;
+}
+
+
 /*
  *  @copy   default
  *
@@ -15961,6 +16116,7 @@ MaHttp *maCreateHttp(MprCtx ctx)
     if (http == 0) {
         return 0;
     }
+    mprGetMpr(ctx)->appwebHttpService = http;
     http->servers = mprCreateList(http);
     http->stages = mprCreateHash(http, 0);
 
@@ -16018,7 +16174,6 @@ void maAddServer(MaHttp *http, MaServer *server)
 }
 
 
-
 void maSetDefaultServer(MaHttp *http, MaServer *server)
 {
     http->defaultServer = server;
@@ -16057,6 +16212,13 @@ void *maLookupStageData(MaHttp *http, cchar *name)
 
     stage = (MaStage*) mprLookupHash(http->stages, name);
     return stage->stageData;
+}
+
+
+void maSetForkCallback(MaHttp *http, MprForkCallback callback, void *data)
+{
+    http->forkCallback = callback;
+    http->forkData = data;
 }
 
 
@@ -16184,6 +16346,12 @@ int maApplyChangedGroup(MaHttp *http)
 }
 
 
+void maSetListenCallback(MaHttp *http, MaListenCallback fn)
+{
+    http->listenCallback = fn;
+}
+
+
 /*
  *  Load a module. Returns 0 if the modules is successfully loaded either statically or dynamically.
  */
@@ -16273,9 +16441,7 @@ MaServer *maCreateServer(MaHttp *http, cchar *name, cchar *root, cchar *ipAddr, 
         mprAddItem(server->hostAddresses, hostAddress);
     }
     maSetDefaultServer(http, server);
-
     maLoadStaticModules(http);
-
     return server;
 }
 
@@ -16779,7 +16945,6 @@ MaStage *maCreateStage(MaHttp *http, cchar *name, int flags)
     if (stage == 0) {
         return 0;
     }
-
     stage->flags = flags;
     stage->name = mprStrdup(stage, name);
 
