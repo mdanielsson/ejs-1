@@ -308,7 +308,7 @@ module ejs.web {
                         renderView()
                     }
                 } catch (e) {
-                    reportError(Http.ServerError, "Error in action: " + actionName, e)
+                    reportError(Http.ServerError, "Error in action: " + escapeHtml(actionName), e)
                     rendered = true
                     return
                 }
@@ -544,9 +544,9 @@ module ejs.web {
                     e.code = Http.ServerError
                 }
                 if (extension(request.url) == "ejs") {
-                    reportError(e.code, "Can't load page: " + request.url, e)
+                    reportError(e.code, "Can't load page: " + escapeHtml(request.url), e)
                 } else {
-                    reportError(e.code, "Can't load view: " + viewName + ".ejs" + " for " + request.url, e)
+                    reportError(e.code, "Can't load view: " + viewName + ".ejs" + " for " + escapeHtml(request.url), e)
                 }
                 return
             }
@@ -580,7 +580,7 @@ module ejs.web {
                     msg += "\r\n" + e
                 }
             } else {
-                msg = "<h1>Ejscript error for \"" + request.url + "\"</h1>\r\n<h2>" + msg + "</h2>\r\n"
+                msg = "<h1>Ejscript error for \"" + escapeHtml(request.url) + "\"</h1>\r\n<h2>" + msg + "</h2>\r\n"
                 if (e) {
                     msg += "<pre>" + escapeHtml(e) + "</pre>\r\n"
                 }
