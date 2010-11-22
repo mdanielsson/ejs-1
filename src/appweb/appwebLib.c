@@ -12372,11 +12372,13 @@ void maMatchHandler(MaConn *conn)
             req->methodName, req->url);
         handler = conn->http->passHandler;
 
-    } else if ((req->flags & MA_REQ_OPTIONS) != !(handler->flags & MA_STAGE_OPTIONS)) {
-        handler = conn->http->passHandler;
+    } else if (req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE)) {
+        if ((req->flags & MA_REQ_OPTIONS) != !(handler->flags & MA_STAGE_OPTIONS)) {
+            handler = conn->http->passHandler;
 
-    } else if ((req->flags & MA_REQ_TRACE) != !(handler->flags & MA_STAGE_TRACE)) {
-        handler = conn->http->passHandler;
+        } else if ((req->flags & MA_REQ_TRACE) != !(handler->flags & MA_STAGE_TRACE)) {
+            handler = conn->http->passHandler;
+        }
     }
     resp->handler = handler;
     mprLog(resp, 4, "Select handler: \"%s\" for \"%s\"", handler->name, req->url);
@@ -15398,6 +15400,30 @@ cchar *maGetQueryString(MaConn *conn)
     req = conn->request;
 
     return conn->request->parsedUri->query;
+}
+
+
+void maSetStageData(MaConn *conn, cchar *key, cvoid *data)
+{
+    MaRequest      *req;
+
+    req = conn->request;
+    if (req->requestData == 0) {
+        req->requestData = mprCreateHash(conn, -1);
+    }
+    mprAddHash(req->requestData, key, data);
+}
+
+
+cvoid *maGetStageData(MaConn *conn, cchar *key)
+{
+    MaRequest      *req;
+
+    req = conn->request;
+    if (req->requestData == 0) {
+        return NULL;
+    }
+    return mprLookupHash(req->requestData, key);
 }
 
 

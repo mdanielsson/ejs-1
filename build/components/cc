@@ -150,7 +150,7 @@ setCompilerOptions()
                 echo -e "    Checking for initializers"
                 # echo "         ${cc}" -arch ${cpu} -o $out -c $file 
             fi
-            echo -e "#include <stdarg.h>\nva_list d = {0};\n" >$file
+            echo -e "#include <stdarg.h>\nva_list d = {{0}};\n" >$file
             "${cc}" -arch ${cpu} -Werror -c -o $out -c $file >/dev/null 2>&1
             if [ $? = 0 ] ; then
                 eval $hasDoubleBraces=1
