@@ -9436,12 +9436,14 @@ static bool matchPhp(MaConn *conn, MaStage *handler, cchar *url)
     MaLocation      *location;
     MprPath         *info;
     MprHash         *hp;
+    cchar           *ext;
     char            *path, *uri;
 
     req = conn->request;
     resp = conn->response;
     info = &resp->fileInfo;
     location = req->location;
+    ext = resp->extension;
 
     if (resp->filename == 0) {
         resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
@@ -9449,21 +9451,36 @@ static bool matchPhp(MaConn *conn, MaStage *handler, cchar *url)
     info = &resp->fileInfo;
     if (!info->checked) {
         mprGetPathInfo(conn, resp->filename, info);
-    }    
-    if (resp->fileInfo.valid) {
-        return 1;
     }
-    if (location->handler == conn->http->phpHandler) {
+    if (resp->fileInfo.valid) {
+        if (location->handler == conn->http->phpHandler) {
+            /* PHP selected via SetHandler */
+            return 1;
+        }
+        if (ext[0] && mprLookupHash(location->extensions, ext) == conn->http->phpHandler) {
+            /* PHP selected via AddHandler extension */
+            return 1;
+        }
+    }
+    /*
+        If the URI has no extension and the PHP handler is configured to support the "" extension via AddHandler, 
+        then see if a file exists with any other valid PHP extensions.
+     */
+    if (ext[0] == '\0') {
         for (path = 0, hp = 0; (hp = mprGetNextHash(location->extensions, hp)) != 0; ) {
-            if (*hp->key) {
-                path = mprStrcat(resp, -1, resp->filename, ".", hp->key, NULL);
-                if (mprGetPathInfo(conn, path, &resp->fileInfo) == 0) {
-                    resp->filename = path;
-                    uri = mprStrcat(resp, -1, req->url, ".", hp->key, NULL);
-                    maSetRequestUri(conn, uri);
+            if (hp->data == conn->http->phpHandler) {
+                if (*hp->key) {
+                    path = mprStrcat(resp, -1, resp->filename, ".", hp->key, NULL);
+                    if (mprGetPathInfo(conn, path, &resp->fileInfo) == 0) {
+                        resp->filename = path;
+                        uri = mprStrcat(resp, -1, req->url, ".", hp->key, NULL);
+                        maSetRequestUri(conn, uri);
+                        return 1;
+                    }
+                    mprFree(path);
+                } else {
                     return 1;
                 }
-                mprFree(path);
             }
         }
     }
@@ -11112,11 +11129,12 @@ int maAddHandler(MaHttp *http, MaLocation *location, cchar *name, cchar *extensi
             word = mprStrTok(NULL, " \t\r\n", &tok);
         }
         mprFree(extlist);
+        mprAddItem(location->handlers, handler);
 
     } else {
         if (handler->match == 0) {
             /*
-             *  If a handler provides a custom match() routine, then don't match by extension.
+             *  Only match by extension if the handler does not provide a match() routine
              */
             mprAddHash(location->extensions, "", handler);
         }
@@ -12336,19 +12354,13 @@ void maMatchHandler(MaConn *conn)
     location = req->location = maLookupBestLocation(req->host, req->url);
     mprAssert(location);
     req->auth = location->auth;
+    resp->extension = getExtension(conn);
 
-#if UNUSED
-    if (conn->requestFailed || conn->request->method & (MA_REQ_OPTIONS | MA_REQ_TRACE)) {
-        handler = conn->http->passHandler;
-        return;
-    }
-#endif
     if (modifyRequest(conn)) {
         return;
     }
     /*
      *  Get the best (innermost) location block and see if a handler is explicitly set for that location block.
-     *  Possibly rewrite the url and retry.
      */
     loopCount = MA_MAX_REWRITE;
     do {
@@ -12368,9 +12380,11 @@ void maMatchHandler(MaConn *conn)
     } while (handler && rescan && loopCount-- > 0);
 
     if (handler == 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_BAD_METHOD, "Requested method %s not supported for URL: %s", 
-            req->methodName, req->url);
         handler = conn->http->passHandler;
+        if (!(req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE))) {
+            maFailRequest(conn, MPR_HTTP_CODE_BAD_METHOD, "Requested method %s not supported for URL: %s", 
+                req->methodName, req->url);
+        }
 
     } else if (req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE)) {
         if ((req->flags & MA_REQ_OPTIONS) != !(handler->flags & MA_STAGE_OPTIONS)) {
@@ -12767,17 +12781,9 @@ static MaStage *findHandlerByExtension(MaConn *conn)
     resp = conn->response;
     location = req->location;
     
-    resp->extension = getExtension(conn);
-#if UNUSED
-    if (resp->filename == 0) {
-        resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
+    if (resp->extension == 0) {
+        resp->extension = getExtension(conn);
     }
-    info = &resp->fileInfo;
-    if (!info->checked) {
-        mprGetPathInfo(conn, resp->filename, info);
-    }
-#endif
-
     if (*resp->extension) {
         handler = maGetHandlerByExtension(location, resp->extension);
         if (checkStage(conn, handler)) {
@@ -12789,11 +12795,9 @@ static MaStage *findHandlerByExtension(MaConn *conn)
      *  Failed to match by extension, so perform custom handler matching
      */
     for (next = 0; (handler = mprGetNextItem(location->handlers, &next)) != 0; ) {
-        if (handler->match && handler->match(conn, handler, req->url)) {
-            if (checkStage(conn, handler)) {
-                resp->handler = handler;
-                return handler;
-            }
+        if (handler->match && checkStage(conn, handler)) {
+            resp->handler = handler;
+            return handler;
         }
     }
 
