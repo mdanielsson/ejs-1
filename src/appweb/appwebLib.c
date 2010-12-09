@@ -7605,7 +7605,6 @@ MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
 
 
 #if BLD_FEATURE_DIR
-
 /*
  *  Handler configuration
  */
@@ -7621,7 +7620,6 @@ typedef struct Dir {
     char            *sortField;
     int             sortOrder;              /* 1 == ascending, -1 descending */
 } Dir;
-
 
 
 static void filterDirList(MaConn *conn, MprList *list);
