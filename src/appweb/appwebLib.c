@@ -1810,7 +1810,26 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
         break;
 
     case 'C':
-        if (mprStrcmpAnyCase(key, "CustomLog") == 0) {
+        if (mprStrcmpAnyCase(key, "Chroot") == 0) {
+#if BLD_UNIX_LIKE
+            path = maMakePath(host, mprStrTrim(value, "\""));
+            if (chroot(path) < 0) {
+                if (errno == EPERM) {
+                    mprError(server, "Must be super user to use the --chroot option\n");
+                } else {
+                    mprError(server, "Can't change change root directory to %s, errno %d\n", path, errno);
+                }
+                mprFree(path);
+                return MPR_ERR_BAD_SYNTAX;
+            }
+            mprFree(path);
+            return 1;
+#else
+            mprError(server, "Chroot directive not supported on this operating system\n");
+            return MPR_ERR_BAD_SYNTAX;
+#endif
+
+        } else if (mprStrcmpAnyCase(key, "CustomLog") == 0) {
 #if BLD_FEATURE_ACCESS_LOG && !BLD_FEATURE_ROMFS
             char *format, *end;
             if (*value == '\"') {
@@ -7528,7 +7547,7 @@ MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
         return 0;
     }
     handler = maCreateHandler(http, "cgiHandler", 
-        MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_ADD_EXT);
+        MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_MISSING_EXT);
     if (handler == 0) {
         mprFree(module);
         return 0;
@@ -9466,6 +9485,8 @@ static void runPhp(MaQueue *q)
     MaResponse          *resp;
     MprHash             *hp;
     MaPhp               *php;
+    FILE                *fp;
+    char                shebang[MPR_MAX_STRING];
     zend_file_handle    file_handle;
 
     TSRMLS_FETCH();
@@ -9536,10 +9557,30 @@ static void runPhp(MaQueue *q)
      */
     file_handle.filename = resp->filename;
     file_handle.free_filename = 0;
-    file_handle.type = ZEND_HANDLE_FILENAME;
     file_handle.opened_path = 0;
 
+#if LOAD_FROM_FILE
+    file_handle.type = ZEND_HANDLE_FILENAME;
+#else
+    file_handle.type = ZEND_HANDLE_FP;
+    if ((fp = fopen(resp->filename, "r")) == NULL) {
+        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR,  "PHP can't open script");
+        return;
+    }
+    /*
+        Check for shebang and skip
+     */
+    file_handle.handle.fp = fp;
+    shebang[0] = '\0';
+    fgets(shebang, sizeof(shebang), file_handle.handle.fp);
+    if (shebang[0] != '#' || shebang[1] != '!') {
+        fseek(fp, 0L, SEEK_SET);
+    }
+#endif
+
     zend_try {
+        // CG(start_lineno) = 7;
+        // OG(output_start_lineno) = 7;
         php_execute_script(&file_handle TSRMLS_CC);
         if (!SG(headers_sent)) {
             sapi_send_headers(TSRMLS_C);
@@ -9781,7 +9822,7 @@ MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
         return 0;
     }
     handler = maCreateHandler(http, "phpHandler", 
-        MA_STAGE_ALL | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | MA_STAGE_ADD_EXT);
+        MA_STAGE_ALL | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | MA_STAGE_MISSING_EXT);
     if (handler == 0) {
         mprFree(module);
         return 0;
@@ -10508,7 +10549,7 @@ static void hostTimer(MaHost *host, MprEvent *event)
         if (diff < 0 && !mprGetDebugMode(host)) {
             conn->keepAliveCount = 0;
             if (conn->request) {
-                mprLog(host, 4, "Request timed out %s", conn->request->url);
+                mprLog(host, 4, "Request still open %s", conn->request->url);
             } else {
                 mprLog(host, 4, "Idle connection timed out");
             }
@@ -12737,7 +12778,7 @@ static MaStage *findHandler(MaConn *conn)
          */
         for (path = 0, hp = 0; (hp = mprGetNextHash(location->extensions, hp)) != 0; ) {
             handler = (MaStage*) hp->data;
-            if (*hp->key && (handler->flags & MA_STAGE_ADD_EXT)) {
+            if (*hp->key && (handler->flags & MA_STAGE_MISSING_EXT)) {
                 path = mprStrcat(resp, -1, resp->filename, ".", hp->key, NULL);
                 if (mprGetPathInfo(conn, path, &resp->fileInfo) == 0) {
                     mprLog(conn, 5, "findHandler: Adding extension, new path %s\n", path);
