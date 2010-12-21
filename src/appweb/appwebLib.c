@@ -1813,15 +1813,21 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
         if (mprStrcmpAnyCase(key, "Chroot") == 0) {
 #if BLD_UNIX_LIKE
             path = maMakePath(host, mprStrTrim(value, "\""));
+            if (chdir(path) < 0) {
+                mprError(server, "Can't change directory to %s", path);
+                mprFree(path);
+                return MPR_ERR_CANT_OPEN;
+            }
             if (chroot(path) < 0) {
                 if (errno == EPERM) {
-                    mprError(server, "Must be super user to use the --chroot option\n");
+                    mprError(server, "Must be super user to use the --chroot option");
                 } else {
-                    mprError(server, "Can't change change root directory to %s, errno %d\n", path, errno);
+                    mprError(server, "Can't change change root directory to %s, errno %d", path, errno);
                 }
                 mprFree(path);
                 return MPR_ERR_BAD_SYNTAX;
             }
+            mprLog(server, MPR_CONFIG, "Chroot to: \"%s\"", path);
             mprFree(path);
             return 1;
 #else
@@ -7180,17 +7186,17 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
     argind = 0;
     argc = *argcp;
 
-    if (req->mimeType) {
-        actionProgram = maGetMimeActionProgram(req->host, req->mimeType);
+    if (resp->extension) {
+        actionProgram = maGetMimeActionProgram(req->host, resp->extension);
         if (actionProgram != 0) {
             argc++;
         }
-        /*
-         *  This is an Apache compatible hack for PHP 5.3
-         */
-        mprItoa(status, sizeof(status), MPR_HTTP_CODE_MOVED_TEMPORARILY, 10);
-        mprAddHash(req->headers, "REDIRECT_STATUS", mprStrdup(req, status));
     }
+    /*
+     *  This is an Apache compatible hack for PHP 5.3
+     */
+    mprItoa(status, sizeof(status), MPR_HTTP_CODE_MOVED_TEMPORARILY, 10);
+    mprAddHash(req->headers, "REDIRECT_STATUS", mprStrdup(req, status));
 
     /*
      *  Count the args for ISINDEX queries. Only valid if there is not a "=" in the query. 
@@ -10545,9 +10551,9 @@ static void hostTimer(MaHost *host, MprEvent *event)
         if (diff < 0 && !mprGetDebugMode(host)) {
             conn->keepAliveCount = 0;
             if (conn->request) {
-                mprLog(host, 4, "Request still open %s", conn->request->url);
+                mprLog(host, 6, "Request still open %s", conn->request->url);
             } else {
-                mprLog(host, 4, "Idle connection timed out");
+                mprLog(host, 6, "Idle connection timed out");
             }
             if (!conn->disconnected) {
                 mprDisconnectSocket(conn->sock);
@@ -13086,7 +13092,7 @@ static void setPathInfo(MaConn *conn)
                     *last = '\0';
                     pathInfo[0] = '\0';
                 }
-                if (req->pathInfo[0]) {
+                if (req->pathInfo && req->pathInfo[0]) {
                     req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0);
                 }
             }
