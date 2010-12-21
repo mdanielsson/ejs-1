@@ -9386,7 +9386,7 @@ static void dummy(int junk) { }
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */

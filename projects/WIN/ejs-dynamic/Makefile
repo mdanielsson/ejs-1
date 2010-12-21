@@ -106,3 +106,11 @@ ejswebserver.vcproj: Makefile buildConfig.override
 ejscgi.vcproj: Makefile buildConfig.override
 	@makeVsProj --project ejscgi.vcproj --exe ejscgi.exe --search "$(BLD_EJS_LIBPATHS)" --dflags "$(DFLAGS)" \
 		--libs "$(LIBS) ejs.web.lib libejs.lib libmpr.lib" $(S)/web/gateways/ejsCgi.c
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

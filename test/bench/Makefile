@@ -31,3 +31,11 @@ run:
 		echo -e '\nMemory Size' $$size | sed 's/ default.mod/ K/' )&
 	$(call log) "[Test]" "ejsvm default.mod" 
 	$(call setlibpath) ; $(BLD_BIN_DIR)/ejsvm default.mod | tee ~/a.csv
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

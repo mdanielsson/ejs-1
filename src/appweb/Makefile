@@ -31,3 +31,11 @@ $(BLD_LIB_DIR)/ejswebserver.conf: ejswebserver.conf
 $(BLD_LIB_DIR)/mime.types: mime.types
 	cp mime.types $(BLD_LIB_DIR)
 
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

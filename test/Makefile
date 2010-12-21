@@ -21,3 +21,11 @@ endif
 cleanExtra:
 	rm -f *.lst */*.lst */*.mod *.mod *.h *.h test.sdb
 	rm -fr .doctmp 
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

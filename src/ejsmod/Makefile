@@ -23,3 +23,11 @@ docFiles.c: images/banner.jpg doc.css images/inherit.gif
 	$(call setlibpath) ; makerom images/banner.jpg doc.css images/inherit.gif | \
 		sed 's/ROMFS/EJS_DOC/;s/mpr.h/ejsmod.h/;s/MprRomInode defaultRomFiles/DocFile docFiles/' >docFiles.c
 
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

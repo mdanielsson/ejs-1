@@ -380,7 +380,7 @@ static void logger(MprCtx ctx, int flags, int level, const char *msg)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */

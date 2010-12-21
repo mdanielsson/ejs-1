@@ -13,3 +13,11 @@ endif
 
 x:
 	echo dpath $(_DPATH_)
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

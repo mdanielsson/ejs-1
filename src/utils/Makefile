@@ -22,3 +22,11 @@ $(BLD_BIN_DIR)/genbyte$(BLD_EXE): $(OBJECTS) $(BLD_LIB_DIR)/libmpr$(BLD_LIB)
 
 gen:
 	genbyte ../include
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

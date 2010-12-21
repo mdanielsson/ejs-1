@@ -69,3 +69,11 @@ $(BLD_BIN_DIR)/ejs$(BLD_EXE): $(OBJECTS) $(BLD_LIB_DIR)/libejs$(BLD_LIB) $(BLD_L
 $(BLD_BIN_DIR)/ejsweb$(BLD_EXE): $(OBJECTS) $(BLD_LIB_DIR)/libmpr$(BLD_LIB)
 	bld --exe $(BLD_BIN_DIR)/ejsweb$(BLD_EXE) --search "$(BLD_EJS_LIBPATHS)" --libs "ec $(BLD_EJS_LIBS)" \
 		"$(BLD_OBJ_DIR)/ejsweb$(BLD_OBJ)"
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

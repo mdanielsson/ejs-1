@@ -231,3 +231,11 @@ $(eval $(call BuildPackage,ejsweb))
 $(eval $(call BuildPackage,ejscgi))
 $(eval $(call BuildPackage,ejswebserver))
 $(eval $(call BuildPackage,ejstools))
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

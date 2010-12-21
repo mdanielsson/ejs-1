@@ -264,3 +264,11 @@ $(BLD_BIN_DIR)/ejsweb.cmd: web/ejsweb.cmd
 
 cleanExtra:
 	rm -f *.h *.mod *.lst $(BLD_MOD_DIR)/ejsweb.mod *.h
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

@@ -16,3 +16,11 @@ main$(BLD_EXE) : $(OBJECTS) $(BLD_EJS_MAKEDEP)
 
 cleanExtra:
 	@rm -f main$(BLD_EXE)
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

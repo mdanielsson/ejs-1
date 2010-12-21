@@ -99,7 +99,7 @@ MaAlias *maCreateAlias(MprCtx ctx, cchar *prefix, cchar *target, int code)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -224,7 +224,7 @@ void __dummyAuth() {}
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -961,7 +961,7 @@ void __nativeAuthFile() {}
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -1112,7 +1112,7 @@ void __pamAuth() {}
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -3286,7 +3286,7 @@ static void tabs(int fd, int indent)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -3705,7 +3705,7 @@ static void showRequest(MprBuf *content, int nbytes, int len);
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -4030,7 +4030,7 @@ void __dummyNetConnector() {}
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -4424,7 +4424,7 @@ void __dummySendConnector() {}
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -4559,7 +4559,7 @@ void maSetDirIndex(MaDir *dir, cchar *name)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -5223,7 +5223,7 @@ MprModule *maAuthFilterInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -5507,7 +5507,7 @@ MprModule *maChunkFilterInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -5832,7 +5832,7 @@ MprModule *maRangeFilterInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -6520,7 +6520,7 @@ MprModule *maUploadFilterInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -7688,7 +7688,7 @@ MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -8404,7 +8404,7 @@ MprModule *maDirHandlerInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -8883,7 +8883,7 @@ MprModule *maEgiHandlerInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -9348,7 +9348,7 @@ MprModule *maFileHandlerInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -9437,7 +9437,7 @@ int maOpenPassHandler(MaHttp *http)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -9986,7 +9986,7 @@ MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -10852,7 +10852,7 @@ MaHost *maLookupVirtualHost(MaHostAddress *hostAddress, cchar *hostStr)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -10973,7 +10973,7 @@ void maUnloadStaticModules(MaHttp *http) {}
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -11093,7 +11093,7 @@ int maStopListening(MaListen *listen)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -11503,7 +11503,7 @@ cchar *maLookupErrorDocument(MaLocation *location, int code)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -11917,7 +11917,7 @@ void maLogRequest(MaConn *conn) {}
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -12143,7 +12143,7 @@ void maAddStandardMimeTypes(MaHost *host)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -12217,7 +12217,7 @@ char *maGetDateString(MprCtx ctx, MprPath *sbuf)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -12427,7 +12427,7 @@ MprModule *maSslModuleInit(MaHttp *http, cchar *path)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -13367,7 +13367,7 @@ char *maMapUriToStorage(MaConn *conn, cchar *url)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -14242,7 +14242,7 @@ void maDiscardData(MaQueue *q, bool removePackets)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -15659,7 +15659,7 @@ cvoid *maGetStageData(MaConn *conn, cchar *key)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -16205,7 +16205,7 @@ void maSetEnvCallback(MaConn *conn, MaEnvCallback envCallback)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -17065,7 +17065,7 @@ static int allDigits(cchar *s)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -17282,7 +17282,7 @@ bool maMatchFilterByExtension(MaFilter *filter, cchar *ext)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */
@@ -17647,7 +17647,7 @@ void maRemoveAllUploadedFiles(MaConn *conn)
     tab-width: 4
     c-basic-offset: 4
     End:
-    vim: sw=8 ts=8 expandtab
+    vim: sw=4 ts=4 expandtab
 
     @end
  */

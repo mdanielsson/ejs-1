@@ -19,3 +19,11 @@ compileExtra: 	$(TARGETS)
 $(BLD_LIB_DIR)/libec$(BLD_LIB): $(OBJECTS)
 	bld --library $(BLD_LIB_DIR)/libec --search "$(BLD_EJS_LIBPATHS) $(BLD_EJS_WITHPATHS)" \
 		--libs "$(BLD_EJS_LIBS) $(BLD_EJS_WITHLIBS)" $(OBJECTS)
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#

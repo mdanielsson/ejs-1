@@ -12,3 +12,11 @@ ifeq ($(BLD_FEATURE_SQLITE),1)
 	endif
 	MAKE_IFLAGS		+= $(BLD_SQLITE_IFLAGS)
 endif
+
+#
+#   Local variables:
+#   tab-width: 4
+#   c-basic-offset: 4
+#   End:
+#   vim: sw=4 ts=4
+#
