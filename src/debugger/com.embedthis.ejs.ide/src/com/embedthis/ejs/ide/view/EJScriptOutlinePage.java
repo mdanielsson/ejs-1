@@ -52,8 +52,8 @@ public class EJScriptOutlinePage extends ContentOutlinePage {
 /*
  *	@copy	default
  *	
- *	Copyright (c) Embedthis Software LLC, 2003-2010. All Rights Reserved.
- *	Copyright (c) Michael O'Brien, 1993-2010. All Rights Reserved.
+ *	Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *	Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
  *	
  *	This software is distributed under commercial and open source licenses.
  *	You may use the GPL open source license described below or you may acquire 
@@ -82,5 +82,11 @@ public class EJScriptOutlinePage extends ContentOutlinePage {
  *	End:
  *	vim: sw=4 ts=4 
  *
- *	@end
+ *	Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=8 ts=8 expandtab
+
+    @end
  */

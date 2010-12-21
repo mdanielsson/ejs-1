@@ -29,7 +29,7 @@ See Also:
     The composite sample for how to create a composite native class.
 
 --------------------------------------------------------------------------------
-Copyright (c) 2003-2010 Embedthis Software, LLC. All Rights Reserved.
+Copyright (c) 2003-2011 Embedthis Software, LLC. All Rights Reserved.
 Embedthis and AppWeb are trademarks of Embedthis Software, LLC. Other 
 brands and their products are trademarks of their respective holders.
 

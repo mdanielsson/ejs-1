@@ -1,7 +1,7 @@
 #
 #	Makefile to build the evalScript sample
 #
-#	Copyright (c) Embedthis Software LLC, 2003-2010. All Rights Reserved.
+#	Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
 #
 
 EXPORT_OBJECTS	:= 0

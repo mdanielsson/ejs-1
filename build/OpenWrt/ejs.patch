@@ -6,7 +6,7 @@ Index: package/ejs/Makefile
 +# 
 +#	Makefile for the Ejscript Server-Side JavaScript Language and Web Framework
 +#
-+#	Copyright (C) 2010 Embedthis Software
++#	Copyright (C) 2011 Embedthis Software
 +#
 +#	This software is licensed under the GPLv2. Commercial and other licenses 
 +#   are available from http://www.embedthis.com.
