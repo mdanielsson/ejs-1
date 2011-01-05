@@ -3,7 +3,7 @@
 /******************************************************************************/
 /* 
  *  This file is an amalgamation of all the individual source code files for
- *  Embedthis Appweb 3.2.3.
+ *  Embedthis Appweb 3.2.4.
  *
  *  Catenating all the source into a single file makes embedding simpler and
  *  the resulting application faster, as many compilers can do whole file
@@ -3759,11 +3759,15 @@ static void netOutgoingService(MaQueue *q)
         /*
          *  Issue a single I/O request to write all the blocks in the I/O vector
          */
+        errCode = mprGetOsError();
         mprAssert(q->ioIndex > 0);
         written = mprWriteSocketVector(conn->sock, q->iovec, q->ioIndex);
         mprLog(q, 5, "Net connector written %d", written);
         if (written < 0) {
-            errCode = mprGetError();
+            int e = errno;
+            int f = errno;
+            int g = errno;
+            errCode = mprGetOsError();
             if (errCode == EAGAIN || errCode == EWOULDBLOCK) {
                 break;
             }
@@ -6273,7 +6277,7 @@ static int writeToFile(MaQueue *q, char *data, int len)
         rc = mprWrite(up->file, data, len);
         if (rc != len) {
             maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, 
-                "Can't write to upload temp file %s, rc %d, errno %d\n", up->tmpPath, rc, mprGetOsError(up));
+                "Can't write to upload temp file %s, rc %d, errno %d\n", up->tmpPath, rc, mprGetOsError());
             return MPR_ERR_CANT_WRITE;
         }
         file->size += len;
