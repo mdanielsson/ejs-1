@@ -1327,7 +1327,7 @@ typedef struct MaQueue {
     struct MaQueue  *pair;                  /**< Queue for the same stage in the opposite direction */
     MaPacket        *first;                 /**< First packet in queue (singly linked) */
     MaPacket        *last;                  /**< Last packet in queue (tail pointer) */
-    MaPacket        *pending;               /**< Packets pending more dynamic data output */
+    MprCond         *cond;                  /**< Optional multithread sync */
     int             count;                  /**< Bytes in queue */
     int             max;                    /**< Maxiumum queue size */
     int             low;                    /**< Low water mark for flow control */
@@ -1973,7 +1973,6 @@ typedef struct MaRequest {
     MprHeap         *arena;                 /**< Request memory arena */
     struct MaConn   *conn;                  /**< Connection object */
     MaPacket        *headerPacket;          /**< HTTP headers */
-    MaPacket        *freePackets;           /**< List of free packets */
     int             length;                 /**< Declared content length (ENV: CONTENT_LENGTH) */
     int             chunkState;             /**< Chunk encoding state */
     int             chunkSize;              /**< Size of the next chunk */

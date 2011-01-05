@@ -7323,6 +7323,8 @@ extern void mprPollCmdPipes(MprCmd *cmd, int timeout);
  */
 extern int mprWriteCmdPipe(MprCmd *cmd, int channel, char *buf, int bufsize);
 
+extern int mprIsCmdComplete(MprCmd *cmd);
+
 #endif /* BLD_FEATURE_CMD */
 /* *********************************** Mpr ************************************/
 /*

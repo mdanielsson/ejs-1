@@ -3464,12 +3464,7 @@ int maAcceptConn(MprSocket *sock, MaServer *server, cchar *ip, int port)
         mprFree(sock);
         return 1;
     }
-
-    /*
-     *  Create a connection memory arena. This optimizes memory allocations for this entire connection.
-     *  Arenas are scalable, thread-safe virtual memory blocks that are freed in one chunk.
-     */
-    arena = mprAllocArena(host, "conn", 1, 0, NULL);
+    arena = mprAllocHeap(host, "conn", 1, 0, NULL);
     if (arena == 0) {
         mprError(server, "Can't create connect arena object. Insufficient memory.");
         mprFree(sock);
@@ -3764,11 +3759,9 @@ static void netOutgoingService(MaQueue *q)
         written = mprWriteSocketVector(conn->sock, q->iovec, q->ioIndex);
         mprLog(q, 5, "Net connector written %d", written);
         if (written < 0) {
-            int e = errno;
-            int f = errno;
-            int g = errno;
             errCode = mprGetOsError();
             if (errCode == EAGAIN || errCode == EWOULDBLOCK) {
+                maRequestWriteBlocked(conn);
                 break;
             }
             if (errCode == EPIPE || errCode == ECONNRESET) {
@@ -3905,6 +3898,7 @@ static void freeNetPackets(MaQueue *q, int bytes)
             bytes -= len;
             /* Prefixes don't count in the q->count. No need to adjust */
             if (mprGetBufLength(packet->prefix) == 0) {
+                mprFree(packet->prefix);
                 packet->prefix = 0;
             }
         }
@@ -4131,6 +4125,7 @@ static void sendOutgoingService(MaQueue *q)
         if (written < 0) {
             errCode = mprGetError();
             if (errCode == EAGAIN || errCode == EWOULDBLOCK) {
+                maRequestWriteBlocked(conn);
                 break;
             }
             if (errCode == EPIPE || errCode == ECONNRESET) {
@@ -4288,6 +4283,7 @@ static void freeSentPackets(MaQueue *q, int bytes)
             bytes -= len;
             /* Prefixes dont' count in the q->count. No need to adjust */
             if (mprGetBufLength(packet->prefix) == 0) {
+                mprFree(packet->prefix);
                 packet->prefix = 0;
             }
         }
@@ -6565,6 +6561,10 @@ static bool parseHeader(MaConn *conn, MprCmd *cmd);
 static void pushDataToCgi(MaQueue *q);
 static void startCmd(MaQueue *q);
 
+#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
+static void waitForCgiCompletion(MaQueue *q)
+#endif
+
 #if BLD_DEBUG
 static void traceCGIData(MprCmd *cmd, char *src, int size);
 #define traceData(cmd, src, size) traceCGIData(cmd, src, size)
@@ -6581,8 +6581,8 @@ static void checkCompletion(MaQueue *q, MprEvent *event);
 
 #undef lock
 #undef unlock
-#define lock(q) mprLock(q->conn->mutex)
-#define unlock(q) mprUnlock(q->conn->mutex)
+#define lock(conn) mprLock(conn->mutex)
+#define unlock(conn) mprUnlock(conn->mutex)
 
 /*
  *  Open this handler instance for a new request
@@ -6605,10 +6605,21 @@ static void openCgi(MaQueue *q)
 
     /*
      *  Start the command. This commences the CGI gateway program. Body data from the client may flow to the command
-     *  and response data may be received back.
+     *  uClibc can't wait across thread groups, so create a wait thread.
      */
+#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
+    q->cond = mprCreateCond(q);
+    if ((tp = mprCreateThread(cmd, "CGI", (MprThreadProc) startCmd, q, MPR_WORKER_PRIORITY, 0)) == 0) {
+        //MOB RC
+    }
+    cmd->queueData = tp;
+    mprStartThread(tp);
+    mprWaitForCond(q->cond);
+#else
     startCmd(q);
+#endif
 
+#if UNUSED
 #if BLD_FEATURE_MULTITHREAD
     /*
      *  If there is body content, it may arrive on another thread.  Some platforms can't wait accross thread groups (uclibc),
@@ -6620,6 +6631,7 @@ static void openCgi(MaQueue *q)
         mprAssert(conn->sock->handler->requiredWorker == mprGetCurrentWorker(conn));
     }
 #endif
+#endif
 }
 
 
@@ -6627,13 +6639,14 @@ static void closeCgi(MaQueue *q)
 {
     /*
      *  Disconnect the command handlers so it won't receive callbacks anymore
+     *  Rely on memory destructors to do the rest.
      */
     mprDisconnectCmd((MprCmd*) q->queueData);
 }
 
 
 /*
- *  Prepare and start the CGI command. Called from openCgi(). Called with the queue locked.
+ *  Prepare and start the CGI command. Called from openCgi(). Called with the conn locked.
  */
 static void startCmd(MaQueue *q)
 {
@@ -6711,9 +6724,15 @@ static void startCmd(MaQueue *q)
     if (mprStartCmd(cmd, argc, argv, envv, MPR_CMD_IN | MPR_CMD_OUT | MPR_CMD_ERR) < 0) {
         maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't run CGI process: %s, URI %s", fileName, req->url);
     }
+#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
+    mprSignalCond(q->cond);
+    //  MOB - locking
+    waitForCgiCompletion(q);
+#endif
 }
 
 
+#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
 /*
  *  Wait for the CGI process to complete and collect status. This is run by the original request thread.
  *  Must run on the same thread as that which initiated the CGI process.
@@ -6734,9 +6753,10 @@ static void waitForCgiCompletion(MaQueue *q)
      *  must block here and wait for the child and collect exit status.
      */
     do {
-        unlock(q);
-        rc = mprWaitForCmd(cmd, 5 * 1000);
-        lock(q);
+//  MOB - who has the queue locked
+        unlock(conn);
+        rc = mprWaitForCmd(cmd, 1000);
+        lock(conn);
     } while (rc != 0 && mprGetElapsedTime(cmd, cmd->lastActivity) <= conn->host->timeout);
 
     if (cmd->pid) {
@@ -6752,6 +6772,7 @@ static void waitForCgiCompletion(MaQueue *q)
     maPutForService(q, maCreateEndPacket(q), 1);
     maServiceQueues(conn);
 }
+#endif
 
 
 /*
@@ -6778,6 +6799,7 @@ static void runCgi(MaQueue *q)
         maPutForService(q, maCreateEndPacket(q), 1);
         return;
     }
+#if MOB && UNUSED
     waitForCgiCompletion(q);
     //  MOB 
     mprAssert(cmd->pid == 0);
@@ -6787,6 +6809,7 @@ static void runCgi(MaQueue *q)
         mprAssert(conn->sock->handler->requiredWorker == mprGetCurrentWorker(conn));
         mprReleaseWorkerFromHandler(conn->sock->handler, mprGetCurrentWorker(conn));
     }
+#endif
 #endif
 }
 
@@ -6807,13 +6830,13 @@ static void outgoingCgiService(MaQueue *q)
      *  will setup to listen for writable events. When the socket is writable again, the connector will drain its queue
      *  which will re-enable this queue and schedule it for service again.
      */ 
-    lock(q);
+    lock(q->conn);
     maDefaultOutgoingServiceStage(q);
     if (cmd->userFlags & MA_CGI_FLOW_CONTROL && q->count < q->low) {
         cmd->userFlags &= ~MA_CGI_FLOW_CONTROL;
         mprEnableCmdEvents(cmd, MPR_CMD_STDOUT);
     }
-    unlock(q);
+    unlock(q->conn);
 }
 
 
@@ -6831,11 +6854,11 @@ static void incomingCgiData(MaQueue *q, MaPacket *packet)
     mprAssert(q);
     mprAssert(packet);
     
-    lock(q);
     conn = q->conn;
     resp = conn->response;
     req = conn->request;
 
+    lock(conn);
     cmd = (MprCmd*) q->pair->queueData;
     mprAssert(cmd);
     cmd->lastActivity = mprGetTime(cmd);
@@ -6861,7 +6884,7 @@ static void incomingCgiData(MaQueue *q, MaPacket *packet)
         maPutForService(q, packet, 0);
     }
     pushDataToCgi(q);
-    unlock(q);
+    unlock(conn);
 }
 
 
@@ -6930,13 +6953,15 @@ static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
             rc = maWriteBlock(q, mprGetBufStart(buf), len, 0);
             mprLog(cmd, 5, "Write to browser ask %d, actual %d", len, rc);
         } else {
+            /* Request has failed so just eat the data */
             rc = len;
+            mprAssert(len > 0);
         }
         if (rc > 0) {
             mprAdjustBufStart(buf, rc);
             mprResetBufIfEmpty(buf);
-
-        } else if (rc == 0) {
+        } 
+        if (rc == 0 || mprGetBufLength(buf) == 0) {
             if (servicedQueues) {
                 /*
                  *  Can't write anymore data. Block the CGI gateway. outgoingCgiService will enable.
@@ -6945,12 +6970,11 @@ static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
                 mprAssert(q->flags & MA_QUEUE_DISABLED);
                 cmd->userFlags |= MA_CGI_FLOW_CONTROL;
                 mprDisableCmdEvents(cmd, channel);
+                maEnableConnEvents(conn, MPR_WRITABLE);
                 return MPR_ERR_CANT_WRITE;
-                
-            } else {
-                maServiceQueues(conn);
-                servicedQueues++;
             }
+            maServiceQueues(conn);
+            servicedQueues++;
         }
     }
     return 0;
@@ -6979,10 +7003,15 @@ static int cgiCallback(MprCmd *cmd, int channel, void *data)
      */
     q = conn->response->queue[MA_QUEUE_SEND].nextQ;
     mprAssert(q);
-    lock(q);
+    lock(conn);
     cgiEvent(q, cmd, channel);
     enableCgiEvents(q, cmd, channel);
-    unlock(q);
+    if (conn->state >= MPR_HTTP_STATE_COMPLETE) {
+        maProcessReadEvent(conn, NULL);
+        unlock(conn);
+        return 1;
+    }
+    unlock(conn);
     return 0;
 }
 
@@ -7054,6 +7083,10 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
                  */
                 mprLog(cmd, 5, "CGI EOF for %s", (channel == MPR_CMD_STDOUT) ? "stdout" : "stderr");
                 mprCloseCmdFd(cmd, channel);
+                if (cmd->pid == 0) {
+                    maPutForService(q, maCreateEndPacket(q), 1);
+                    maServiceQueues(conn);
+                }
                 break;
 
             } else {
@@ -7074,7 +7107,6 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
                 mprAddNullToBuf(buf);
                 mprLog(conn, 4, mprGetBufStart(buf));
                 if (writeToClient(q, cmd, buf, channel) < 0) {
-                    maDisconnectConn(conn);
                     return;
                 }
                 maSetResponseCode(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE);
@@ -7087,7 +7119,6 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
             } 
             if (cmd->userFlags & MA_CGI_SEEN_HEADER) {
                 if (writeToClient(q, cmd, buf, channel) < 0) {
-                    maDisconnectConn(conn);
                     return;
                 }
             }
@@ -7110,7 +7141,9 @@ static void enableCgiEvents(MaQueue *q, MprCmd *cmd, int channel)
         mprEnableCmdEvents(cmd, MPR_CMD_STDERR);
         
     } else if (cmd->pid) {
-        mprEnableCmdEvents(cmd, channel);
+        if (channel != MPR_CMD_STDOUT || !(cmd->userFlags & MA_CGI_FLOW_CONTROL)) {
+            mprEnableCmdEvents(cmd, channel);
+        }
     }
 }
 
@@ -7551,6 +7584,8 @@ static void traceCGIData(MprCmd *cmd, char *src, int size)
     char    dest[512];
     int     index, i;
 
+    //MOB - return
+    return;
     mprRawLog(cmd, 5, "@@@ CGI process wrote => \n");
 
     for (index = 0; index < size; ) { 
@@ -10658,7 +10693,7 @@ static void hostTimer(MaHost *host, MprEvent *event)
      */
     lock(host);
     updateCurrentDate(host);
-    mprLog(host, 5, "Connection Count %d", mprGetListCount(host->connections));
+    mprLog(host, 6, "hostTimer: %d active connections", mprGetListCount(host->connections));
 
     /*
      *  Check for any expired connections
@@ -10671,11 +10706,12 @@ static void hostTimer(MaHost *host, MprEvent *event)
         if (diff < 0 && !mprGetDebugMode(host)) {
             conn->keepAliveCount = 0;
             if (conn->request) {
-                mprLog(host, 6, "Request still open %s", conn->request->url);
+                mprLog(host, 6, "Open request timed out due to inactivity: %s", conn->request->url);
             } else {
                 mprLog(host, 6, "Idle connection timed out");
             }
             if (!conn->disconnected) {
+                conn->disconnected = 1;
                 mprDisconnectSocket(conn->sock);
             }
         }
@@ -13400,6 +13436,8 @@ char *maMapUriToStorage(MaConn *conn, cchar *url)
 
 #if BLD_DEBUG
 static void checkQueueCount(MaQueue *q);
+#else
+#define checkQueueCount(q)
 #endif
 
 /*
@@ -13519,9 +13557,8 @@ MaPacket *maGet(MaQueue *q)
     MaQueue     *prev;
     MaPacket    *packet;
 
-#if BLD_DEBUG
     checkQueueCount(q);
-#endif
+
     conn = q->conn;
     while (q->first) {
         if ((packet = q->first) != 0) {
@@ -13540,6 +13577,7 @@ MaPacket *maGet(MaQueue *q)
                 mprAssert(q->first == 0);
             }
         }
+        checkQueueCount(q);
         if (q->flags & MA_QUEUE_FULL && q->count < q->low) {
             /*
              *  This queue was full and now is below the low water mark. Back-enable the previous queue.
@@ -13547,13 +13585,10 @@ MaPacket *maGet(MaQueue *q)
             q->flags &= ~MA_QUEUE_FULL;
             prev = findPreviousQueue(q);
             if (prev && prev->flags & MA_QUEUE_DISABLED) {
-                mprLog(q, 7, "Enable q");
                 maEnableQueue(prev);
             }
         }
-#if BLD_DEBUG
         checkQueueCount(q);
-#endif
         return packet;
     }
     return 0;
@@ -13588,12 +13623,12 @@ MaPacket *maCreatePacket(MprCtx ctx, int size)
  */
 MaPacket *maCreateConnPacket(MaConn *conn, int size)
 {
-    MaPacket    *packet;
-    MaRequest   *req;
-
     if (conn->state == MPR_HTTP_STATE_COMPLETE) {
         return maCreatePacket((MprCtx) conn, size);
     }
+#if UNUSED
+    MaPacket    *packet;
+    MaRequest   *req;
     req = conn->request;
     if (req) {
         /* These packets are all owned by the request */
@@ -13603,6 +13638,7 @@ MaPacket *maCreateConnPacket(MaConn *conn, int size)
             return packet;
         }
     }
+#endif
     return maCreatePacket(conn->request ? (MprCtx) conn->request: (MprCtx) conn, size);
 }
 
@@ -13615,6 +13651,7 @@ void maFreePacket(MaQueue *q, MaPacket *packet)
     conn = q->conn;
     req = conn->request;
 
+#if UNUSED
     if (req == 0 || packet->content == 0 || packet->content->buflen < MA_BUFSIZE || mprGetParent(packet) == conn) {
         /* 
          *  Don't bother recycling non-content, small packets or packets owned by the connection
@@ -13637,6 +13674,9 @@ void maFreePacket(MaQueue *q, MaPacket *packet)
     packet->flags = 0;
     packet->next = req->freePackets;
     req->freePackets = packet;
+#else
+    mprFree(packet);
+#endif
 } 
 
 
@@ -13696,6 +13736,7 @@ static void checkQueueCount(MaQueue *q)
 }
 #endif
 
+
 /*
  *  Put a packet on the service queue.
  */
@@ -13703,9 +13744,7 @@ void maPutForService(MaQueue *q, MaPacket *packet, bool serviceQ)
 {
     mprAssert(packet);
    
-#if BLD_DEBUG
     checkQueueCount(q);
-#endif
     q->count += maGetPacketLength(packet);
     packet->next = 0;
     
@@ -13717,9 +13756,7 @@ void maPutForService(MaQueue *q, MaPacket *packet, bool serviceQ)
         q->first = packet;
         q->last = packet;
     }
-#if BLD_DEBUG
     checkQueueCount(q);
-#endif
     if (serviceQ && !(q->flags & MA_QUEUE_DISABLED))  {
         maScheduleQueue(q);
     }
@@ -13755,6 +13792,7 @@ void maJoinForService(MaQueue *q, MaPacket *packet, bool serviceQ)
             maFreePacket(q, packet);
         }
     }
+    checkQueueCount(q);
     if (serviceQ && !(q->flags & MA_QUEUE_DISABLED))  {
         maScheduleQueue(q);
     }
@@ -13803,9 +13841,7 @@ void maPutBack(MaQueue *q, MaPacket *packet)
     mprAssert(maGetPacketLength(packet) >= 0);
     q->count += maGetPacketLength(packet);
     mprAssert(q->count >= 0);
-#if BLD_DEBUG
     checkQueueCount(q);
-#endif
 }
 
 
@@ -13837,7 +13873,6 @@ bool maWillNextQueueAccept(MaQueue *q, MaPacket *packet)
     /*
      *  The downstream queue is full, so disable the queue and mark the downstream queue as full and service immediately. 
      */
-    mprLog(q, 7, "Disable queue");
     maDisableQueue(q);
     next->flags |= MA_QUEUE_FULL;
     maScheduleQueue(next);
@@ -13864,6 +13899,7 @@ void maSendPackets(MaQueue *q)
 
 void maDisableQueue(MaQueue *q)
 {
+    mprLog(q, 7, "Disable queue %s", q->owner);
     q->flags |= MA_QUEUE_DISABLED;
 }
 
@@ -13914,13 +13950,16 @@ void maServiceQueue(MaQueue *q)
     if (q->conn->serviceq.scheduleNext == q) {
         maGetNextQueueForService(&q->conn->serviceq);
     }
-    q->service(q);
-    q->flags |= MA_QUEUE_SERVICED;
+    if (!(q->flags & MA_QUEUE_DISABLED)) {
+        q->service(q);
+        q->flags |= MA_QUEUE_SERVICED;
+    }
 }
 
 
 void maEnableQueue(MaQueue *q)
 {
+    mprLog(q, 7, "Enable q %s", q->owner);
     q->flags &= ~MA_QUEUE_DISABLED;
     maScheduleQueue(q);
 }
@@ -14004,7 +14043,6 @@ static bool drain(MaQueue *q, bool block)
     int         oldMode;
 
     conn = q->conn;
-    q->pending = 0;
 
     /*
      *  Queue is full. Need to drain the service queue if possible.
@@ -14027,7 +14065,6 @@ static bool drain(MaQueue *q, bool block)
 /*
  *  Write a block of data. This is the lowest level write routine for dynamic data. If block is true, this routine will 
  *  block until all the block is written. If block is false, then it may return without having written all the data.
- *  WARNING: This routine will block if the downstream queue is full. 
  */
 int maWriteBlock(MaQueue *q, cchar *buf, int size, bool block)
 {
@@ -14050,27 +14087,23 @@ int maWriteBlock(MaQueue *q, cchar *buf, int size, bool block)
     }
     for (written = 0; size > 0; ) {
         if (q->count >= q->max && !drain(q, block)) {
+            checkQueueCount(q);
             break;
         }
         if (conn->disconnected) {
             return MPR_ERR_CANT_WRITE;
         }
-        packet = q->pending;
-        if (packet) {
-            mprAssert(packet->content);
-        }
-        if (packet == 0 || mprGetBufSpace(packet->content) == 0) {
-            if ((packet = maCreateDataPacket(q, packetSize)) != 0) {
-                q->pending = packet;
-                maPutForService(q, packet, 1);
-            }
+        if ((packet = maCreateDataPacket(q, packetSize)) == 0) {
+            return MPR_ERR_NO_MEMORY;
         }
         bytes = mprPutBlockToBuf(packet->content, buf, size);
         buf += bytes;
         size -= bytes;
-        q->count += bytes;
         written += bytes;
+        maPutForService(q, packet, 1);
+        checkQueueCount(q);
     }
+    checkQueueCount(q);
     return written;
 }
 
@@ -14178,6 +14211,7 @@ void maCleanQueue(MaQueue *q)
         }
         prev = packet;
     }
+    checkQueueCount(q);
 }
 
 
@@ -14211,6 +14245,7 @@ void maDiscardData(MaQueue *q, bool removePackets)
                 mprFlushBuf(packet->content);
             }
         }
+        checkQueueCount(q);
     }
 }
 
@@ -14293,15 +14328,10 @@ MaRequest *maCreateRequest(MaConn *conn)
     MaRequest   *req;
     MprHeap     *arena;
 
-    /*
-     *  Create a request memory arena. From this arena, are all allocations made for this entire request.
-     *  Arenas are scalable, non-thread-safe virtual memory blocks.
-     */
-    arena  = mprAllocArena(conn->arena, "request", MA_REQ_MEM, 0, NULL);
+    arena  = mprAllocHeap(conn->arena, "request", MA_REQ_MEM, 0, NULL);
     if (arena == 0) {
         return 0;
     }
-
     req = mprAllocObjWithDestructorZeroed(arena, MaRequest, destroyRequest);
     if (req == 0) {
         return 0;
@@ -14370,7 +14400,6 @@ void maProcessWriteEvent(MaConn *conn)
 void maProcessReadEvent(MaConn *conn, MaPacket *packet)
 {
     mprAssert(conn);
-    mprAssert(packet);
 
     conn->canProceed = 1;
     
