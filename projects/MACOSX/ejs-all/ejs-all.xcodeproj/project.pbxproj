@@ -71,10 +71,6 @@
 				C98111290FD58DC50066CD8B /* ShellScript */,
 			);
 			dependencies = (
-				C981112E0FD58DCD0066CD8B /* PBXTargetDependency */,
-				C98111300FD58DCD0066CD8B /* PBXTargetDependency */,
-				C91A6445108D8D330026EB53 /* PBXTargetDependency */,
-				C91A6447108D8D380026EB53 /* PBXTargetDependency */,
 			);
 			name = ejs.web.mod;
 			productName = ejs.web.mod;
@@ -242,20 +238,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		C91A6444108D8D330026EB53 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C97623C10FD06EC4009C78E1 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C98111140FD58CCF0066CD8B;
-			remoteInfo = ejs.db.mod;
-		};
-		C91A6446108D8D380026EB53 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C97623C10FD06EC4009C78E1 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C98761400FD87E6600311B7A;
-			remoteInfo = ejs.db.sqlite.mod;
-		};
 		C91A6448108D8D420026EB53 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = C97623C10FD06EC4009C78E1 /* Project object */;
@@ -465,20 +447,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = C98111140FD58CCF0066CD8B;
 			remoteInfo = ejs.db.mod;
-		};
-		C981112D0FD58DCD0066CD8B /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C97623C10FD06EC4009C78E1 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C97623DA0FD06EF4009C78E1;
-			remoteInfo = ejsc;
-		};
-		C981112F0FD58DCD0066CD8B /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C97623C10FD06EC4009C78E1 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C97623E10FD06EFC009C78E1;
-			remoteInfo = ejsmod;
 		};
 		C98111320FD58ECB0066CD8B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -2317,16 +2285,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		C91A6445108D8D330026EB53 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C98111140FD58CCF0066CD8B /* ejs.db.mod */;
-			targetProxy = C91A6444108D8D330026EB53 /* PBXContainerItemProxy */;
-		};
-		C91A6447108D8D380026EB53 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C98761400FD87E6600311B7A /* ejs.db.sqlite.mod */;
-			targetProxy = C91A6446108D8D380026EB53 /* PBXContainerItemProxy */;
-		};
 		C91A6449108D8D420026EB53 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = C98111140FD58CCF0066CD8B /* ejs.db.mod */;
@@ -2476,16 +2434,6 @@
 			isa = PBXTargetDependency;
 			target = C98111140FD58CCF0066CD8B /* ejs.db.mod */;
 			targetProxy = C98111230FD58D9E0066CD8B /* PBXContainerItemProxy */;
-		};
-		C981112E0FD58DCD0066CD8B /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C97623DA0FD06EF4009C78E1 /* ejsc */;
-			targetProxy = C981112D0FD58DCD0066CD8B /* PBXContainerItemProxy */;
-		};
-		C98111300FD58DCD0066CD8B /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C97623E10FD06EFC009C78E1 /* ejsmod */;
-			targetProxy = C981112F0FD58DCD0066CD8B /* PBXContainerItemProxy */;
 		};
 		C98111330FD58ECB0066CD8B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;

@@ -3,7 +3,7 @@
 /******************************************************************************/
 /* 
  *  This file is an amalgamation of all the individual source code files for
- *  Multithreaded Portable Runtime 3.1.3.
+ *  Multithreaded Portable Runtime 3.1.4.
  *
  *  Catenating all the source into a single file makes embedding simpler and
  *  the resulting application faster, as many compilers can do whole file
@@ -4639,8 +4639,12 @@ bool mprServicesAreIdle(MprCtx ctx)
     Mpr     *mpr;
     
     mpr = mprGetMpr(ctx);
+#if BLD_FEATURE_MULTITHREAD
     return mprGetListCount(mpr->workerService->busyThreads) == 0 && mprGetListCount(mpr->cmdService->cmds) == 0 && 
        !(mpr->dispatcher->flags & MPR_DISPATCHER_DO_EVENT);
+#else
+    return mprGetListCount(mpr->cmdService->cmds) == 0 && !(mpr->dispatcher->flags & MPR_DISPATCHER_DO_EVENT);
+#endif
 }
 
 
@@ -9192,7 +9196,7 @@ int mprReapCmd(MprCmd *cmd, int timeout)
 
     mprAssert(cmd->pid);
 
-#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
+#if BLD_FEATURE_MULTITHREAD && __UCLIBC__
     if (cmd->parent != mprGetCurrentThread(cmd)) {
         /* Return positive status code */
         return -MPR_ERR_BAD_STATE;
@@ -9532,7 +9536,7 @@ static int startProcess(MprCmd *cmd)
     int                 err;
 
 #if UNUSED
-#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
+#if BLD_FEATURE_MULTITHREAD && __UCLIBC__
     cmd->parent = mprGetCurrentThread(cmd);
 #endif
 #endif
@@ -9713,7 +9717,7 @@ static int startProcess(MprCmd *cmd)
 
     files = cmd->files;
 
-#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
+#if BLD_FEATURE_MULTITHREAD && __UCLIBC__
     cmd->parent = mprGetCurrentThread(cmd);
 #endif
 
@@ -13187,6 +13191,7 @@ static int httpDestructor(MprHttp *http)
 
     mprLock(hs->mutex);
     mprRemoveItem(hs->connections, http);
+    mprFree(http->sock);
     mprUnlock(hs->mutex);
     return 0;
 }
@@ -18739,12 +18744,11 @@ static void serviceIO(MprWaitService *ws, struct pollfd *fds, int count)
                 /*
                  *  Disable events to prevent recursive I/O events. Callback must call mprEnableWaitEvents
                  */
-                mprAssert(wp->disableMask == -1);
+                ws->maskGeneration++;
                 if (wp->disableMask == 0) {
                     /* Should not ever get here. Just for safety. */
                     break;
                 }
-                ws->maskGeneration++;
                 wp->disableMask = 0;
                 mprAssert(wp->inUse == 0);
                 wp->inUse++;
@@ -20545,12 +20549,11 @@ static void serviceIO(MprWaitService *ws)
             /*
              *  Disable events to prevent recursive I/O events. Callback must call mprEnableWaitEvents
              */
-            mprAssert(wp->disableMask == -1);
+            ws->maskGeneration++;
             if (wp->disableMask == 0) {
                 /* Should never get here. Just for safety. */
                 continue;
             }
-            ws->maskGeneration++;
             wp->disableMask = 0;
             mprAssert(wp->inUse == 0);
             wp->inUse++;

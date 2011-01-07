@@ -3359,6 +3359,7 @@ static MaConn *createConn(MprCtx ctx, MaHost *host, MprSocket *sock, cchar *ipAd
     conn->host = host;
     conn->originalHost = host;
     conn->expire = mprGetTime(conn) + host->timeout;
+    conn->eventMask = -1;
 
     maInitSchedulerQueue(&conn->serviceq);
 
@@ -3546,6 +3547,7 @@ void maEnableConnEvents(MaConn *conn, int eventMask)
     mprLog(conn, 7, "Enable conn events mask %x", eventMask);
     conn->expire = conn->time;
     conn->expire += (conn->state == MPR_HTTP_STATE_BEGIN) ? conn->host->keepAliveTimeout : conn->host->timeout;
+    eventMask &= conn->eventMask;
     mprSetSocketCallback(conn->sock, (MprSocketProc) ioEvent, conn, eventMask, MPR_NORMAL_PRIORITY);
 }
 
@@ -6547,6 +6549,8 @@ MprModule *maUploadFilterInit(MaHttp *http, cchar *path)
  *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
+// #define __UCLIBC__ 1
+
 
 
 #if BLD_FEATURE_CGI
@@ -6560,10 +6564,6 @@ static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd);
 static bool parseHeader(MaConn *conn, MprCmd *cmd);
 static void pushDataToCgi(MaQueue *q);
 static void startCmd(MaQueue *q);
-
-#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
-static void waitForCgiCompletion(MaQueue *q)
-#endif
 
 #if BLD_DEBUG
 static void traceCGIData(MprCmd *cmd, char *src, int size);
@@ -6604,44 +6604,42 @@ static void openCgi(MaQueue *q)
     maPutForService(q, maCreateHeaderPacket(q), 0);
 
     /*
-     *  Start the command. This commences the CGI gateway program. Body data from the client may flow to the command
-     *  uClibc can't wait across thread groups, so create a wait thread.
+     *  Start the command. This commences the CGI gateway program. Body data from the client may now flow to the command.
+     *  uClibc can't wait across thread groups, so create thread to create and wait for the CGI gateway program.
      */
-#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
-    q->cond = mprCreateCond(q);
-    if ((tp = mprCreateThread(cmd, "CGI", (MprThreadProc) startCmd, q, MPR_WORKER_PRIORITY, 0)) == 0) {
-        //MOB RC
+#if BLD_FEATURE_MULTITHREAD && __UCLIBC__
+    {
+        MprThread   *tp;
+        q->cond = mprCreateCond(q);
+        if ((tp = mprCreateThread(q, "CGI", (MprThreadProc) startCmd, q, MPR_WORKER_PRIORITY, 0)) == 0) {
+            maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't create thread for CGI process");
+            return;
+        }
+        q->queueData = tp;
+        mprStartThread(tp);
+        /* Handshake to wait for the command to start before continuing */
+        mprWaitForCond(q->cond, -1);
     }
-    cmd->queueData = tp;
-    mprStartThread(tp);
-    mprWaitForCond(q->cond);
+    conn->eventMask = 0;
 #else
     startCmd(q);
-#endif
-
-#if UNUSED
-#if BLD_FEATURE_MULTITHREAD
-    /*
-     *  If there is body content, it may arrive on another thread.  Some platforms can't wait accross thread groups (uclibc),
-     *  so we must ensure that further callback events come on the same thread that creates the CGI process.
-     */
-    if (req->remainingContent > 0) {
-        maEnableConnEvents(conn, 0);
-        mprDedicateWorkerToHandler(conn->sock->handler, mprGetCurrentWorker(conn));
-        mprAssert(conn->sock->handler->requiredWorker == mprGetCurrentWorker(conn));
-    }
-#endif
 #endif
 }
 
 
 static void closeCgi(MaQueue *q)
 {
+    MprCmd  *cmd;
+
     /*
      *  Disconnect the command handlers so it won't receive callbacks anymore
      *  Rely on memory destructors to do the rest.
      */
-    mprDisconnectCmd((MprCmd*) q->queueData);
+    cmd = (MprCmd*) q->queueData;
+    if (cmd->pid) {
+        mprStopCmd(cmd);
+    }
+    mprDisconnectCmd(cmd);
 }
 
 
@@ -6724,55 +6722,40 @@ static void startCmd(MaQueue *q)
     if (mprStartCmd(cmd, argc, argv, envv, MPR_CMD_IN | MPR_CMD_OUT | MPR_CMD_ERR) < 0) {
         maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't run CGI process: %s, URI %s", fileName, req->url);
     }
-#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
+
+#if BLD_FEATURE_MULTITHREAD && __UCLIBC__
+    /* Handshake signal openCgi to resume */
     mprSignalCond(q->cond);
-    //  MOB - locking
-    waitForCgiCompletion(q);
-#endif
-}
 
+    while (mprWaitForCmd(cmd, 1000) < 0) {
+        if (mprGetElapsedTime(cmd, cmd->lastActivity) >= conn->host->timeout) {
+            break;
+        }
+    }
+    /* Handshake wait for cgiCallback */
+    mprWaitForCond(q->cond, -1);
 
-#if BLD_FEATURE_MULTITHREADED && __UCLIBC__
-/*
- *  Wait for the CGI process to complete and collect status. This is run by the original request thread.
- *  Must run on the same thread as that which initiated the CGI process.
- */
-static void waitForCgiCompletion(MaQueue *q)
-{
-    MaResponse  *resp;
-    MaConn      *conn;
-    MprCmd      *cmd;
-    int         rc;
-
-    conn = q->conn;
-    resp = conn->response;
-    cmd = (MprCmd*) q->queueData;
-
-    /*
-     *  Because some platforms can't wait accross thread groups (uclibc) on the spawned child, the parent thread 
-     *  must block here and wait for the child and collect exit status.
-     */
-    do {
-//  MOB - who has the queue locked
-        unlock(conn);
-        rc = mprWaitForCmd(cmd, 1000);
-        lock(conn);
-    } while (rc != 0 && mprGetElapsedTime(cmd, cmd->lastActivity) <= conn->host->timeout);
-
+    lock(conn);
     if (cmd->pid) {
         mprStopCmd(cmd);
         mprReapCmd(cmd, MPR_TIMEOUT_STOP_TASK);
         cmd->status = 250;
     }
-    if (cmd->status != 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE,
-            "CGI process %s: exited abnormally with exit status: %d.\nSee the server log for more information.\n", 
-            resp->filename, cmd->status);
+    if (conn->state >= MPR_HTTP_STATE_COMPLETE) {
+        maProcessReadEvent(conn, NULL);
+        conn->eventMask = 0;
+    } else {
+        if (cmd->status != 0) {
+            maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE,
+                "CGI process %s: exited abnormally with exit status: %d.\nSee the server log for more information.\n", 
+                resp->filename, cmd->status);
+            maPutForService(q, maCreateEndPacket(q), 1);
+            maServiceQueues(conn);
+        }
     }
-    maPutForService(q, maCreateEndPacket(q), 1);
-    maServiceQueues(conn);
-}
+    unlock(conn);
 #endif
+}
 
 
 /*
@@ -6799,18 +6782,6 @@ static void runCgi(MaQueue *q)
         maPutForService(q, maCreateEndPacket(q), 1);
         return;
     }
-#if MOB && UNUSED
-    waitForCgiCompletion(q);
-    //  MOB 
-    mprAssert(cmd->pid == 0);
-
-#if BLD_FEATURE_MULTITHREAD
-    if (conn->sock->handler && conn->sock->handler->requiredWorker) {
-        mprAssert(conn->sock->handler->requiredWorker == mprGetCurrentWorker(conn));
-        mprReleaseWorkerFromHandler(conn->sock->handler, mprGetCurrentWorker(conn));
-    }
-#endif
-#endif
 }
 
 
@@ -6961,7 +6932,7 @@ static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
             mprAdjustBufStart(buf, rc);
             mprResetBufIfEmpty(buf);
         } 
-        if (rc == 0 || mprGetBufLength(buf) == 0) {
+        if (rc <= 0 || mprGetBufLength(buf) == 0) {
             if (servicedQueues) {
                 /*
                  *  Can't write anymore data. Block the CGI gateway. outgoingCgiService will enable.
@@ -6970,7 +6941,7 @@ static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
                 mprAssert(q->flags & MA_QUEUE_DISABLED);
                 cmd->userFlags |= MA_CGI_FLOW_CONTROL;
                 mprDisableCmdEvents(cmd, channel);
-                maEnableConnEvents(conn, MPR_WRITABLE);
+                maEnableConnEvents(conn, MPR_READABLE | MPR_WRITABLE);
                 return MPR_ERR_CANT_WRITE;
             }
             maServiceQueues(conn);
@@ -7004,12 +6975,23 @@ static int cgiCallback(MprCmd *cmd, int channel, void *data)
     q = conn->response->queue[MA_QUEUE_SEND].nextQ;
     mprAssert(q);
     lock(conn);
+
     cgiEvent(q, cmd, channel);
-    enableCgiEvents(q, cmd, channel);
-    if (conn->state >= MPR_HTTP_STATE_COMPLETE) {
+
+    /*
+        Setup for more I/O events from the gateway
+     */
+    if (conn->state < MPR_HTTP_STATE_COMPLETE) {
+        enableCgiEvents(q, cmd, channel);
+    } else {
+#if BLD_FEATURE_MULTITHREAD && __UCLIBC__
+        /* Handshake wakeup the startCmd thread to conclude the request */
+        mprSignalCond(q->cond);
+#else
         maProcessReadEvent(conn, NULL);
         unlock(conn);
         return 1;
+#endif
     }
     unlock(conn);
     return 0;
@@ -7584,8 +7566,6 @@ static void traceCGIData(MprCmd *cmd, char *src, int size)
     char    dest[512];
     int     index, i;
 
-    //MOB - return
-    return;
     mprRawLog(cmd, 5, "@@@ CGI process wrote => \n");
 
     for (index = 0; index < size; ) { 

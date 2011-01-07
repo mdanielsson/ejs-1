@@ -2,7 +2,7 @@
 /******************************************************************************/
 /* 
  *  This file is an amalgamation of all the individual source code files for
- *  Multithreaded Portable Runtime 3.1.3.
+ *  Multithreaded Portable Runtime 3.1.4.
  *
  *  Catenating all the source into a single file makes embedding simpler and
  *  the resulting application faster, as many compilers can do whole file
