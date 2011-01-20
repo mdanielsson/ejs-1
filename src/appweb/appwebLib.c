@@ -3387,7 +3387,7 @@ static int connectionDestructor(MaConn *conn)
 
     if (conn->sock) {
         mprLog(conn, 4, "Closing connection");
-        mprCloseSocket(conn->sock, MPR_SOCKET_GRACEFUL);
+        mprCloseSocket(conn->sock, conn->connectionFailed ? 0 : MPR_SOCKET_GRACEFUL);
         mprFree(conn->sock);
     }
     return 0;
@@ -5352,6 +5352,7 @@ static void incomingChunkData(MaQueue *q, MaPacket *packet)
         mprAssert(maGetPacketLength(packet) <= req->chunkSize);
         mprLog(q, 5, "chunkFilter: data %d bytes, req->remainingContent %d", maGetPacketLength(packet), 
             req->remainingContent);
+        maCheckQueueCount(q);
         maPutNext(q, packet);
         if (req->remainingContent == 0) {
             req->chunkState = MA_CHUNK_START;
@@ -9589,7 +9590,6 @@ static void openPhp(MaQueue *q)
     MaAlias         *alias;
 
     conn = q->conn;
-
     if (!q->stage->stageData) {
         if (initializePhp(conn->http) < 0) {
             maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "PHP initialization failed");
@@ -10144,6 +10144,7 @@ MaHost *maCreateVirtualHost(MaServer *server, cchar *ipAddrPort, MaHost *parent)
     host->maxKeepAlive = parent->maxKeepAlive;
     host->keepAlive = parent->keepAlive;
     host->accessLog = parent->accessLog;
+    host->mimeTypes = parent->mimeTypes;
     host->location = maCreateLocation(host, parent->location);
 
     host->traceMask = parent->traceMask;
@@ -12404,7 +12405,6 @@ MprModule *maSslModuleInit(MaHttp *http, cchar *path)
     if ((module = mprLoadSsl(http, 1)) == 0) {
         return 0;
     }
-    // module->name = "sslModule";
     if ((stage = maCreateStage(http, "sslModule", MA_STAGE_MODULE)) == 0) {
         mprFree(module);
         return 0;
@@ -13426,9 +13426,9 @@ char *maMapUriToStorage(MaConn *conn, cchar *url)
 
 
 #if BLD_DEBUG
-static void checkQueueCount(MaQueue *q);
+void maCheckQueueCount(MaQueue *q);
 #else
-#define checkQueueCount(q)
+#define maCheckQueueCount(q)
 #endif
 
 /*
@@ -13548,7 +13548,7 @@ MaPacket *maGet(MaQueue *q)
     MaQueue     *prev;
     MaPacket    *packet;
 
-    checkQueueCount(q);
+    maCheckQueueCount(q);
 
     conn = q->conn;
     while (q->first) {
@@ -13568,7 +13568,7 @@ MaPacket *maGet(MaQueue *q)
                 mprAssert(q->first == 0);
             }
         }
-        checkQueueCount(q);
+        maCheckQueueCount(q);
         if (q->flags & MA_QUEUE_FULL && q->count < q->low) {
             /*
              *  This queue was full and now is below the low water mark. Back-enable the previous queue.
@@ -13579,7 +13579,7 @@ MaPacket *maGet(MaQueue *q)
                 maEnableQueue(prev);
             }
         }
-        checkQueueCount(q);
+        maCheckQueueCount(q);
         return packet;
     }
     return 0;
@@ -13714,7 +13714,7 @@ MaPacket *maCreateEndPacket(MprCtx ctx)
 
 
 #if BLD_DEBUG
-static void checkQueueCount(MaQueue *q)
+void maCheckQueueCount(MaQueue *q)
 {
     MaPacket    *packet;
     int         count;
@@ -13735,7 +13735,7 @@ void maPutForService(MaQueue *q, MaPacket *packet, bool serviceQ)
 {
     mprAssert(packet);
    
-    checkQueueCount(q);
+    maCheckQueueCount(q);
     q->count += maGetPacketLength(packet);
     packet->next = 0;
     
@@ -13747,7 +13747,7 @@ void maPutForService(MaQueue *q, MaPacket *packet, bool serviceQ)
         q->first = packet;
         q->last = packet;
     }
-    checkQueueCount(q);
+    maCheckQueueCount(q);
     if (serviceQ && !(q->flags & MA_QUEUE_DISABLED))  {
         maScheduleQueue(q);
     }
@@ -13766,8 +13766,10 @@ void maJoinForService(MaQueue *q, MaPacket *packet, bool serviceQ)
          *  Just use the service queue as a holding queue while we aggregate the post data.
          */
         maPutForService(q, packet, 0);
+        maCheckQueueCount(q);
 
     } else {
+        maCheckQueueCount(q);
         q->count += maGetPacketLength(packet);
         if (q->first && maGetPacketLength(q->first) == 0) {
             old = q->first;
@@ -13780,10 +13782,11 @@ void maJoinForService(MaQueue *q, MaPacket *packet, bool serviceQ)
              *  Aggregate all data into one packet and free the packet.
              */
             maJoinPacket(q->first, packet);
+            maCheckQueueCount(q);
             maFreePacket(q, packet);
         }
     }
-    checkQueueCount(q);
+    maCheckQueueCount(q);
     if (serviceQ && !(q->flags & MA_QUEUE_DISABLED))  {
         maScheduleQueue(q);
     }
@@ -13832,7 +13835,7 @@ void maPutBack(MaQueue *q, MaPacket *packet)
     mprAssert(maGetPacketLength(packet) >= 0);
     q->count += maGetPacketLength(packet);
     mprAssert(q->count >= 0);
-    checkQueueCount(q);
+    maCheckQueueCount(q);
 }
 
 
@@ -14078,7 +14081,7 @@ int maWriteBlock(MaQueue *q, cchar *buf, int size, bool block)
     }
     for (written = 0; size > 0; ) {
         if (q->count >= q->max && !drain(q, block)) {
-            checkQueueCount(q);
+            maCheckQueueCount(q);
             break;
         }
         if (conn->disconnected) {
@@ -14087,14 +14090,16 @@ int maWriteBlock(MaQueue *q, cchar *buf, int size, bool block)
         if ((packet = maCreateDataPacket(q, packetSize)) == 0) {
             return MPR_ERR_NO_MEMORY;
         }
-        bytes = mprPutBlockToBuf(packet->content, buf, size);
+        if ((bytes = mprPutBlockToBuf(packet->content, buf, size)) == 0) {
+            return MPR_ERR_NO_MEMORY;
+        }
         buf += bytes;
         size -= bytes;
         written += bytes;
         maPutForService(q, packet, 1);
-        checkQueueCount(q);
+        maCheckQueueCount(q);
     }
-    checkQueueCount(q);
+    maCheckQueueCount(q);
     return written;
 }
 
@@ -14126,7 +14131,11 @@ int maWrite(MaQueue *q, cchar *fmt, ...)
  */
 int maJoinPacket(MaPacket *packet, MaPacket *p)
 {
-    if (mprPutBlockToBuf(packet->content, mprGetBufStart(p->content), maGetPacketLength(p)) < 0) {
+    int     len;
+
+    len = maGetPacketLength(p);
+
+    if (mprPutBlockToBuf(packet->content, mprGetBufStart(p->content), len) != len) {
         return MPR_ERR_NO_MEMORY;
     }
     return 0;
@@ -14161,7 +14170,9 @@ MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
     }
     if (orig->content && maGetPacketLength(orig) > 0) {
         mprAdjustBufEnd(orig->content, -count);
-        mprPutBlockToBuf(packet->content, mprGetBufEnd(orig->content), count);
+        if (mprPutBlockToBuf(packet->content, mprGetBufEnd(orig->content), count) != count) {
+            return 0;
+        }
 #if BLD_DEBUG
         mprAddNullToBuf(orig->content);
 #endif
@@ -14202,7 +14213,7 @@ void maCleanQueue(MaQueue *q)
         }
         prev = packet;
     }
-    checkQueueCount(q);
+    maCheckQueueCount(q);
 }
 
 
@@ -14236,7 +14247,7 @@ void maDiscardData(MaQueue *q, bool removePackets)
                 mprFlushBuf(packet->content);
             }
         }
-        checkQueueCount(q);
+        maCheckQueueCount(q);
     }
 }
 
@@ -14355,8 +14366,12 @@ int destroyRequest(MaRequest *req)
         }
     }
 #if BLD_DEBUG
+#if MPR_HIGH_RES_TIMER
     mprLog(conn, 4, "TIME: Request %s took %,d msec %,d ticks", req->url, mprGetTime(req) - req->startTime,
-        mprGetTicks() - req->startTicks);
+           mprGetTicks() - req->startTicks);
+#else
+    mprLog(conn, 4, "TIME: Request %s took %,d msec", req->url, mprGetTime(req) - req->startTime);
+#endif
 #endif
     return 0;
 }
@@ -14504,7 +14519,7 @@ static bool parseFirstLine(MaConn *conn, MaPacket *packet)
     resp = conn->response = maCreateResponse(conn);
     host = conn->host;
 
-#if BLD_DEBUG
+#if BLD_DEBUG    
     req->startTime = mprGetTime(conn);
     req->startTicks = mprGetTicks();
 #endif
@@ -14990,7 +15005,11 @@ static bool processContent(MaConn *conn, MaPacket *packet)
     if (packet == 0) {
         return 0;
     }
-
+    if (conn->connectionFailed) {
+        conn->state = MPR_HTTP_STATE_PROCESSING;
+        maPutForService(resp->queue[MA_QUEUE_SEND].nextQ, maCreateHeaderPacket(resp), 1);
+        return 1;
+    }
     content = packet->content;
     if (req->flags & MA_REQ_CHUNKED) {
         if ((remaining = getChunkPacketSize(conn, content)) == 0) {
