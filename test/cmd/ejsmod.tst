@@ -22,7 +22,7 @@ if (test.depth >= 2) {
         for each (f in find(["lang", "db", "lib", "regress"], "*.tst")) {
             rmdir(".doctmp", true)
 
-            if (testCmd(compile + f)) {
+            if (testCmd(compile + " " + f)) {
                 assert(exists("default.mod"))
                 if (testCmd("ejsmod --listing --showDebug default.mod")) {
                     assert(exists("default.mod"))

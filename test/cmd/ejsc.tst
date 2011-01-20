@@ -23,7 +23,7 @@ if (test.depth >= 2) {
         let command = locate("ejsc") + " " + flags
 
         for each (f in find(["lang", "db", "lib", "regress"], "*.tst")) {
-            testCmd(command + f)
+            testCmd(command + " " + f)
         }
     }
     rm("ejs.test.mod")
