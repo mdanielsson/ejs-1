@@ -6881,14 +6881,15 @@ static void pushDataToCgi(MaQueue *q)
         len = mprGetBufLength(buf);
         mprAssert(len > 0);
         rc = mprWriteCmdPipe(cmd, MPR_CMD_STDIN, mprGetBufStart(buf), len);
+        mprLog(q, 5, "CGI: write %d bytes to gateway. Rc rc %d, errno %d", len, rc, mprGetOsError());
         if (rc < 0) {
-            mprLog(q, 2, "CGI: write to gateway failed for %d bytes, rc %d, errno %d\n", len, rc, mprGetOsError());
+            mprLog(q, 2, "CGI: write to gateway failed for %d bytes, rc %d, errno %d", len, rc, mprGetOsError());
             mprCloseCmdFd(cmd, MPR_CMD_STDIN);
             maFailRequest(conn, MPR_HTTP_CODE_BAD_GATEWAY, "Can't write body data to CGI gateway");
             break;
 
         } else {
-            mprLog(q, 5, "CGI: write to gateway %d bytes asked to write %d\n", rc, len);
+            mprLog(q, 5, "CGI: write to gateway %d bytes asked to write %d", rc, len);
             mprAdjustBufStart(buf, rc);
             if (mprGetBufLength(buf) > 0) {
                 maPutBack(q, packet);
@@ -6922,6 +6923,7 @@ static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
      */
     for (servicedQueues = 0; (len = mprGetBufLength(buf)) > 0 ; ) {
         if (!conn->requestFailed) {
+            mprLog(q, 5, "CGI: write %d bytes to client. Rc rc %d, errno %d", len, rc, mprGetOsError());
             rc = maWriteBlock(q, mprGetBufStart(buf), len, 0);
             mprLog(cmd, 5, "Write to browser ask %d, actual %d", len, rc);
         } else {
@@ -6977,6 +6979,7 @@ static int cgiCallback(MprCmd *cmd, int channel, void *data)
     mprAssert(q);
     lock(conn);
 
+    mprLog(q, 5, "CGI: gateway I/O event on channel %d, state %d", channel, conn->state);
     cgiEvent(q, cmd, channel);
 
     /*
@@ -7050,6 +7053,8 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
                 }
             }
             nbytes = mprReadCmdPipe(cmd, channel, mprGetBufEnd(buf), space);
+            mprLog(q, 5, "CGI: read from gateway %d on channel %d. errno %d", nbytes, channel, 
+                    nbytes >= 0 ? 0 : mprGetOsError());
             if (nbytes < 0) {
                 err = mprGetError();
                 if (err == EINTR) {
@@ -7217,7 +7222,7 @@ static bool parseHeader(MaConn *conn, MprCmd *cmd)
     }
     
     if (strchr(mprGetBufStart(buf), ':')) {
-        mprLog(conn, 4, "CGI: parseHeader: header\n%s\n", headers);
+        mprLog(conn, 4, "CGI: parseHeader: header\n%s", headers);
 
         while (mprGetBufLength(buf) > 0 && buf->start[0] && (buf->start[0] != '\r' && buf->start[0] != '\n')) {
 
@@ -9761,6 +9766,7 @@ static int writeBlock(cchar *str, uint len TSRMLS_DC)
         return -1;
     }
     written = maWriteBlock(conn->response->queue[MA_QUEUE_SEND].nextQ, str, len, 1);
+    mprLog(mprGetMpr(0), 6, "php: write %d", written);
     if (written <= 0) {
         php_handle_aborted_connection();
     }
@@ -9810,6 +9816,7 @@ static int sendHeaders(sapi_headers_struct *phpHeaders TSRMLS_DC)
     conn = (MaConn*) SG(server_context);
     maSetResponseCode(conn, phpHeaders->http_response_code);
     maSetResponseMimeType(conn, phpHeaders->mimetype);
+    mprLog(mprGetMpr(0), 6, "php: send headers");
     return SAPI_HEADER_SENT_SUCCESSFULLY;
 }
 
@@ -9869,7 +9876,7 @@ static int readPostData(char *buffer, uint bufsize TSRMLS_DC)
     MaConn      *conn;
     MaQueue     *q;
     MprBuf      *content;
-    int         len;
+    int         len, nbytes;
 
     conn = (MaConn*) SG(server_context);
     q = conn->response->queue[MA_QUEUE_RECEIVE].prevQ;
@@ -9879,9 +9886,11 @@ static int readPostData(char *buffer, uint bufsize TSRMLS_DC)
     content = q->first->content;
     len = min(mprGetBufLength(content), (int) bufsize);
     if (len > 0) {
-        mprMemcpy(buffer, len, mprGetBufStart(content), len);
+        nbytes = mprMemcpy(buffer, len, mprGetBufStart(content), len);
+        mprAssert(nbytes == len);
         mprAdjustBufStart(content, len);
     }
+    mprLog(mprGetMpr(0), 6, "php: read post data %d remaining %d", len, mprGetBufLength(content));
     return len;
 }
 
@@ -9913,6 +9922,7 @@ static int initializePhp(MaHttp *http)
     tsrm_ls = (void***) ts_resource(0);
 #endif
 
+    mprLog(mprGetMpr(0), 2, "php: initialize php library");
 #ifdef BLD_FEATURE_PHP_INI
     phpSapiBlock.php_ini_path_override = BLD_FEATURE_PHP_INI;
 #else
@@ -14366,12 +14376,15 @@ int destroyRequest(MaRequest *req)
         }
     }
 #if BLD_DEBUG
+    {
+        MprTime     elapsed = mprGetTime(req) - req->startTime;
 #if MPR_HIGH_RES_TIMER
-    mprLog(conn, 4, "TIME: Request %s took %,d msec %,d ticks", req->url, mprGetTime(req) - req->startTime,
-           mprGetTicks() - req->startTicks);
-#else
-    mprLog(conn, 4, "TIME: Request %s took %,d msec", req->url, mprGetTime(req) - req->startTime);
+        if (elapsed < 1000) {
+            mprLog(conn, 4, "TIME: Request %s took %,d msec %,d ticks", req->url, elapsed, mprGetTicks() - req->startTicks);
+        } else
 #endif
+            mprLog(conn, 4, "TIME: Request %s took %,d msec", req->url, elapsed);
+    }
 #endif
     return 0;
 }
