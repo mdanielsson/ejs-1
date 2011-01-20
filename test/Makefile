@@ -12,7 +12,7 @@ include 	.makedep
 testExtra: 
 ifeq	($(BLD_FEATURE_TEST),1)
 ifeq	($(BLD_FEATURE_MULTITHREAD),1)
-	$(BLD_BIN_DIR)/ejs $(BLD_TOOLS_DIR)/utest -v
+	$(BLD_BIN_DIR)/ejs $(BLD_TOOLS_DIR)/utest -v -d $(BUILD_DEPTH)
 else
 	$(call log) "[Notice]" "Test requires multithread configuration"
 endif
