@@ -27,7 +27,7 @@ assert(again.available == TestLength)
 
 //	write
 
-let filename = "temp-" + hashcode(self) + ".tdat"
+let filename = "temp-" + hashcode(global) + ".tdat"
 f = new File(filename, { mode: "w", permissions: 0644 })
 f.write("0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789\r\n")
 f.flush()
@@ -93,7 +93,7 @@ for (i in (1024)) {
 f.close
 f.open()
 
-out = "temp-2-" + hashcode(self) + ".tdat"
+out = "temp-2-" + hashcode(global) + ".tdat"
 of = File(out).open({mode: "w"})
 
 buf = new ByteArray

@@ -15,7 +15,7 @@ let compileFlags = [
 rm("default.mod")
 sh(locate("ejsc") + " --out ejs.test.mod misc/test.stub.es")
 
-if (test.depth >= 2) {
+if (test.depth >= 4) {
     for (i = 0; i < test.depth && i < compileFlags.length; i++) {
         let compile = locate("ejsc") + " --doc " + compileFlags[i]
 

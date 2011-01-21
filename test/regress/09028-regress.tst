@@ -17,3 +17,6 @@ module test
         }
     }
 }
+
+//  Add a global var to ensure a default.mod is generated. This is used by ejsmod.tst
+var dummy: Number
