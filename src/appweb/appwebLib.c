@@ -3426,6 +3426,10 @@ void maPrepConnection(MaConn *conn)
     conn->state =  MPR_HTTP_STATE_BEGIN;
     conn->flags &= ~MA_CONN_CLEAN_MASK;
     conn->expire = conn->time + conn->host->keepAliveTimeout;
+    conn->dedicated = 0;
+    if (conn->sock) {
+        mprSetSocketBlockingMode(conn->sock, 0);
+    }
 }
 
 
@@ -3559,7 +3563,7 @@ static void readEvent(MaConn *conn)
     MprBuf      *content;
     int         nbytes, len;
 
-    while (!conn->disconnected) {
+    do {
         if ((packet = getPacket(conn, &len)) == 0) {
             break;
         }
@@ -3571,18 +3575,17 @@ static void readEvent(MaConn *conn)
         if (nbytes > 0) {
             mprAdjustBufEnd(content, nbytes);
             maProcessReadEvent(conn, packet);
-            break;
         } else {
             if (mprIsSocketEof(conn->sock)) {
+                conn->dedicated = 0;
                 if (conn->request) {
                     maProcessReadEvent(conn, packet);
                 }
             } else if (nbytes < 0) {
                 maFailConnection(conn, MPR_HTTP_CODE_COMMS_ERROR, "Communications read error");
             }
-            break;
         }
-    }
+    } while (!conn->disconnected && conn->dedicated);
 }
 
 
@@ -3644,6 +3647,17 @@ static inline MaPacket *getPacket(MaConn *conn, int *bytesToRead)
     mprAssert(len > 0);
     *bytesToRead = len;
     return packet;
+}
+
+
+void maDedicateThreadToConn(MaConn *conn)
+{
+    mprAssert(conn);
+
+    conn->dedicated = 1;
+    if (conn->sock) {
+        mprSetSocketBlockingMode(conn->sock, 1);
+    }
 }
 
 
@@ -6539,15 +6553,13 @@ MprModule *maUploadFilterInit(MaHttp *http, cchar *path)
 /************************************************************************/
 
 /* 
- *  cgiHandler.c -- Common Gateway Interface Handler
- *
- *  Support the CGI/1.1 standard for external gateway programs to respond to HTTP requests.
- *  This CGI handler uses async-pipes and non-blocking I/O for all communications.
- *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
+    cgiHandler.c -- Common Gateway Interface Handler
 
-// #define __UCLIBC__ 1
+    Support the CGI/1.1 standard for external gateway programs to respond to HTTP requests.
+    This CGI handler uses async-pipes and non-blocking I/O for all communications.
+
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
 
 
 
@@ -6556,12 +6568,14 @@ MprModule *maUploadFilterInit(MaHttp *http, cchar *path)
 static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp);
 static int cgiCallback(MprCmd *cmd, int channel, void *data);
 static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel);
+#if UNUSED
 static void enableCgiEvents(MaQueue *q, MprCmd *cmd, int channel);
+#endif
 static char *getCgiToken(MprBuf *buf, cchar *delim);
 static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd);
 static bool parseHeader(MaConn *conn, MprCmd *cmd);
-static void pushDataToCgi(MaQueue *q);
-static void startCmd(MaQueue *q);
+static void writeToCGI(MaQueue *q);
+static void startCgi(MaQueue *q);
 
 #if BLD_DEBUG
 static void traceCGIData(MprCmd *cmd, char *src, int size);
@@ -6577,74 +6591,19 @@ static void findExecutable(MaConn *conn, char **program, char **script, char **b
 static void checkCompletion(MaQueue *q, MprEvent *event);
 #endif
 
-#undef lock
-#undef unlock
-#define lock(conn) mprLock(conn->mutex)
-#define unlock(conn) mprUnlock(conn->mutex)
-
-/*
- *  Open this handler instance for a new request
- */
-static void openCgi(MaQueue *q)
-{
-    MaRequest       *req;
-    MaConn          *conn;
-
-    conn = q->conn;
-    req = conn->request;
-
-    maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
-    maDontCacheResponse(conn);
-    
-    /*
-     *  Create an empty header packet and add to the service queue
-     */
-    maPutForService(q, maCreateHeaderPacket(q), 0);
-
-    /*
-     *  Start the command. This commences the CGI gateway program. Body data from the client may now flow to the command.
-     *  uClibc can't wait across thread groups, so create thread to create and wait for the CGI gateway program.
-     */
-#if BLD_FEATURE_MULTITHREAD && __UCLIBC__
-    {
-        MprThread   *tp;
-        q->cond = mprCreateCond(q);
-        if ((tp = mprCreateThread(q, "CGI", (MprThreadProc) startCmd, q, MPR_WORKER_PRIORITY, 0)) == 0) {
-            maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't create thread for CGI process");
-            return;
-        }
-        q->queueData = tp;
-        mprStartThread(tp);
-        /* Handshake to wait for the command to start before continuing */
-        mprWaitForCond(q->cond, -1);
-    }
-    conn->eventMask = 0;
-#else
-    startCmd(q);
-#endif
-}
-
 
 static void closeCgi(MaQueue *q)
 {
     MprCmd  *cmd;
 
-    /*
-     *  Disconnect the command handlers so it won't receive callbacks anymore
-     *  Rely on memory destructors to do the rest.
-     */
     cmd = (MprCmd*) q->queueData;
     if (cmd->pid) {
         mprStopCmd(cmd);
     }
-    mprDisconnectCmd(cmd);
 }
 
 
-/*
- *  Prepare and start the CGI command. Called from openCgi(). Called with the conn locked.
- */
-static void startCmd(MaQueue *q)
+static void startCgi(MaQueue *q)
 {
     MaRequest       *req;
     MaResponse      *resp;
@@ -6657,20 +6616,17 @@ static void startCmd(MaQueue *q)
 
     argv = 0;
     argc = 0;
-
     conn = q->conn;
     req = conn->request;
     resp = conn->response;
-
     cmd = q->queueData = mprCreateCmd(req);
 
     if (conn->http->forkCallback) {
         cmd->forkCallback = conn->http->forkCallback;
         cmd->forkData = conn->http->forkData;
     }
-
     /*
-     *  Build the commmand line arguments
+        Build the commmand line arguments
      */
     argc = 1;                                   /* argv[0] == programName */
     buildArgs(conn, cmd, &argc, &argv);
@@ -6680,13 +6636,13 @@ static void startCmd(MaQueue *q)
     if (strncmp(baseName, "nph-", 4) == 0 || 
             (strlen(baseName) > 4 && strcmp(&baseName[strlen(baseName) - 4], "-nph") == 0)) {
         /*
-         *  Pretend we've seen the header for Non-parsed Header CGI programs
+            Pretend we've seen the header for Non-parsed Header CGI programs
          */
         cmd->userFlags |= MA_CGI_SEEN_HEADER;
     }
 
     /*
-     *  Build environment variables
+        Build environment variables
      */
     varCount = mprGetHashCount(req->headers) + mprGetHashCount(req->formVars);
     envv = (char**) mprAlloc(cmd, (varCount + 1) * sizeof(char*));
@@ -6713,52 +6669,25 @@ static void startCmd(MaQueue *q)
 
     cmd->stdoutBuf = mprCreateBuf(cmd, MA_BUFSIZE, -1);
     cmd->stderrBuf = mprCreateBuf(cmd, MA_BUFSIZE, -1);
+    cmd->lastActivity = mprGetTime(cmd);
 
     mprSetCmdDir(cmd, mprGetPathDir(q, fileName));
     mprSetCmdCallback(cmd, cgiCallback, conn);
 
+    maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
+    maDontCacheResponse(conn);
+    maPutForService(q, maCreateHeaderPacket(q), 0);
+
     if (mprStartCmd(cmd, argc, argv, envv, MPR_CMD_IN | MPR_CMD_OUT | MPR_CMD_ERR) < 0) {
         maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't run CGI process: %s, URI %s", fileName, req->url);
+        return;
     }
-
-#if BLD_FEATURE_MULTITHREAD && __UCLIBC__
-    /* Handshake signal openCgi to resume */
-    mprSignalCond(q->cond);
-
-    while (mprWaitForCmd(cmd, 1000) < 0) {
-        if (mprGetElapsedTime(cmd, cmd->lastActivity) >= conn->host->timeout) {
-            break;
-        }
-    }
-    /* Handshake wait for cgiCallback */
-    mprWaitForCond(q->cond, -1);
-
-    lock(conn);
-    if (cmd->pid) {
-        mprStopCmd(cmd);
-        mprReapCmd(cmd, MPR_TIMEOUT_STOP_TASK);
-        cmd->status = 250;
-    }
-    if (conn->state >= MPR_HTTP_STATE_COMPLETE) {
-        maProcessReadEvent(conn, NULL);
-        conn->eventMask = 0;
-    } else {
-        if (cmd->status != 0) {
-            maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE,
-                "CGI process %s: exited abnormally with exit status: %d.\nSee the server log for more information.\n", 
-                resp->filename, cmd->status);
-            maPutForService(q, maCreateEndPacket(q), 1);
-            maServiceQueues(conn);
-        }
-    }
-    unlock(conn);
-#endif
+    maDedicateThreadToConn(conn);
 }
 
 
 /*
- *  This routine runs after all incoming data has been received
- *  Must run on the same thread as that which initiated the CGI process. And must be called with the connection locked.
+    This routine runs after all incoming data has been received
  */
 static void runCgi(MaQueue *q)
 {
@@ -6771,21 +6700,31 @@ static void runCgi(MaQueue *q)
     cmd = (MprCmd*) q->queueData;
 
     /*
-     *  Close the CGI program's stdin. This will allow it to exit if it was expecting input data.
+        Close the CGI program's stdin. This will allow it to exit if it was expecting input data.
      */
-    if (q->queueData) {
-        mprCloseCmdFd(cmd, MPR_CMD_STDIN);
-    }
+    mprCloseCmdFd(cmd, MPR_CMD_STDIN);
+
     if (conn->requestFailed) {
         maPutForService(q, maCreateEndPacket(q), 1);
         return;
+    }
+    while (mprWaitForCmd(cmd, 1000) < 0) {
+        if (mprGetElapsedTime(cmd, cmd->lastActivity) >= conn->host->timeout) {
+            break;
+        }
+    }
+    if (cmd->pid == 0) {
+        maPutForService(q, maCreateEndPacket(q), 1);
+    } else {
+        mprStopCmd(cmd);
+        mprReapCmd(cmd, MPR_TIMEOUT_STOP_TASK);
+        cmd->status = 255;
     }
 }
 
 
 /*
- *  Service outgoing data destined for the browser. This is response data from the CGI program. See writeToClient.
- *  WARNING: this may be called by maRunPipeline => maServiceQueues and also from the cgiCallback => maServiceQueues.
+    Service outgoing data destined for the browser. This is response data from the CGI program. See writeToClient.
  */ 
 static void outgoingCgiService(MaQueue *q)
 {
@@ -6794,24 +6733,24 @@ static void outgoingCgiService(MaQueue *q)
     cmd = (MprCmd*) q->queueData;
 
     /*
-     *  This will copy outgoing packets downstream toward the network connector and on to the browser. This may disable this 
-     *  queue if the downstream net connector queue overflows because the socket is full. In that case, conn.c:setupConnIO() 
-     *  will setup to listen for writable events. When the socket is writable again, the connector will drain its queue
-     *  which will re-enable this queue and schedule it for service again.
+        This will copy outgoing packets downstream toward the network connector and on to the browser. This may disable this 
+        queue if the downstream net connector queue overflows because the socket is full. In that case, conn.c:setupConnIO() 
+        will setup to listen for writable events. When the socket is writable again, the connector will drain its queue
+        which will re-enable this queue and schedule it for service again.
      */ 
-    lock(q->conn);
+    //  MOB -- remove this and just use the default.
     maDefaultOutgoingServiceStage(q);
+#if UNUSED
     if (cmd->userFlags & MA_CGI_FLOW_CONTROL && q->count < q->low) {
         cmd->userFlags &= ~MA_CGI_FLOW_CONTROL;
-        mprEnableCmdEvents(cmd, MPR_CMD_STDOUT);
     }
-    unlock(q->conn);
+#endif
 }
 
 
 /*
- *  Accept incoming body data from the client (via the pipeline) destined for the CGI gateway. This is typically
- *  POST or PUT data.
+    Accept incoming body data from the client (via the pipeline) destined for the CGI gateway. This is typically
+    POST or PUT data.
  */
 static void incomingCgiData(MaQueue *q, MaPacket *packet)
 {
@@ -6827,18 +6766,17 @@ static void incomingCgiData(MaQueue *q, MaPacket *packet)
     resp = conn->response;
     req = conn->request;
 
-    lock(conn);
     cmd = (MprCmd*) q->pair->queueData;
     mprAssert(cmd);
     cmd->lastActivity = mprGetTime(cmd);
 
     if (maGetPacketLength(packet) == 0) {
         /*
-         *  End of input
+            End of input
          */
         if (req->remainingContent > 0) {
             /*
-             *  Short incoming body data. Just kill the CGI process.
+                Short incoming body data. Just kill the CGI process.
              */
             mprFree(cmd);
             q->queueData = 0;
@@ -6848,20 +6786,15 @@ static void incomingCgiData(MaQueue *q, MaPacket *packet)
 
     } else {
         /*
-         *  No service routine, we just need it to be queued for pushDataToCgi
+            No service routine, we just need it to be queued for writeToCGI
          */
         maPutForService(q, packet, 0);
     }
-    pushDataToCgi(q);
-    unlock(conn);
+    writeToCGI(q);
 }
 
 
-/*
- *  Write data to the CGI program. (may block). This is called from incomingCgiData and from the cgiCallback when the pipe
- *  to the CGI program becomes writable. Must be locked when called.
- */
-static void pushDataToCgi(MaQueue *q)
+static void writeToCGI(MaQueue *q)
 {
     MaConn      *conn;
     MaPacket    *packet;
@@ -6893,68 +6826,50 @@ static void pushDataToCgi(MaQueue *q)
             } else {
                 maFreePacket(q, packet);
             }
-            if (rc < len) {
-                /*
-                 *  CGI gateway didn't accept all the data. Enable CGI write events to be notified when the gateway
-                 *  can read more data.
-                 */
-                mprEnableCmdEvents(cmd, MPR_CMD_STDIN);
-            }
         }
     }
 }
 
 
 /*
- *  Write data back to the client (browser). Must be locked when called.
+    Write data back to the client (browser). Must be locked when called.
  */
 static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
 {
     MaConn  *conn;
-    int     servicedQueues, rc, len;
+    int     rc, len;
 
     conn = q->conn;
 
     /*
-     *  Write to the browser. We write as much as we can. Service queues to get the filters and connectors pumping.
+        Write to the browser. We write as much as we can. Service queues to get the filters and connectors pumping.
      */
-    for (servicedQueues = 0; (len = mprGetBufLength(buf)) > 0 ; ) {
+    while ((len = mprGetBufLength(buf)) > 0) {
         if (!conn->requestFailed) {
             mprLog(q, 5, "CGI: write %d bytes to client. Rc rc %d, errno %d", len, rc, mprGetOsError());
-            rc = maWriteBlock(q, mprGetBufStart(buf), len, 0);
+//  MOB -- test that blocking writes are working
+            rc = maWriteBlock(q, mprGetBufStart(buf), len, 1);
             mprLog(cmd, 5, "Write to browser ask %d, actual %d", len, rc);
         } else {
             /* Request has failed so just eat the data */
             rc = len;
             mprAssert(len > 0);
         }
-        if (rc > 0) {
-            mprAdjustBufStart(buf, rc);
-            mprResetBufIfEmpty(buf);
-        } 
-        if (rc <= 0 || mprGetBufLength(buf) == 0) {
-            if (servicedQueues) {
-                /*
-                 *  Can't write anymore data. Block the CGI gateway. outgoingCgiService will enable.
-                 */
-                mprAssert(q->count >= q->max);
-                mprAssert(q->flags & MA_QUEUE_DISABLED);
-                cmd->userFlags |= MA_CGI_FLOW_CONTROL;
-                mprDisableCmdEvents(cmd, channel);
-                maEnableConnEvents(conn, MPR_READABLE | MPR_WRITABLE);
-                return MPR_ERR_CANT_WRITE;
-            }
-            maServiceQueues(conn);
-            servicedQueues++;
+        if (rc < 0) {
+            return MPR_ERR_CANT_WRITE;
         }
+        mprAssert(rc == len);
+        mprAdjustBufStart(buf, rc);
+        mprResetBufIfEmpty(buf);
+        maServiceQueues(conn);
     }
     return 0;
 }
 
 
 /*
- *  Read the output data from the CGI script and return it to the client. This is called for stdout/stderr data from
- *  the CGI script and for EOF from the CGI's stdin.
+    Read the output data from the CGI script and return it to the client. This is called for stdout/stderr data from
+    the CGI script and for EOF from the CGI's stdin.
  */
 static int cgiCallback(MprCmd *cmd, int channel, void *data)
 {
@@ -6967,34 +6882,21 @@ static int cgiCallback(MprCmd *cmd, int channel, void *data)
     mprAssert(conn);
     mprAssert(conn->response);
 
-    /*
-     *  Locking note: the connection front-side can't delete this request/connection while in this callback.
-     *  The MPR ensures that handlers won't be deleted while in-use (handler->inUse). Lock the connection here
-     *  to be thread-safe with other connection front-side events.
-     */
     q = conn->response->queue[MA_QUEUE_SEND].nextQ;
     mprAssert(q);
-    lock(conn);
-
     mprLog(q, 5, "CGI: gateway I/O event on channel %d, state %d", channel, conn->state);
+
     cgiEvent(q, cmd, channel);
 
+#if UNUSED
     /*
         Setup for more I/O events from the gateway
      */
+//  MOB - needed?
     if (conn->state < MPR_HTTP_STATE_COMPLETE) {
         enableCgiEvents(q, cmd, channel);
-    } else {
-#if BLD_FEATURE_MULTITHREAD && __UCLIBC__
-        /* Handshake wakeup the startCmd thread to conclude the request */
-        mprSignalCond(q->cond);
-#else
-        maProcessReadEvent(conn, NULL);
-        unlock(conn);
-        return 1;
-#endif
     }
-    unlock(conn);
+#endif
     return 0;
 }
 
@@ -7017,11 +6919,13 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
 
     switch (channel) {
     case MPR_CMD_STDIN:
+#if UNUSED
         /*
-         *  CGI's stdin is now accepting more data
+            CGI's stdin is now accepting more data
          */
         mprDisableCmdEvents(cmd, MPR_CMD_STDIN);
-        pushDataToCgi(q->pair);
+#endif
+        writeToCGI(q->pair);
         return;
 
     case MPR_CMD_STDOUT:
@@ -7036,11 +6940,11 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
     mprResetBufIfEmpty(buf);
 
     /*
-     *  Come here for CGI stdout, stderr events. ie. reading data from the CGI program.
+        Come here for CGI stdout, stderr events. ie. reading data from the CGI program.
      */
     while (mprGetCmdFd(cmd, channel) >= 0) {
         /*
-         *  Read as much data from the CGI as possible
+            Read as much data from the CGI as possible
          */
         do {
             if ((space = mprGetBufSpace(buf)) == 0) {
@@ -7064,14 +6968,16 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
                 
             } else if (nbytes == 0) {
                 /*
-                 *  This may reap the terminated child and thus clear cmd->process if both stderr and stdout are closed.
+                    This may reap the terminated child and thus clear cmd->process if both stderr and stdout are closed.
                  */
                 mprLog(cmd, 5, "CGI EOF for %s", (channel == MPR_CMD_STDOUT) ? "stdout" : "stderr");
                 mprCloseCmdFd(cmd, channel);
+#if UNUSED && MOVED
                 if (cmd->pid == 0) {
                     maPutForService(q, maCreateEndPacket(q), 1);
                     maServiceQueues(conn);
                 }
+#endif
                 break;
 
             } else {
@@ -7086,7 +6992,7 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
         }
         if (channel == MPR_CMD_STDERR) {
             /*
-             *  If we have an error message, send that to the client
+                If we have an error message, send that to the client
              */
             if (mprGetBufLength(buf) > 0) {
                 mprAddNullToBuf(buf);
@@ -7112,6 +7018,8 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
 }
 
 
+#if UNUSED
+//  MOB - needed?
 static void enableCgiEvents(MaQueue *q, MprCmd *cmd, int channel)
 {
     if (cmd->pid == 0) {
@@ -7119,8 +7027,8 @@ static void enableCgiEvents(MaQueue *q, MprCmd *cmd, int channel)
     }
     if (channel == MPR_CMD_STDOUT && mprGetCmdFd(cmd, channel) < 0) {
         /*
-         *  Now that stdout is complete, enable stderr to receive an EOF or any error output. This is 
-         *  serialized to eliminate both stdin and stdout events on different threads at the same time.
+            Now that stdout is complete, enable stderr to receive an EOF or any error output. This is 
+            serialized to eliminate both stdin and stdout events on different threads at the same time.
          */
         mprLog(cmd, 8, "CGI enable stderr");
         mprEnableCmdEvents(cmd, MPR_CMD_STDERR);
@@ -7131,10 +7039,11 @@ static void enableCgiEvents(MaQueue *q, MprCmd *cmd, int channel)
         }
     }
 }
+#endif
 
 
 /*
- *  Parse the CGI output first line
+    Parse the CGI output first line
  */
 static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd)
 {
@@ -7166,12 +7075,12 @@ static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd)
 
 
 /*
- *  Parse the CGI output headers. 
- *  Sample CGI program:
+    Parse the CGI output headers. 
+    Sample CGI program:
  *
- *  Content-type: text/html
- * 
- *  <html.....
+    Content-type: text/html
+   
+    <html.....
  */
 static bool parseHeader(MaConn *conn, MprCmd *cmd)
 {
@@ -7190,7 +7099,7 @@ static bool parseHeader(MaConn *conn, MprCmd *cmd)
     headers = mprGetBufStart(buf);
 
     /*
-     *  Split the headers from the body.
+        Split the headers from the body.
      */
     len = 0;
     fd = mprGetCmdFd(cmd, MPR_CMD_STDOUT);
@@ -7209,7 +7118,7 @@ static bool parseHeader(MaConn *conn, MprCmd *cmd)
     endHeaders += len;
 
     /*
-     *  Want to be tolerant of CGI programs that omit the status line.
+        Want to be tolerant of CGI programs that omit the status line.
      */
     if (strncmp((char*) buf->start, "HTTP/1.", 7) == 0) {
         if (!parseFirstCgiResponse(conn, cmd)) {
@@ -7249,7 +7158,7 @@ static bool parseHeader(MaConn *conn, MprCmd *cmd)
 
             } else {
                 /*
-                 *  Now pass all other headers back to the client
+                    Now pass all other headers back to the client
                  */
                 maSetHeader(conn, 0, key, "%s", value);
             }
@@ -7267,7 +7176,7 @@ static bool parseHeader(MaConn *conn, MprCmd *cmd)
 
 
 /*
- *  Build the command arguments. NOTE: argv is untrusted input.
+    Build the command arguments. NOTE: argv is untrusted input.
  */
 static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
 {
@@ -7295,14 +7204,14 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
         }
     }
     /*
-     *  This is an Apache compatible hack for PHP 5.3
+        This is an Apache compatible hack for PHP 5.3
      */
     mprItoa(status, sizeof(status), MPR_HTTP_CODE_MOVED_TEMPORARILY, 10);
     mprAddHash(req->headers, "REDIRECT_STATUS", mprStrdup(req, status));
 
     /*
-     *  Count the args for ISINDEX queries. Only valid if there is not a "=" in the query. 
-     *  If this is so, then we must not have these args in the query env also?
+        Count the args for ISINDEX queries. Only valid if there is not a "=" in the query. 
+        If this is so, then we must not have these args in the query env also?
      */
     indexQuery = req->parsedUri->query;
     if (indexQuery && !strchr(indexQuery, '=')) {
@@ -7321,22 +7230,22 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
     char    *bangScript, *cmdBuf;
 
     /*
-     *  On windows we attempt to find an executable matching the fileName.
-     *  We look for *.exe, *.bat and also do unix style processing "#!/program"
+        On windows we attempt to find an executable matching the fileName.
+        We look for *.exe, *.bat and also do unix style processing "#!/program"
      */
     findExecutable(conn, &program, &cmdScript, &bangScript, fileName);
     mprAssert(program);
 
     if (cmdScript) {
         /*
-         *  Cmd/Batch script (.bat | .cmd)
-         *  Convert the command to the form where there are 4 elements in argv
-         *  that cmd.exe can interpret.
+            Cmd/Batch script (.bat | .cmd)
+            Convert the command to the form where there are 4 elements in argv
+            that cmd.exe can interpret.
          *
-         *      argv[0] = cmd.exe
-         *      argv[1] = /Q
-         *      argv[2] = /C
-         *      argv[3] = ""script" args ..."
+                argv[0] = cmd.exe
+                argv[1] = /Q
+                argv[2] = /C
+                argv[3] = ""script" args ..."
          */
         argc = 4;
 
@@ -7359,8 +7268,8 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
         
     } else if (bangScript) {
         /*
-         *  Script used "#!/program". NOTE: this may be overridden by a mime
-         *  Action directive.
+            Script used "#!/program". NOTE: this may be overridden by a mime
+            Action directive.
          */
         argc++;     /* Adding bangScript arg */
 
@@ -7374,7 +7283,7 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
 
     } else {
         /*
-         *  Either unknown extension or .exe (.out) program.
+            Either unknown extension or .exe (.out) program.
          */
         len = (argc + 1) * sizeof(char*);
         argv = (char**) mprAlloc(cmd, len);
@@ -7399,8 +7308,8 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
 #endif
 
     /*
-     *  ISINDEX queries. Only valid if there is not a "=" in the query. If this is so, then we must not
-     *  have these args in the query env also?
+        ISINDEX queries. Only valid if there is not a "=" in the query. If this is so, then we must not
+        have these args in the query env also?
      */
     if (indexQuery) {
         indexQuery = mprStrdup(cmd, indexQuery);
@@ -7421,11 +7330,11 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
 
 #if BLD_WIN_LIKE || VXWORKS
 /*
- *  If the program has a UNIX style "#!/program" string at the start of the file that program will be selected 
- *  and the original program will be passed as the first arg to that program with argv[] appended after that. If 
- *  the program is not found, this routine supports a safe intelligent search for the command. If all else fails, 
- *  we just return in program the fileName we were passed in. script will be set if we are modifying the program 
- *  to run and we have extracted the name of the file to run as a script.
+    If the program has a UNIX style "#!/program" string at the start of the file that program will be selected 
+    and the original program will be passed as the first arg to that program with argv[] appended after that. If 
+    the program is not found, this routine supports a safe intelligent search for the command. If all else fails, 
+    we just return in program the fileName we were passed in. script will be set if we are modifying the program 
+    to run and we have extracted the name of the file to run as a script.
  */
 static void findExecutable(MaConn *conn, char **program, char **script, char **bangScript, char *fileName)
 {
@@ -7450,8 +7359,8 @@ static void findExecutable(MaConn *conn, char **program, char **script, char **b
     ext = resp->extension;
 
     /*
-     *  If not found, go looking for the fileName with the extensions defined in appweb.conf. 
-     *  NOTE: we don't use PATH deliberately!!!
+        If not found, go looking for the fileName with the extensions defined in appweb.conf. 
+        NOTE: we don't use PATH deliberately!!!
      */
     if (access(fileName, X_OK) < 0 && *ext == '\0') {
         for (hp = 0; (hp = mprGetNextHash(location->extensions, hp)) != 0; ) {
@@ -7476,7 +7385,7 @@ static void findExecutable(MaConn *conn, char **program, char **script, char **b
 #if BLD_WIN_LIKE
     if (ext && (strcmp(ext, ".bat") == 0 || strcmp(ext, ".cmd") == 0)) {
         /*
-         *  Let a mime action override COMSPEC
+            Let a mime action override COMSPEC
          */
         if (actionProgram) {
             cmdShell = actionProgram;
@@ -7500,8 +7409,8 @@ static void findExecutable(MaConn *conn, char **program, char **script, char **b
                 cmdShell = mprStrTok(&buf[2], " \t\r\n", &tok);
                 if (cmdShell[0] != '/' && (cmdShell[0] != '\0' && cmdShell[1] != ':')) {
                     /*
-                     *  If we can't access the command shell and the command is not an absolute path, 
-                     *  look in the same directory as the script.
+                        If we can't access the command shell and the command is not an absolute path, 
+                        look in the same directory as the script.
                      */
                     if (mprPathExists(resp, cmdShell, X_OK)) {
                         cmdShell = mprJoinPath(resp, mprGetPathDir(resp, path), cmdShell);
@@ -7532,8 +7441,8 @@ static void findExecutable(MaConn *conn, char **program, char **script, char **b
  
 
 /*
- *  Get the next input token. The content buffer is advanced to the next token. This routine always returns a 
- *  non-zero token. The empty string means the delimiter was not found.
+    Get the next input token. The content buffer is advanced to the next token. This routine always returns a 
+    non-zero token. The empty string means the delimiter was not found.
  */
 static char *getCgiToken(MprBuf *buf, cchar *delim)
 {
@@ -7562,7 +7471,7 @@ static char *getCgiToken(MprBuf *buf, cchar *delim)
 
 #if BLD_DEBUG
 /*
- *  Trace output received from the cgi process
+    Trace output received from the cgi process
  */
 static void traceCGIData(MprCmd *cmd, char *src, int size)
 {
@@ -7611,7 +7520,7 @@ static int parseCgi(MaHttp *http, cchar *key, char *value, MaConfigState *state)
         }
 
         /*
-         *  Create an alias and location with a cgiHandler and pathInfo processing
+            Create an alias and location with a cgiHandler and pathInfo processing
          */
         path = maMakePath(host, path);
 
@@ -7660,8 +7569,8 @@ MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
         return 0;
     }
     http->cgiHandler = handler;
-    handler->open = openCgi; 
     handler->close = closeCgi; 
+    handler->start = startCgi; 
     handler->outgoingService = outgoingCgiService;
     handler->incomingData = incomingCgiData; 
     handler->run = runCgi; 
@@ -12860,7 +12769,10 @@ bool maRunPipeline(MaConn *conn)
     if (q->stage->run) {
         MEASURE(conn, q->stage->name, "run", q->stage->run(q));
     }
-    return maServiceQueues(conn);
+    if (conn->request) {
+        return maServiceQueues(conn);
+    }
+    return 0;
 }
 
 
@@ -14422,10 +14334,11 @@ void maProcessReadEvent(MaConn *conn, MaPacket *packet)
     mprAssert(conn);
 
     conn->canProceed = 1;
+    mprLog(conn, 7, "ENTER maProcessReadEvent state %d, packet %p", conn->state, packet);
     
     while (conn->canProceed) {
-        mprLog(conn, 7, "maProcessReadEvent, state %d", conn->state);
-        
+        mprLog(conn, 7, "maProcessReadEvent, state %d, packet %d", conn->state, packet);
+
         switch (conn->state) {
         case MPR_HTTP_STATE_BEGIN:
             conn->canProceed = parseRequest(conn, packet);
@@ -14451,6 +14364,7 @@ void maProcessReadEvent(MaConn *conn, MaPacket *packet)
             return;
         }
     }
+    mprLog(conn, 7, "LEAVE maProcessReadEvent state %d, packet %p, dedicated %d", conn->state, packet, conn->dedicated);
 }
 
 

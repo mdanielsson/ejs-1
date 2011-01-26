@@ -1849,9 +1849,10 @@ typedef struct MaConn {
     int             state;                  /**< Connection state */
     int             flags;                  /**< Connection flags */
     int             connectionFailed;       /**< Request failed and connection protocol is compromised */
-    int             requestFailed;          /**< Request failed. Abbreviate request processing */
+    int             dedicated;              /**< Dedicate the current thread to the request */
     int             disconnected;           /**< Connection is disconnected. Abandon current  request */
     int             eventMask;              /**< Desired events anded with this mask */
+    int             requestFailed;          /**< Request failed. Abbreviate request processing */
 
     struct MaRequest *request;              /**< Request object */
     struct MaResponse *response;            /**< Response object */
@@ -1883,11 +1884,12 @@ typedef struct MaConn {
 
 
 extern int  maAcceptConn(MprSocket *sock, MaServer *server, cchar *ip, int port);
-extern void maEnableConnEvents(MaConn *conn, int eventMask);
 extern void maCreateEnvVars(MaConn *conn);
 extern void maCreatePipeline(MaConn *conn);
+extern void maDedicateThreadToConn(MaConn *conn);
 extern void maDestroyPipeline(MaConn *conn);
 extern void maDiscardPipeData(MaConn *conn);
+extern void maEnableConnEvents(MaConn *conn, int eventMask);
 extern MaPacket *maGetConnPacket(MaConn *conn);
 extern void *maGetHandlerQueueData(struct MaConn *conn);
 extern void maMatchHandler(MaConn *conn);
