@@ -59,7 +59,7 @@ void ejsConfigureWebTypes(Ejs *ejs)
 /*
  *  Loadable module interface. Called when loaded from a shared library.
  */
-MprModule *ejs_webModuleInit(Ejs *ejs)
+MprModule *ejs_webModuleInit(Ejs *ejs, cchar *path)
 {
     MprModule   *module;
     int         priorGen;

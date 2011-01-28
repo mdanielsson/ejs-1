@@ -506,7 +506,7 @@ void ejsConfigureSqliteTypes(Ejs *ejs)
 /*
  *  Loadable module interface
  */
-MprModule *ejs_db_sqliteModuleInit(Ejs *ejs)
+MprModule *ejs_db_sqliteModuleInit(Ejs *ejs, cchar *path)
 {
     MprModule   *module;
     int         priorGen;
