@@ -1727,6 +1727,7 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
     MaDir           *dir;
     MaLimits        *limits;
     MprHash         *hp;
+    MprModule       *module;
     char            ipAddrPort[MPR_MAX_IP_ADDR_PORT];
     char            *name, *path, *prefix, *cp, *tok, *ext, *mimeType, *url, *newUrl, *extensions, *codeStr, *hostName;
     char            *items, *include, *exclude, *when, *mimeTypes;
@@ -2460,7 +2461,22 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
         break;
 
     case 'U':
-        if (mprStrcmpAnyCase(key, "User") == 0) {
+        if (mprStrcmpAnyCase(key, "UnloadModule") == 0) {
+            name = mprStrTok(value, " \t", &tok);
+            if (name == 0) {
+                return MPR_ERR_BAD_SYNTAX;
+            }
+            if ((cp = mprStrTok(0, "\n", &tok)) == 0) {
+                return MPR_ERR_BAD_SYNTAX;
+            }
+            if ((module = mprLookupModule(http, name)) == 0) {
+                mprError(server, "Can't find module stage %s", name);
+                return MPR_ERR_BAD_SYNTAX;
+            }
+            module->timeout = mprAtoi(cp, 10) * MPR_TICKS_PER_SEC;
+            return 1;
+
+        } else if (mprStrcmpAnyCase(key, "User") == 0) {
             maSetHttpUser(http, mprStrTrim(value, "\""));
             return 1;
         }
@@ -9828,7 +9844,7 @@ static int initializePhp(MaHttp *http)
     tsrm_ls = (void***) ts_resource(0);
 #endif
 
-    mprLog(mprGetMpr(0), 2, "php: initialize php library");
+    mprLog(http, 2, "php: initialize php library");
 #ifdef BLD_FEATURE_PHP_INI
     phpSapiBlock.php_ini_path_override = BLD_FEATURE_PHP_INI;
 #else
@@ -9839,7 +9855,6 @@ static int initializePhp(MaHttp *http)
         mprError(http, "PHP did not initialize");
         return MPR_ERR_CANT_INITIALIZE;
     }
-
 #if ZTS
     zend_llist_init(&global_vars, sizeof(char *), 0, 0);
 #endif
@@ -9854,12 +9869,21 @@ static int initializePhp(MaHttp *http)
 
 static int finalizePhp(MprModule *mp)
 {
+    MaHttp      *http;
+    MaStage     *stage;
+
+    mprLog(mp, 4, "php: Finalize library before unloading");
+
     TSRMLS_FETCH();
     php_module_shutdown(TSRMLS_C);
     sapi_shutdown();
 #if ZTS
     tsrm_shutdown();
 #endif
+    http = mprGetMpr(ctx)->appwebHttpService;
+    if ((stage = maLookupStage(http, "phpHandler")) != 0) {
+        stage->stageData = 0;
+    }
     return 0;
 }
 
@@ -9872,19 +9896,24 @@ MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
     MprModule   *module;
     MaStage     *handler;
 
-    module = mprCreateModule(http, "phpHandler", BLD_VERSION, http, NULL, finalizePhp);
-    if (module == 0) {
+    if ((module = mprCreateModule(http, "phpHandler", BLD_VERSION, http, NULL, finalizePhp)) == 0) {
         return 0;
     }
-    handler = maCreateHandler(http, "phpHandler", 
-        MA_STAGE_ALL | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | MA_STAGE_MISSING_EXT);
-    if (handler == 0) {
-        mprFree(module);
-        return 0;
+    module->path = mprStrdup(module, path);
+
+    if ((handler = maLookupStage(http, "phpHandler")) == 0) {
+        handler = maCreateHandler(http, "phpHandler", 
+            MA_STAGE_ALL | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | MA_STAGE_MISSING_EXT);
+        if (handler == 0) {
+            mprFree(module);
+            return 0;
+        }
     }
+    http->phpHandler = handler;
     handler->open = openPhp;
     handler->run = runPhp;
-    http->phpHandler = handler;
+    mprFree(handler->path);
+    handler->path = mprStrdup(handler, path);;
     return module;
 }
 
@@ -10587,8 +10616,11 @@ static void startTimer(MaHost *host)
  */
 static void hostTimer(MaHost *host, MprEvent *event)
 {
+    Mpr         *mpr;
+    MaStage     *stage;
     MaConn      *conn;
-    int         next, connCount;
+    MprModule   *module;
+    int         next, count;
 
     mprAssert(event);
     
@@ -10602,7 +10634,7 @@ static void hostTimer(MaHost *host, MprEvent *event)
     /*
      *  Check for any expired connections
      */
-    for (connCount = 0, next = 0; (conn = mprGetNextItem(host->connections, &next)) != 0; connCount++) {
+    for (count = 0, next = 0; (conn = mprGetNextItem(host->connections, &next)) != 0; count++) {
         /*
          *  Workaround for a GCC bug when comparing two 64bit numerics directly. Need a temporary.
          */
@@ -10620,7 +10652,31 @@ static void hostTimer(MaHost *host, MprEvent *event)
             }
         }
     }
-    if (connCount == 0) {
+    /*
+        Check for unloadable modules
+     */
+    mpr = mprGetMpr(http);
+    for (next = 0; (module = mprGetNextItem(mpr->moduleService->modules, &next)) != 0; ) {
+        if (module->timeout) {
+            if (module->lastActivity + module->timeout < host->now) {
+                if ((stage = maLookupStage(host->server->http, module->name)) != 0) {
+                    mprLog(host, 2, "Unloading inactive module %s", module->name);
+                    if (stage->match) {
+                        mprError(conn, "Can't unload modules with match routines");
+                        module->timeout = 0;
+                    } else {
+                        maUnloadModule(conn->http, module->name);
+                        stage->flags |= MA_STAGE_UNLOADED;
+                    }
+                } else {
+                    maUnloadModule(conn->http, module->name);
+                }
+            } else {
+                count++;
+            }
+        }
+    }
+    if (count == 0) {
         mprFree(event);
         host->timer = 0;
     }
@@ -10866,6 +10922,9 @@ void maLoadStaticModules(MaHttp *http)
 #endif
 #if BLD_FEATURE_UPLOAD
     staticModules[index++] = maUploadFilterInit(http, NULL);
+#endif
+#ifdef BLD_STATIC_MODULE
+    staticModules[index++] = BLD_STATIC_MODULE(http, NULL);
 #endif
     maxStaticModules = index;
 }
@@ -12842,8 +12901,11 @@ static MaStage *checkStage(MaConn *conn, MaStage *stage)
     if ((stage->flags & MA_STAGE_ALL & req->method) == 0) {
         return 0;
     }
-    if (stage->match && !stage->match(conn, stage, req->url)) {
-        return 0;
+    if (stage->match && !(stage->flags & MA_STAGE_UNLOADED)) {
+        /* Can't have match routines on unloadable modules */
+        if (!stage->match(conn, stage, req->url)) {
+            return 0;
+        }
     }
     return stage;
 }
@@ -13045,6 +13107,11 @@ static void openQ(MaQueue *q)
 
     if (resp->chunkSize > 0) {
         q->packetSize = min(q->packetSize, resp->chunkSize);
+    }
+    if (q->stage->flags & MA_STAGE_UNLOADED) {
+        mprAssert(q->stage->path);
+        mprLog(q, 2, "Loading module %s", q->stage->name);
+        maLoadModule(conn->http, q->stage->name, q->stage->path);
     }
     q->flags |= MA_QUEUE_OPEN;
     if (q->open) {
@@ -16370,7 +16437,6 @@ MaHttp *maCreateHttp(MprCtx ctx)
     maOpenNetConnector(http);
 #endif
     maOpenPassHandler(http);
-
     return http;
 }
 
@@ -16411,6 +16477,12 @@ MaServer *maLookupServer(MaHttp *http, cchar *name)
 void maRegisterStage(MaHttp *http, MaStage *stage)
 {
     mprAddHash(http->stages, stage->name, stage);
+}
+
+
+int maRemoveStage(MaHttp *http, cchar *name)
+{
+    return mprRemoveHash(http->stages, name);
 }
 
 
@@ -16582,7 +16654,6 @@ int maLoadModule(MaHttp *http, cchar *name, cchar *libname)
         mprLog(http, MPR_CONFIG, "Activating module (Builtin) %s", name);
         return 0;
     }
-
     mprSprintf(entryPoint, sizeof(entryPoint), "ma%sInit", name);
     entryPoint[2] = toupper((int) entryPoint[2]);
 
@@ -16593,6 +16664,25 @@ int maLoadModule(MaHttp *http, cchar *name, cchar *libname)
         return MPR_ERR_CANT_CREATE;
     }
     mprLog(http, MPR_CONFIG, "Activating module (Loadable) %s", name);
+    return 0;
+}
+
+
+int maUnloadModule(MaHttp *http, cchar *name)
+{
+    MprModule   *module;
+    MaStage     *stage;
+
+    if ((module = mprLookupModule(http, name)) == 0) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+    if (module->timeout) {
+        //  MOB - stop all requests 
+        if ((stage = maLookupStage(http, name)) != 0) {
+            stage->flags |= MA_STAGE_UNLOADED;
+        }
+        mprUnloadModule(module);
+    }
     return 0;
 }
 
@@ -16629,6 +16719,7 @@ MaServer *maCreateServer(MaHttp *http, cchar *name, cchar *root, cchar *ipAddr, 
     MaServer        *server;
     MaHostAddress   *hostAddress;
     MaListen        *listen;
+    static int      staticModulesLoaded = 0;
 
     mprAssert(http);
     mprAssert(name && *name);
@@ -16655,7 +16746,10 @@ MaServer *maCreateServer(MaHttp *http, cchar *name, cchar *root, cchar *ipAddr, 
         mprAddItem(server->hostAddresses, hostAddress);
     }
     maSetDefaultServer(http, server);
-    maLoadStaticModules(http);
+    if (!staticModulesLoaded) {
+        staticModulesLoaded = 1;
+        maLoadStaticModules(http);
+    }
     return server;
 }
 
