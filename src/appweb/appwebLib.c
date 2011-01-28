@@ -9912,8 +9912,9 @@ MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
     http->phpHandler = handler;
     handler->open = openPhp;
     handler->run = runPhp;
+    handler->module = module;
     mprFree(handler->path);
-    handler->path = mprStrdup(handler, path);;
+    handler->path = mprStrdup(handler, path);
     return module;
 }
 
@@ -10665,7 +10666,7 @@ static void hostTimer(MaHost *host, MprEvent *event)
                         mprError(conn, "Can't unload modules with match routines");
                         module->timeout = 0;
                     } else {
-                        maUnloadModule(conn->http, module->name);
+                        maUnloadModule(host->server->http, module->name);
                         stage->flags |= MA_STAGE_UNLOADED;
                     }
                 } else {
@@ -13100,22 +13101,27 @@ static bool matchFilter(MaConn *conn, MaFilter *filter)
 static void openQ(MaQueue *q)
 {
     MaConn      *conn;
+    MaStage     *stage;
     MaResponse  *resp;
 
     conn = q->conn;
     resp = conn->response;
+    stage = q->stage;
 
     if (resp->chunkSize > 0) {
         q->packetSize = min(q->packetSize, resp->chunkSize);
     }
-    if (q->stage->flags & MA_STAGE_UNLOADED) {
-        mprAssert(q->stage->path);
-        mprLog(q, 2, "Loading module %s", q->stage->name);
-        maLoadModule(conn->http, q->stage->name, q->stage->path);
+    if (stage->flags & MA_STAGE_UNLOADED) {
+        mprAssert(stage->path);
+        mprLog(q, 2, "Loading module %s", stage->name);
+        maLoadModule(conn->http, stage->name, stage->path);
+    }
+    if (stage->module) {
+        stage->module->lastActivity = conn->host->now;
     }
     q->flags |= MA_QUEUE_OPEN;
     if (q->open) {
-        MEASURE(conn, q->stage->name, "open", q->stage->open(q));
+        MEASURE(conn, stage->name, "open", stage->open(q));
     }
 }
 
@@ -16480,10 +16486,12 @@ void maRegisterStage(MaHttp *http, MaStage *stage)
 }
 
 
+#if UNUSED
 int maRemoveStage(MaHttp *http, cchar *name)
 {
     return mprRemoveHash(http->stages, name);
 }
+#endif
 
 
 MaStage *maLookupStage(MaHttp *http, cchar *name)
