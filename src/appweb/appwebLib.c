@@ -2473,7 +2473,7 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
                 mprError(server, "Can't find module stage %s", name);
                 return MPR_ERR_BAD_SYNTAX;
             }
-            module->timeout = mprAtoi(cp, 10) * MPR_TICKS_PER_SEC;
+            module->timeout = (int) mprAtoi(cp, 10) * MPR_TICKS_PER_SEC;
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "User") == 0) {
@@ -10621,10 +10621,12 @@ static void hostTimer(MaHost *host, MprEvent *event)
     MaStage     *stage;
     MaConn      *conn;
     MprModule   *module;
+    MaHttp      *http;
     int         next, count;
 
     mprAssert(event);
-    
+    http = host->server->http;
+
     /*
      *  Locking ensures connections won't be deleted
      */
@@ -10660,17 +10662,17 @@ static void hostTimer(MaHost *host, MprEvent *event)
     for (next = 0; (module = mprGetNextItem(mpr->moduleService->modules, &next)) != 0; ) {
         if (module->timeout) {
             if (module->lastActivity + module->timeout < host->now) {
-                if ((stage = maLookupStage(host->server->http, module->name)) != 0) {
+                if ((stage = maLookupStage(http, module->name)) != 0) {
                     mprLog(host, 2, "Unloading inactive module %s", module->name);
                     if (stage->match) {
                         mprError(conn, "Can't unload modules with match routines");
                         module->timeout = 0;
                     } else {
-                        maUnloadModule(host->server->http, module->name);
+                        maUnloadModule(http, module->name);
                         stage->flags |= MA_STAGE_UNLOADED;
                     }
                 } else {
-                    maUnloadModule(conn->http, module->name);
+                    maUnloadModule(http, module->name);
                 }
             } else {
                 count++;
@@ -13272,7 +13274,7 @@ static void setPathInfo(MaConn *conn)
                 }
             }
             if (last) {
-                offset = alias->prefixLen + last - start;
+                offset = alias->prefixLen + (int) (last - start);
                 if (offset <= strlen(req->url)) {
                     pathInfo = &req->url[offset];
                     req->pathInfo = mprStrdup(req, pathInfo);
