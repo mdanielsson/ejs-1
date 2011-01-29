@@ -9872,15 +9872,16 @@ static int finalizePhp(MprModule *mp)
     MaHttp      *http;
     MaStage     *stage;
 
+    TSRMLS_FETCH();
+
     mprLog(mp, 4, "php: Finalize library before unloading");
 
-    TSRMLS_FETCH();
     php_module_shutdown(TSRMLS_C);
     sapi_shutdown();
 #if ZTS
     tsrm_shutdown();
 #endif
-    http = mprGetMpr(ctx)->appwebHttpService;
+    http = mprGetMpr(mp)->appwebHttpService;
     if ((stage = maLookupStage(http, "phpHandler")) != 0) {
         stage->stageData = 0;
     }
@@ -13116,7 +13117,7 @@ static void openQ(MaQueue *q)
     if (stage->flags & MA_STAGE_UNLOADED) {
         mprAssert(stage->path);
         mprLog(q, 2, "Loading module %s", stage->name);
-        maLoadModule(conn->http, stage->name, stage->path);
+        stage->module = maLoadModule(conn->http, stage->name, stage->path);
     }
     if (stage->module) {
         stage->module->lastActivity = conn->host->now;
@@ -16651,7 +16652,7 @@ void maSetListenCallback(MaHttp *http, MaListenCallback fn)
 /*
  *  Load a module. Returns 0 if the modules is successfully loaded either statically or dynamically.
  */
-int maLoadModule(MaHttp *http, cchar *name, cchar *libname)
+MprModule *maLoadModule(MaHttp *http, cchar *name, cchar *libname)
 {
     MprModule   *module;
     char        entryPoint[MPR_MAX_FNAME];
@@ -16662,7 +16663,7 @@ int maLoadModule(MaHttp *http, cchar *name, cchar *libname)
     module = mprLookupModule(http, name);
     if (module) {
         mprLog(http, MPR_CONFIG, "Activating module (Builtin) %s", name);
-        return 0;
+        return module;
     }
     mprSprintf(entryPoint, sizeof(entryPoint), "ma%sInit", name);
     entryPoint[2] = toupper((int) entryPoint[2]);
@@ -16670,11 +16671,11 @@ int maLoadModule(MaHttp *http, cchar *name, cchar *libname)
     if (libname == 0) {
         path = mprStrcat(http, -1, "mod_", name, BLD_SHOBJ, NULL);
     }
-    if (mprLoadModule(http, (libname) ? libname: path, entryPoint) == 0) {
-        return MPR_ERR_CANT_CREATE;
+    if ((module = mprLoadModule(http, (libname) ? libname: path, entryPoint)) == 0) {
+        return 0;
     }
     mprLog(http, MPR_CONFIG, "Activating module (Loadable) %s", name);
-    return 0;
+    return module;
 }
 
 
