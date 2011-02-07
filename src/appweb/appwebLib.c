@@ -3,7 +3,7 @@
 /******************************************************************************/
 /* 
  *  This file is an amalgamation of all the individual source code files for
- *  Embedthis Appweb 3.2.4.
+ *  Embedthis Appweb 3.3.0.
  *
  *  Catenating all the source into a single file makes embedding simpler and
  *  the resulting application faster, as many compilers can do whole file
@@ -142,7 +142,9 @@ MaAuth *maCreateAuth(MprCtx ctx, MaAuth *parent)
         auth->flags = parent->flags;
         auth->order = parent->order;
         auth->qop = parent->qop;
-
+        auth->requiredRealm = parent->requiredRealm;
+        auth->requiredUsers = parent->requiredUsers;
+        auth->requiredGroups = parent->requiredGroups;
 #if BLD_FEATURE_AUTH_FILE
         auth->userFile = parent->userFile;
         auth->groupFile = parent->groupFile;
@@ -5179,6 +5181,7 @@ void maSetAuthRequiredGroups(MaAuth *auth, cchar *groups)
     mprFree(auth->requiredGroups);
     auth->requiredGroups = mprStrdup(auth, groups);
     auth->flags |= MA_AUTH_REQUIRED;
+    auth->anyValidUser = 0;
 }
 
 
@@ -5187,6 +5190,7 @@ void maSetAuthRequiredUsers(MaAuth *auth, cchar *users)
     mprFree(auth->requiredUsers);
     auth->requiredUsers = mprStrdup(auth, users);
     auth->flags |= MA_AUTH_REQUIRED;
+    auth->anyValidUser = 0;
 }
 
 
@@ -10093,6 +10097,7 @@ MaHost *maCreateVirtualHost(MaServer *server, cchar *ipAddrPort, MaHost *parent)
     host->accessLog = parent->accessLog;
     host->mimeTypes = parent->mimeTypes;
     host->location = maCreateLocation(host, parent->location);
+    host->logHost = parent->logHost;
 
     host->traceMask = parent->traceMask;
     host->traceLevel = parent->traceLevel;
@@ -16512,11 +16517,13 @@ void *maLookupStageData(MaHttp *http, cchar *name)
 }
 
 
+#if BLD_FEATURE_CMD
 void maSetForkCallback(MaHttp *http, MprForkCallback callback, void *data)
 {
     http->forkCallback = callback;
     http->forkData = data;
 }
+#endif
 
 
 int maStartHttp(MaHttp *http)

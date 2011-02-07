@@ -1227,7 +1227,10 @@ void ejsConfigureHttpType(Ejs *ejs)
 }
 
 
-#endif /* ES_Http */
+#else /* ES_ejs_io_Http && BLD_FEATURE_HTTP_CLIENT */
+
+void __dummyEjsHttp() {}
+#endif /* ES_ejs_io_Http && BLD_FEATURE_HTTP_CLIENT */
 
 /*
  *  @copy   default

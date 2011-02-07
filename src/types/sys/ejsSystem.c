@@ -136,8 +136,8 @@ void ejsConfigureSystemType(Ejs *ejs)
     ejsBindMethod(ejs, type, ES_ejs_sys_System_exec, (EjsNativeFunction) execCmd);
     ejsBindMethod(ejs, type, ES_ejs_sys_System_run, (EjsNativeFunction) run);
     ejsBindMethod(ejs, type, ES_ejs_sys_System_runx, (EjsNativeFunction) runx);
-    ejsBindMethod(ejs, type, ES_ejs_sys_System_hostname, (EjsNativeFunction) system_hostname);
 #endif
+    ejsBindMethod(ejs, type, ES_ejs_sys_System_hostname, (EjsNativeFunction) system_hostname);
 }
 
 

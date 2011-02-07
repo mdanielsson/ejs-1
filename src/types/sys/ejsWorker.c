@@ -734,6 +734,11 @@ void ejsConfigureWorkerType(Ejs *ejs)
         ejs->workerType = type;
     }
 }
+
+
+#else /* BLD_FEATURE_MULTITHREAD */
+
+void __dummyEjsWorker() {}
 #endif /* BLD_FEATURE_MULTITHREAD */
 
 /*
