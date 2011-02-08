@@ -13,6 +13,12 @@
 
 static char *getPath(Ejs *ejs, EjsVar *vp);
 
+#if BLD_UNIX_LIKE
+    #define firstSep(fs, path)      strchr(path, fs->separators[0])
+#else
+    #define firstSep(fs, path)      strpbrk(path, fs->separators)
+#endif
+
 /************************************ Helpers *********************************/
 
 static void destroyPath(Ejs *ejs, EjsPath *pp)
@@ -321,12 +327,17 @@ static EjsVar *getPathExists(Ejs *ejs, EjsPath *fp, int argc, EjsVar **argv)
  */
 static EjsVar *getPathExtension(Ejs *ejs, EjsPath *fp, int argc, EjsVar **argv)
 {
-    char    *cp;
+    MprFileSystem   *fs;
+    char            *cp;
 
     if ((cp = strrchr(fp->path, '.')) == 0) {
         return (EjsVar*) ejs->emptyStringValue;
     }
-    return (EjsVar*) ejsCreateString(ejs, &cp[1]);
+    fs = mprLookupFileSystem(ejs, fp->path);
+    if (firstSep(fs, cp) == 0) {
+        return (EjsVar*) ejsCreateString(ejs, &cp[1]);
+    }
+    return (EjsVar*) ejs->emptyStringValue;
 }
 
 
