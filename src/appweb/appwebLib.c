@@ -2468,6 +2468,10 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
             if (name == 0) {
                 return MPR_ERR_BAD_SYNTAX;
             }
+            if (strcmp(name, "phpHandler") != 0) {
+                mprError(server, "Unloading is only supported for \"phpHandler\"");
+                return MPR_ERR_BAD_SYNTAX;
+            }
             if ((cp = mprStrTok(0, "\n", &tok)) == 0) {
                 return MPR_ERR_BAD_SYNTAX;
             }
