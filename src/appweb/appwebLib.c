@@ -1421,7 +1421,7 @@ int maParseConfig(MaServer *server, cchar *configFile)
                 continue;
 
             } else if (rc < 0) {
-                mprError(server, "Ignoring bad directive \"%s\" at %s:%d", key, state->filename, state->lineNumber);
+                mprError(server, "Ignoring bad directive \"%s\" at %s:%d\n", key, state->filename, state->lineNumber);
             }
             continue;
         }
@@ -10346,8 +10346,8 @@ void maSetTimeout(MaHost *host, int timeout)
 
 int maInsertAlias(MaHost *host, MaAlias *newAlias)
 {
-    MaAlias     *alias, *old;
-    int         rc, next, index;
+    MaAlias     *alias;
+    int         rc, next;
 
     if (mprGetParent(host->aliases) == host->parent) {
         host->aliases = mprDupList(host, host->parent->aliases);
@@ -10360,11 +10360,15 @@ int maInsertAlias(MaHost *host, MaAlias *newAlias)
     for (next = 0; (alias = mprGetNextItem(host->aliases, &next)) != 0; ) {
         rc = strcmp(newAlias->prefix, alias->prefix);
         if (rc == 0) {
-            index = mprLookupItem(host->aliases, alias);
-            old = (MaAlias*) mprGetItem(host->aliases, index);
-            mprRemoveItem(host->aliases, alias);
-            mprInsertItemAtPos(host->aliases, next - 1, newAlias);
-            return 0;
+            if (newAlias->redirectCode == alias->redirectCode) {
+                mprRemoveItem(host->aliases, alias);
+                mprInsertItemAtPos(host->aliases, next - 1, newAlias);
+                return 0;
+
+            } else if (newAlias->redirectCode > alias->redirectCode) {
+                mprInsertItemAtPos(host->aliases, next - 1, newAlias);
+                return 0;
+            }
             
         } else if (rc > 0) {
             if (newAlias->redirectCode >= alias->redirectCode) {
@@ -12501,6 +12505,9 @@ void maMatchHandler(MaConn *conn)
     resp = conn->response;
     host = req->host;
 
+    location = req->location = maLookupBestLocation(host, req->url);
+    mprAssert(location);
+    
     /*
      *  Find the alias that applies for this url. There is always a catch-all alias for the document root.
      */
@@ -12510,8 +12517,7 @@ void maMatchHandler(MaConn *conn)
         maRedirect(conn, alias->redirectCode, alias->uri);
         return;
     }
-    location = req->location = maLookupBestLocation(req->host, req->url);
-    mprAssert(location);
+
     req->auth = location->auth;
     resp->extension = getExtension(conn);
 
@@ -14941,6 +14947,7 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
          */
         mprAdjustBufStart(content, 2);
     }
+    mprLog(conn, 4, "Select host \"%s\"", conn->host->name);
     return 1;
 }
 
