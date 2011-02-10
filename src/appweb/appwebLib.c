@@ -10670,26 +10670,28 @@ static void hostTimer(MaHost *host, MprEvent *event)
         }
     }
     /*
-        Check for unloadable modules
+        Check for unloadable modules - must be idle
      */
     mpr = mprGetMpr(http);
-    for (next = 0; (module = mprGetNextItem(mpr->moduleService->modules, &next)) != 0; ) {
-        if (module->timeout) {
-            if (module->lastActivity + module->timeout < host->now) {
-                if ((stage = maLookupStage(http, module->name)) != 0) {
-                    mprLog(host, 2, "Unloading inactive module %s", module->name);
-                    if (stage->match) {
-                        mprError(conn, "Can't unload modules with match routines");
-                        module->timeout = 0;
+    if (mprGetListCount(host->connections) == 0) {
+        for (next = 0; (module = mprGetNextItem(mpr->moduleService->modules, &next)) != 0; ) {
+            if (module->timeout) {
+                if (module->lastActivity + module->timeout < host->now) {
+                    if ((stage = maLookupStage(http, module->name)) != 0) {
+                        mprLog(host, 2, "Unloading inactive module %s", module->name);
+                        if (stage->match) {
+                            mprError(conn, "Can't unload modules with match routines");
+                            module->timeout = 0;
+                        } else {
+                            maUnloadModule(http, module->name);
+                            stage->flags |= MA_STAGE_UNLOADED;
+                        }
                     } else {
                         maUnloadModule(http, module->name);
-                        stage->flags |= MA_STAGE_UNLOADED;
                     }
                 } else {
-                    maUnloadModule(http, module->name);
+                    count++;
                 }
-            } else {
-                count++;
             }
         }
     }
