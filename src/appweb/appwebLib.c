@@ -12562,7 +12562,7 @@ void maMatchHandler(MaConn *conn)
         }
     }
     resp->handler = handler;
-    mprLog(resp, 4, "Select handler: \"%s\" for \"%s\"", handler->name, req->url);
+    mprLog(resp, 3, "Select handler: \"%s\" for \"%s\"", handler->name, req->url);
     setEnv(conn);
 }
 
@@ -14949,7 +14949,7 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
          */
         mprAdjustBufStart(content, 2);
     }
-    mprLog(conn, 4, "Select host \"%s\"", conn->host->name);
+    mprLog(conn, 3, "Select host \"%s\"", conn->host->name);
     return 1;
 }
 
