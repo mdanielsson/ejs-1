@@ -8936,13 +8936,6 @@ static void openFile(MaQueue *q)
     case MA_REQ_DELETE:
         if (location->flags & MA_LOC_PUT_DELETE) {
             maOmitResponseBody(conn);
-#if MOVED_TO_START
-            if (req->method == MA_REQ_PUT) {
-                handlePutRequest(q);
-            } else {
-                handleDeleteRequest(q);
-            }
-#endif
             break;
         }
         /* Method not supported - fall through */
@@ -12696,7 +12689,7 @@ void maCreatePipeline(MaConn *conn)
     
     connector = location->connector;
 #if BLD_FEATURE_SEND
-    if (resp->handler == http->fileHandler && connector == http->netConnector && 
+    if (resp->handler == http->fileHandler && connector == http->netConnector && req->method == MA_REQ_GET && 
             http->sendConnector && !req->ranges && !host->secure && resp->chunkSize <= 0 && !conn->trace) {
         /*
             Switch (transparently) to the send connector if serving whole static file content via the net connector

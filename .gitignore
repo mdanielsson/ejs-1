@@ -77,3 +77,4 @@ test/web/ss.xml
 test/ss.es
 bin/*.manifest
 test/*.h
+test/file.dat

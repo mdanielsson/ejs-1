@@ -2,7 +2,6 @@
  *  Put tests
  */
 
-
 if (test.config["http_client"] == 1 && session["http"]) {
 
     const HTTP = session["http"]
