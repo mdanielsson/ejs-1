@@ -364,12 +364,6 @@ static EjsVar *date_set_day(Ejs *ejs, EjsDate *dp, int argc, EjsVar **argv)
     MprTime     dayDiff, day;
 
     day = ejsGetNumber(argv[0]);
-#if UNUSED
-    if (day < 0 || day > 6) {
-        ejsThrowArgError(ejs, "Bad day. Range 0-6");
-        return 0;
-    }
-#endif
     mprDecodeLocalTime(ejs, &tm, dp->value);
     dayDiff = day - tm.tm_wday;
     dp->value += dayDiff * 86400 * MPR_TICKS_PER_SEC;
@@ -400,12 +394,6 @@ static EjsVar *date_set_dayOfYear(Ejs *ejs, EjsDate *dp, int argc, EjsVar **argv
     MprTime     dayDiff, day;
 
     day = ejsGetNumber(argv[0]);
-#if UNUSED
-    if (day < 0 || day > 365) {
-        ejsThrowArgError(ejs, "Bad day. Range 0-365");
-        return 0;
-    }
-#endif
     mprDecodeLocalTime(ejs, &tm, dp->value);
     dayDiff = day - tm.tm_yday;
     dp->value += dayDiff * 86400 * MPR_TICKS_PER_SEC;
@@ -436,12 +424,6 @@ static EjsVar *date_set_date(Ejs *ejs, EjsDate *dp, int argc, EjsVar **argv)
     MprTime     dayDiff, day;
 
     day = ejsGetNumber(argv[0]);
-#if UNUSED
-    if (day < 1 || day > 31) {
-        ejsThrowArgError(ejs, "Bad day. Range 1-31");
-        return 0;
-    }
-#endif
     mprDecodeLocalTime(ejs, &tm, dp->value);
     dayDiff = day - tm.tm_mday;
     dp->value += dayDiff * 86400 * MPR_TICKS_PER_SEC;
@@ -847,12 +829,6 @@ static EjsVar *date_setUTCDate(Ejs *ejs, EjsDate *dp, int argc, EjsVar **argv)
     MprTime     dayDiff, day;
 
     day = ejsGetNumber(argv[0]);
-#if UNUSED
-    if (day < 1 || day > 31) {
-        ejsThrowArgError(ejs, "Bad day. Range 1-31");
-        return 0;
-    }
-#endif
     mprDecodeUniversalTime(ejs, &tm, dp->value);
     dayDiff = day - tm.tm_mday;
     dp->value += dayDiff * 86400 * MPR_TICKS_PER_SEC;

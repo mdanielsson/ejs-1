@@ -676,32 +676,6 @@ static EjsVar *readLines(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
 }
 
 
-#if BLD_FEATURE_EJS_E4X && UNUSED
-/*
- *  function readXml(): XML
- */
-static EjsVar *readXml(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
-{
-    EjsXML  *xml;
-    int     count;
-
-    if (!waitForResponse(hp, -1)) {
-        return 0;
-    }
-    xml = ejsCreateXML(ejs, 0, NULL, NULL, NULL);
-    lock(hp);
-    if ((count = readTransfer(ejs, hp, -1, 0)) < 0) {
-        return 0;
-    }
-    mprAddNullToBuf(hp->responseContent);
-    ejsLoadXMLString(ejs, xml, mprGetBufStart(hp->responseContent));
-    mprFlushBuf(hp->responseContent);
-    unlock(hp);
-    return (EjsVar*) xml;
-}
-#endif
-
-
 /*
  *  function response(): Stream
  */
@@ -1208,9 +1182,6 @@ void ejsConfigureHttpType(Ejs *ejs)
     ejsBindMethod(ejs, type, ES_ejs_io_Http_read, (EjsNativeFunction) readHttpData);
     ejsBindMethod(ejs, type, ES_ejs_io_Http_readString, (EjsNativeFunction) readStringHttp);
     ejsBindMethod(ejs, type, ES_ejs_io_Http_readLines, (EjsNativeFunction) readLines);
-#if BLD_FEATURE_EJS_E4X && UNUSED
-    ejsBindMethod(ejs, type, ES_ejs_io_Http_readXml, (EjsNativeFunction) readXml);
-#endif
     ejsBindMethod(ejs, type, ES_ejs_io_Http_response, (EjsNativeFunction) httpResponse);
     ejsBindMethod(ejs, type, ES_ejs_io_Http_options, (EjsNativeFunction) optionsMethod);
     ejsBindMethod(ejs, type, ES_ejs_io_Http_setCredentials, (EjsNativeFunction) setCredentials);

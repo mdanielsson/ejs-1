@@ -5035,6 +5035,9 @@ static int parseAuth(MaHttp *http, cchar *key, char *value, MaConfigState *state
         if (mprStrcmpAnyCase(value, "Basic") == 0) {
             auth->type = MA_AUTH_BASIC;
 
+        } else if (mprStrcmpAnyCase(value, "None") == 0) {
+            auth->type = 0;
+
 #if BLD_FEATURE_AUTH_DIGEST
         } else if (mprStrcmpAnyCase(value, "Digest") == 0) {
             auth->type = MA_AUTH_DIGEST;
@@ -6864,7 +6867,6 @@ static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
     while ((len = mprGetBufLength(buf)) > 0) {
         if (!conn->requestFailed) {
             mprLog(q, 5, "CGI: write %d bytes to client. Rc rc %d, errno %d", len, rc, mprGetOsError());
-//  MOB -- test that blocking writes are working
             rc = maWriteBlock(q, mprGetBufStart(buf), len, 1);
             mprLog(cmd, 5, "Write to browser ask %d, actual %d", len, rc);
         } else {
@@ -7648,17 +7650,15 @@ static void sortList(MaConn *conn, MprList *list);
 static bool matchDir(MaConn *conn, MaStage *handler, cchar *url)
 {
     MaResponse      *resp;
-    MprPath         *info;
     Dir             *dir;
 
     resp = conn->response;
-    info = &resp->fileInfo;
     dir = handler->stageData;
     
-    if (!info->valid && mprGetPathInfo(conn, resp->filename, info) < 0) {
-        return 0;
-    }
-    return dir->enabled && info->isDir;
+    mprAssert(resp->filename);
+    mprAssert(resp->fileInfo.checked);
+
+    return dir->enabled && resp->fileInfo.isDir;
 }
 
 
@@ -9112,12 +9112,8 @@ static void handlePutRequest(MaQueue *q)
     conn = q->conn;
     req = conn->request;
     resp = conn->response;
+    path = resp->filename;
 
-    path = maMapUriToStorage(q->conn, req->url);
-    if (path == 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't map URI to file storage");
-        return;
-    }
     if (req->ranges) {
         /*
          *  Open an existing file with fall-back to create
@@ -9155,18 +9151,12 @@ static void handleDeleteRequest(MaQueue *q)
 
     conn = q->conn;
     req = conn->request;
-
-    path = maMapUriToStorage(q->conn, req->url);
-    if (path == 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't map URI to file storage");
-        return;
-    }
+    path = conn->response->filename;
 
     if (!conn->response->fileInfo.isReg) {
         maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "URI not found");
         return;
     }
-
     if (mprDeletePath(q, path) < 0) {
         maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't remove URI");
         return;
@@ -10667,14 +10657,6 @@ static void updateCurrentDate(MaHost *host)
     host->now = mprGetTime(host);
     host->currentDate = maGetDateString(host, 0);
     mprFree(oldDate);
-
-#if UNUSED
-    struct tm   tm;
-    mprDecodeUniversalTime(host, &tm, host->now + (86400 * 1000));
-    oldDate = host->expiresDate;
-    host->expiresDate = mprFormatTime(host, MPR_HTTP_DATE, &tm);
-    mprFree(oldDate);
-#endif
 }
 
 
@@ -11692,17 +11674,13 @@ void maRotateAccessLog(MaHost *host)
      *  Rotate logs when full
      */
     if (mprGetPathInfo(host, host->logPath, &info) == 0 && info.size > MA_MAX_ACCESS_LOG) {
-
         when = mprGetTime(host);
         mprDecodeUniversalTime(host, &tm, when);
-
         mprSprintf(bak, sizeof(bak), "%s-%02d-%02d-%02d-%02d:%02d:%02d", host->logPath, 
             tm.tm_mon, tm.tm_mday, tm.tm_year, tm.tm_hour, tm.tm_min, tm.tm_sec);
-
         mprFree(host->accessLog);
         rename(host->logPath, bak);
         unlink(host->logPath);
-
         host->accessLog = mprOpen(host, host->logPath, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0664);
     }
 }
@@ -12416,78 +12394,56 @@ MprModule *maSslModuleInit(MaHttp *http, cchar *path)
 
 static char *addIndexToUrl(MaConn *conn, cchar *index);
 static MaStage *checkStage(MaConn *conn, MaStage *stage);
-static char *getExtension(MaConn *conn);
 static MaStage *findHandler(MaConn *conn);
-static bool mapToFile(MaConn *conn, MaStage *handler, bool *rescan);
+static MaStage *mapToFile(MaConn *conn, MaStage *handler);
 static bool matchFilter(MaConn *conn, MaFilter *filter);
-static bool modifyRequest(MaConn *conn);
+static bool rewriteRequest(MaConn *conn);
 static void openQ(MaQueue *q);
-static void processDirectory(MaConn *conn, bool *rescan);
+static MaStage *processDirectory(MaConn *conn, MaStage *handler);
 static void setEnv(MaConn *conn);
 static void setPathInfo(MaConn *conn);
 static void startQ(MaQueue *q);
 
 /*
- *  Find the matching handler for a request. If any errors occur, the pass handler is used to pass errors onto the 
- *  net/sendfile connectors to send to the client. This routine may rewrite the request URI and may redirect the request.
+    Find the matching handler for a request. If any errors occur, the pass handler is used to pass errors onto the 
+    net/sendfile connectors to send to the client. This routine may rewrite the request URI and may redirect the request.
  */
 void maMatchHandler(MaConn *conn)
 {
     MaRequest       *req;
     MaResponse      *resp;
-    MaHost          *host;
-    MaAlias         *alias;
     MaStage         *handler;
-    MaLocation      *location;
-    bool            rescan;
-    int             loopCount;
 
     req = conn->request;
     resp = conn->response;
-    host = req->host;
+    handler = 0;
 
-    location = req->location = maLookupBestLocation(host, req->url);
-    mprAssert(location);
-    
+    mprAssert(req->url);
+    mprAssert(req->alias);
+    mprAssert(resp->filename);
+    mprAssert(resp->fileInfo.checked);
+
     /*
-     *  Find the alias that applies for this url. There is always a catch-all alias for the document root.
+        Get the best (innermost) location block and see if a handler is explicitly set for that location block.
      */
-    alias = req->alias = maGetAlias(host, req->url);
-    mprAssert(alias);
-    if (alias->redirectCode) {
-        maRedirect(conn, alias->redirectCode, alias->uri);
-        return;
-    }
-
-    req->auth = location->auth;
-    resp->extension = getExtension(conn);
-
-    if (modifyRequest(conn)) {
-        return;
-    }
-    /*
-     *  Get the best (innermost) location block and see if a handler is explicitly set for that location block.
-     */
-    loopCount = MA_MAX_REWRITE;
-    do {
-        rescan = 0;
-        if ((handler = checkStage(conn, req->location->handler)) == 0) {
-            /*
-             *  Didn't find a location block handler, so try to match by extension and by handler match() routines.
-             *  This may invoke processDirectory which may redirect and thus require reprocessing -- hence the loop.
-             */
-            handler = findHandler(conn);
-        }
-        if (handler && !(handler->flags & MA_STAGE_VIRTUAL)) {
-            if (!mapToFile(conn, handler, &rescan)) {
-                return;
+    while (!handler && !conn->requestFailed && req->rewrites++ < MA_MAX_REWRITE) {
+        /*
+            Give stages a cance to rewrite the request, then match the location handler. If that doesn't match, 
+            try to match by extension and/or handler match() routines. This may invoke processDirectory which 
+            may redirect and thus require reprocessing -- hence the loop.
+         */
+        if (!rewriteRequest(conn)) {
+            if ((handler = checkStage(conn, req->location->handler)) == 0) {
+                handler = findHandler(conn);
             }
+            handler = mapToFile(conn, handler);
         }
-    } while (handler && rescan && loopCount-- > 0);
-
+    }
     if (handler == 0) {
         handler = conn->http->passHandler;
-        if (!(req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE))) {
+        if (req->rewrites >= MA_MAX_REWRITE) {
+            maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Too many request rewrites");
+        } else if (!(req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE))) {
             maFailRequest(conn, MPR_HTTP_CODE_BAD_METHOD, "Requested method %s not supported for URL: %s", 
                 req->methodName, req->url);
         }
@@ -12506,60 +12462,34 @@ void maMatchHandler(MaConn *conn)
 }
 
 
-static bool modifyRequest(MaConn *conn)
+static bool rewriteRequest(MaConn *conn)
 {
-    MaStage         *handler;
-    MaLocation      *location;
     MaResponse      *resp;
     MaRequest       *req;
-    MprPath         *info;
+    MaStage         *handler;
     MprHash         *he;
-    MprList         *handlers;
     int             next;
 
     req = conn->request;
     resp = conn->response;
-    handlers = NULL;
+    mprAssert(resp->filename);
+    mprAssert(resp->fileInfo.checked);
+    mprAssert(req->alias);
 
-    if (resp->filename == 0) {
-        resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
+    if (req->alias->redirectCode) {
+        maRedirect(conn, req->alias->redirectCode, req->alias->uri);
+        return 1;
     }
-    info = &resp->fileInfo;
-    if (!info->checked) {
-        mprGetPathInfo(conn, resp->filename, info);
+    for (next = 0; (handler = mprGetNextItem(req->location->handlers, &next)) != 0; ) {
+        if (handler->modify && handler->modify(conn, handler)) {
+            return 1;
+        }
     }
-    location = conn->request->location;
-    if (location) {
-        for (next = 0; (handler = mprGetNextItem(location->handlers, &next)) != 0; ) {
-            if (handler->modify) {
-                if (handlers == NULL) {
-                    handlers = mprCreateList(req);
-                }
-                if (mprLookupItem(handlers, handler) < 0) {
-                    mprAddItem(handlers, handler);
-                    if (handler->modify(conn, handler)) {
-                        mprFree(handlers);
-                        return 1;
-                    }
-                }
-            }
+    for (he = 0; (he = mprGetNextHash(req->location->extensions, he)) != 0; ) {
+        handler = (MaStage*) he->data;
+        if (handler->modify && handler->modify(conn, handler)) {
+            return 1;
         }
-        for (he = 0; (he = mprGetNextHash(location->extensions, he)) != 0; ) {
-            handler = (MaStage*) he->data;
-            if (handler->modify) {
-                if (handlers == NULL) {
-                    handlers = mprCreateList(req);
-                }
-                if (mprLookupItem(handlers, handler) < 0) {
-                    mprAddItem(handlers, handler);
-                    if (handler->modify(conn, handler)) {
-                        mprFree(handlers);
-                        return 1;
-                    }
-                }
-            }
-        }
-        mprFree(handlers);
     }
     return 0;
 }
@@ -12603,6 +12533,7 @@ void maCreatePipeline(MaConn *conn)
     if (conn->requestFailed) {
         handler = resp->handler = http->passHandler;
         mprAddItem(resp->outputPipeline, resp->handler);
+
     } else {
         mprAddItem(resp->outputPipeline, resp->handler);
         for (next = 0; (filter = mprGetNextItem(location->outputStages, &next)) != 0; ) {
@@ -12872,19 +12803,13 @@ static MaStage *checkStage(MaConn *conn, MaStage *stage)
 }
 
 
-/*
- *  Get an extension used for mime type matching. NOTE: this does not permit any kind of platform specific filename.
- *  Rather only those suitable as mime type extensions (simple alpha numeric extensions)
- */
-static char *getExtension(MaConn *conn)
+static cchar *getExtension(MaConn *conn, cchar *path)
 {
-    MaRequest   *req;
-    char        *cp;
-    char        *ep, *ext;
+    cchar   *cp;
+    char    *ext, *ep;
 
-    req = conn->request;
-    if ((cp = strrchr(&req->url[req->alias->prefixLen], '.')) != 0) {
-        ext = mprStrdup(req, ++cp);
+    if ((cp = strrchr(path, '.')) != 0) {
+        ext = mprStrdup(conn->request, ++cp);
         for (ep = ext; *ep && isalnum((int)*ep); ep++) {
             ;
         }
@@ -12892,6 +12817,23 @@ static char *getExtension(MaConn *conn)
         return ext;
     }
     return "";
+}
+
+/*
+    Get an extension used for mime type matching. This finds the last extension in the Uri 
+    (or filename if absent in the Uri). Note, the extension may be followed by extra path information.
+ */
+cchar *maGetExtension(MaConn *conn)
+{
+    MaRequest   *req;
+    cchar       *ext;
+
+    req = conn->request;
+    ext = getExtension(conn, &req->url[req->alias->prefixLen]);
+    if (*ext == '\0') {
+        ext = getExtension(conn, conn->response->filename);
+    }
+    return ext;
 }
 
 
@@ -12907,16 +12849,13 @@ static MaStage *findHandler(MaConn *conn)
     MaLocation  *location;
     MprHash     *hp;
     cchar       *ext;
-    char        *path, *uri;
+    char        *path;
     int         next;
 
     req = conn->request;
     resp = conn->response;
     location = req->location;
     
-    if (resp->extension == 0) {
-        resp->extension = getExtension(conn);
-    }
     ext = resp->extension;
     if (*ext) {
         handler = maGetHandlerByExtension(location, resp->extension);
@@ -12934,13 +12873,7 @@ static MaStage *findHandler(MaConn *conn)
                 path = mprStrcat(resp, -1, resp->filename, ".", hp->key, NULL);
                 if (mprGetPathInfo(conn, path, &resp->fileInfo) == 0) {
                     mprLog(conn, 5, "findHandler: Adding extension, new path %s\n", path);
-                    resp->filename = path;
-                    if (req->parsedUri->query) {
-                        uri = mprStrcat(resp, -1, req->url, ".", hp->key, "?", req->parsedUri->query, NULL);
-                    } else {
-                        uri = mprStrcat(resp, -1, req->url, ".", hp->key, NULL);
-                    }
-                    maSetRequestUri(conn, uri);
+                    maSetRequestUri(conn, mprStrcat(resp, -1, req->url, ".", hp->key, NULL), NULL);
                     return handler;
                 }
                 mprFree(path);
@@ -12949,7 +12882,7 @@ static MaStage *findHandler(MaConn *conn)
     }
 
     /*
-     *  Failed to match by extension, so perform custom handler matching
+        Failed to match by extension, so perform custom handler matching
      */
     for (next = 0; (handler = mprGetNextItem(location->handlers, &next)) != 0; ) {
         if (handler->match && checkStage(conn, handler)) {
@@ -12959,22 +12892,19 @@ static MaStage *findHandler(MaConn *conn)
     }
 
     /*
-     *  Failed to match. Return any catch-all handler.
+        Failed to match. Return any catch-all handler
      */
     handler = maGetHandlerByExtension(location, "");
     if (handler == 0) {
         /*
-         *  Could be missing a catch-all in the config file, so invoke the file handler.
+            Could be missing a catch-all in the config file, so invoke the file handler.
          */
         handler = maLookupStage(conn->http, "fileHandler");
     }
-    if (handler == 0) {
+    if ((handler = checkStage(conn, handler)) == 0) {
         handler = conn->http->passHandler;
     }
-    mprAssert(handler);
-    resp->handler = handler;
-    
-    return checkStage(conn, handler);
+    return handler;
 }
 
 
@@ -13000,40 +12930,42 @@ char *maMakeFilename(MaConn *conn, MaAlias *alias, cchar *url, bool skipAliasPre
 }
 
 
-static bool mapToFile(MaConn *conn, MaStage *handler, bool *rescan)
+static MaStage *mapToFile(MaConn *conn, MaStage *handler)
 {
     MaRequest   *req;
     MaResponse  *resp;
+    MprPath     *info;
 
     req = conn->request;
     resp = conn->response;
+    info = &resp->fileInfo;
 
-    if (resp->filename == 0) {
-        resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
+    mprAssert(resp->filename);
+    mprAssert(info->checked);
+
+    if (!handler || handler->flags & MA_STAGE_VIRTUAL) {
+        return handler;
     }
-    req->dir = maLookupBestDir(req->host, resp->filename);
-
-    if (req->dir == 0) {
+    if ((req->dir = maLookupBestDir(req->host, resp->filename)) == 0) {
         maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Missing directory block for %s", resp->filename);
-        return 0;
-    }
-    req->auth = req->dir->auth;
-
-    if (!resp->fileInfo.checked) {
-        mprGetPathInfo(conn, resp->filename, &resp->fileInfo);
-    }
-    if (!resp->fileInfo.valid) {
-        mprAssert(handler);
-        if (req->method != MA_REQ_PUT && handler->flags & MA_STAGE_VERIFY_ENTITY && 
-                (req->auth == 0 || req->auth->type == 0)) {
-            maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't open document: %s", resp->filename);
-            return 0;
+    } else {
+        req->auth = req->dir->auth;
+        if (info->isDir) {
+            handler = processDirectory(conn, handler);
+        } else if (info->valid) {
+            /*
+                Define an Etag for physical entities. Redo the file info if not valid now that extra path has been removed.
+             */
+            resp->etag = mprAsprintf(resp, -1, "\"%x-%Lx-%Lx\"", info->inode, info->size, info->mtime);
+        } else {
+            if (req->method != MA_REQ_PUT && handler->flags & MA_STAGE_VERIFY_ENTITY && 
+                    (req->auth == 0 || req->auth->type == 0)) {
+                /* If doing Authentication, must let authFilter generate the response */
+                maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't open document: %s", resp->filename);
+            }
         }
     }
-    if (resp->fileInfo.isDir) {
-        processDirectory(conn, rescan);
-    }
-    return 1;
+    return handler;
 }
 
 
@@ -13113,7 +13045,7 @@ static void startQ(MaQueue *q)
  *  (transparent) redirection and serve different content back to the browser. This routine may modify the requested 
  *  URI and/or the request handler.
  */
-static void processDirectory(MaConn *conn, bool *rescan)
+static MaStage *processDirectory(MaConn *conn, MaStage *handler)
 {
     MaRequest       *req;
     MaResponse      *resp;
@@ -13123,8 +13055,8 @@ static void processDirectory(MaConn *conn, bool *rescan)
     req = conn->request;
     resp = conn->response;
     info = &resp->fileInfo;
-
     mprAssert(info->isDir);
+
     index = req->dir->indexName;
     if (req->url[strlen(req->url) - 1] == '/') {
         /*
@@ -13133,37 +13065,32 @@ static void processDirectory(MaConn *conn, bool *rescan)
         path = mprJoinPath(resp, resp->filename, index);
         if (mprPathExists(resp, path, R_OK)) {
             /*
-             *  Index file exists, so do an internal redirect to it. Client will not be aware of this happening.
-             *  Must rematch the handler on return.
+                Index file exists, so do an internal redirect to it. Client will not be aware of this happening.
+                Return zero so the request will be rematched on return.
              */
-            maSetRequestUri(conn, addIndexToUrl(conn, index));
-            resp->filename = path;
-            mprGetPathInfo(conn, resp->filename, &resp->fileInfo);
-            resp->extension = getExtension(conn);
-            if ((resp->mimeType = (char*) maLookupMimeType(conn->host, resp->extension)) == 0) {
-                resp->mimeType = (char*) "text/html";
-            }
-            *rescan = 1;
-        } else {
-            mprFree(path);
+            maSetRequestUri(conn, addIndexToUrl(conn, index), NULL);
+            return 0;
         }
-        return;
-    }
+        mprFree(path);
 
-    /*
-     *  External redirect. Ask the client to re-issue a request for a new location. See if an index exists and if so, 
-     *  construct a new location for the index. If the index can't be accessed, just append a "/" to the URI and redirect.
-     */
-    if (req->parsedUri->query && req->parsedUri->query[0]) {
-        path = mprAsprintf(resp, -1, "%s/%s?%s", req->url, index, req->parsedUri->query);
     } else {
-        path = mprJoinPath(resp, req->url, index);
+
+        /*
+         *  External redirect. Ask the client to re-issue a request for a new location. See if an index exists and if so, 
+         *  construct a new location for the index. If the index can't be accessed, just append a "/" to the URI and redirect.
+         */
+        if (req->parsedUri->query && req->parsedUri->query[0]) {
+            path = mprAsprintf(resp, -1, "%s/%s?%s", req->url, index, req->parsedUri->query);
+        } else {
+            path = mprJoinPath(resp, req->url, index);
+        }
+        if (!mprPathExists(resp, path, R_OK)) {
+            path = mprStrcat(resp, -1, req->url, "/", NULL);
+        }
+        maRedirect(conn, MPR_HTTP_CODE_MOVED_PERMANENTLY, path);
+        handler = conn->http->passHandler;
     }
-    if (!mprPathExists(resp, path, R_OK)) {
-        path = mprStrcat(resp, -1, req->url, "/", NULL);
-    }
-    maRedirect(conn, MPR_HTTP_CODE_MOVED_PERMANENTLY, path);
-    resp->handler = conn->http->passHandler;
+    return handler;
 }
 
 
@@ -13240,8 +13167,8 @@ static void setPathInfo(MaConn *conn)
                 if (offset <= strlen(req->url)) {
                     pathInfo = &req->url[offset];
                     req->pathInfo = mprStrdup(req, pathInfo);
-                    *last = '\0';
                     pathInfo[0] = '\0';
+                    maSetRequestUri(conn, req->url, NULL);
                 }
                 if (req->pathInfo && req->pathInfo[0]) {
                     req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0);
@@ -13250,13 +13177,14 @@ static void setPathInfo(MaConn *conn)
         }
         if (req->pathInfo == 0) {
             req->pathInfo = req->url;
-            req->url = "";
-
+            maSetRequestUri(conn, "/", NULL);
+#if UNUSED
             if ((cp = strrchr(req->pathInfo, '.')) != 0) {
                 resp->extension = mprStrdup(req, ++cp);
             } else {
                 resp->extension = "";
             }
+#endif
             req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0); 
         }
     }
@@ -13268,35 +13196,17 @@ static void setEnv(MaConn *conn)
     MaRequest       *req;
     MaResponse      *resp;
     MaStage         *handler;
-    MprPath         *info;
 
     req = conn->request;
     resp = conn->response;
     handler = resp->handler;
 
+    mprAssert(resp->filename);
+    mprAssert(resp->extension);
+    mprAssert(resp->mimeType);
+
     setPathInfo(conn);
 
-    if (resp->extension == 0) {
-        resp->extension = getExtension(conn);
-    }
-    if (resp->filename == 0) {
-        resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
-    }
-    if ((resp->mimeType = (char*) maLookupMimeType(conn->host, resp->extension)) == 0) {
-        resp->mimeType = (char*) "text/html";
-    }
-    if (!(resp->handler->flags & MA_STAGE_VIRTUAL)) {
-        /*
-         *  Define an Etag for physical entities. Redo the file info if not valid now that extra path has been removed.
-         */
-        info = &resp->fileInfo;
-        if (!info->checked) {
-            mprGetPathInfo(conn, resp->filename, info);
-        }
-        if (info->valid) {
-            resp->etag = mprAsprintf(resp, -1, "\"%x-%Lx-%Lx\"", info->inode, info->size, info->mtime);
-        }
-    }
     if (handler->flags & MA_STAGE_VARS) {
         if (req->parsedUri->query) {
             maAddVars(conn, req->parsedUri->query, (int) strlen(req->parsedUri->query));
@@ -13324,33 +13234,33 @@ char *maMapUriToStorage(MaConn *conn, cchar *url)
 
 
 /*
- *  @copy   default
- *
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire
- *  a commercial license from Embedthis Software. You agree to be fully bound
- *  by the terms of either license. Consult the LICENSE.TXT distributed with
- *  this software for full details.
- *
- *  This software is open source; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by the
- *  Free Software Foundation; either version 2 of the License, or (at your
- *  option) any later version. See the GNU General Public License for more
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *
- *  This program is distributed WITHOUT ANY WARRANTY; without even the
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- *  This GPL license does NOT permit incorporating this software into
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses
- *  for this software and support services are available from Embedthis
- *  Software at http://www.embedthis.com
- *
- *  Local variables:
+    @copy   default
+  
+    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+  
+    This software is distributed under commercial and open source licenses.
+    You may use the GPL open source license described below or you may acquire
+    a commercial license from Embedthis Software. You agree to be fully bound
+    by the terms of either license. Consult the LICENSE.TXT distributed with
+    this software for full details.
+  
+    This software is open source; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or (at your
+    option) any later version. See the GNU General Public License for more
+    details at: http://www.embedthis.com/downloads/gplLicense.html
+  
+    This program is distributed WITHOUT ANY WARRANTY; without even the
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  
+    This GPL license does NOT permit incorporating this software into
+    proprietary programs. If you are unable to comply with the GPL, you must
+    acquire a commercial license to use this software. Commercial licenses
+    for this software and support services are available from Embedthis
+    Software at http://www.embedthis.com
+  
+    Local variables:
     tab-width: 4
     c-basic-offset: 4
     End:
@@ -13573,57 +13483,13 @@ MaPacket *maCreateConnPacket(MaConn *conn, int size)
     if (conn->state == MPR_HTTP_STATE_COMPLETE) {
         return maCreatePacket((MprCtx) conn, size);
     }
-#if UNUSED
-    MaPacket    *packet;
-    MaRequest   *req;
-    req = conn->request;
-    if (req) {
-        /* These packets are all owned by the request */
-        if ((packet = req->freePackets) != NULL && size <= packet->content->buflen) {
-            req->freePackets = packet->next; 
-            packet->next = 0;
-            return packet;
-        }
-    }
-#endif
     return maCreatePacket(conn->request ? (MprCtx) conn->request: (MprCtx) conn, size);
 }
 
 
 void maFreePacket(MaQueue *q, MaPacket *packet)
 {
-    MaConn      *conn;
-    MaRequest   *req;
-
-    conn = q->conn;
-    req = conn->request;
-
-#if UNUSED
-    if (req == 0 || packet->content == 0 || packet->content->buflen < MA_BUFSIZE || mprGetParent(packet) == conn) {
-        /* 
-         *  Don't bother recycling non-content, small packets or packets owned by the connection
-         *  We only store packets owned by the request and not by the connection on the free list.
-         */
-        mprFree(packet);
-        return;
-    }
-
-    /*
-     *  Add to the packet free list for recycling
-     */
-    mprAssert(packet->content);
-    mprFlushBuf(packet->content);
-    mprFree(packet->prefix);
-    packet->prefix = 0;
-    mprFree(packet->suffix);
-    packet->suffix = 0;
-    packet->entityLength = 0;
-    packet->flags = 0;
-    packet->next = req->freePackets;
-    req->freePackets = packet;
-#else
     mprFree(packet);
-#endif
 } 
 
 
@@ -14566,11 +14432,8 @@ static bool parseFirstLine(MaConn *conn, MaPacket *packet)
     req->method = method;
     req->methodName = methodName;
     req->httpProtocol = httpProtocol;
-    
-    if (maSetRequestUri(conn, uri) < 0) {
-        maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad URL format");
-        return 0;
-    }
+    req->url = uri;
+
     if ((conn->trace = maSetupTrace(host, conn->response->extension)) != 0) {
         if (maShouldTrace(conn, MA_TRACE_REQUEST | MA_TRACE_HEADERS)) {
             mprLog(req, host->traceLevel, "\n@@@ New request from %s:%d to %s:%d\n%s %s %s", 
@@ -14889,6 +14752,11 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
         mprAdjustBufStart(content, 2);
     }
     mprLog(conn, 3, "Select host \"%s\"", conn->host->name);
+
+    if (maSetRequestUri(conn, req->url, "") < 0) {
+        maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad URI format");
+        return 0;
+    }
     return 1;
 }
 
@@ -15275,22 +15143,35 @@ void maAbortConnection(MaConn *conn, int code, cchar *fmt, ...)
 }
 
 
-int maSetRequestUri(MaConn *conn, cchar *uri)
+int maSetRequestUri(MaConn *conn, cchar *uri, cchar *query)
 {
     MaRequest   *req;
+    MaResponse  *resp;
+    char        *oldQuery;
 
     req = conn->request;
+    resp = conn->response;
+    oldQuery = (req->parsedUri) ? req->parsedUri->query : 0; 
 
-    /*
-     *  Parse (tokenize) the request uri first. Then decode and lastly validate the URI path portion.
-     *  This allows URLs to have '?' in the URL.
-     */
-    req->parsedUri = mprParseUri(req, uri);
-    if (req->parsedUri == 0) {
+    if ((req->parsedUri = mprParseUri(req, uri)) == 0) {
         return MPR_ERR_BAD_ARGS;
+    }
+    if (query == NULL) {
+        req->parsedUri->query = oldQuery;
+    } else if (*query) {
+        req->parsedUri->query = mprStrdup(req->parsedUri, query);
     }
     conn->response->extension = req->parsedUri->ext;
     req->url = mprValidateUrl(req, mprUrlDecode(req, req->parsedUri->url));
+    req->location = maLookupBestLocation(req->host, req->url);
+    req->auth = req->location->auth;
+    req->alias = maGetAlias(req->host, req->url);
+    resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
+    mprGetPathInfo(conn, resp->filename, &resp->fileInfo);
+    resp->extension = maGetExtension(conn);
+    if ((resp->mimeType = (char*) maLookupMimeType(conn->host, resp->extension)) == 0) {
+        resp->mimeType = (char*) "text/html";
+    }
     return 0;
 }
 
@@ -15855,9 +15736,6 @@ void maFillHeaders(MaConn *conn, MaPacket *packet)
     }
     resp->headerSize = mprGetBufLength(buf);
     resp->flags |= MA_RESP_HEADERS_CREATED;
-#if UNUSED
-    mprLog(conn, 3, "\n@@@ Response => \n%s", mprGetBufStart(buf));
-#endif
 }
 
 
@@ -16451,14 +16329,6 @@ void maRegisterStage(MaHttp *http, MaStage *stage)
 }
 
 
-#if UNUSED
-int maRemoveStage(MaHttp *http, cchar *name)
-{
-    return mprRemoveHash(http->stages, name);
-}
-#endif
-
-
 MaStage *maLookupStage(MaHttp *http, cchar *name)
 {
     return (MaStage*) mprLookupHash(http->stages, name);
@@ -16652,7 +16522,6 @@ int maUnloadModule(MaHttp *http, cchar *name)
         return MPR_ERR_CANT_ACCESS;
     }
     if (module->timeout) {
-        //  MOB - stop all requests 
         if ((stage = maLookupStage(http, name)) != 0) {
             stage->flags |= MA_STAGE_UNLOADED;
         }

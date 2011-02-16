@@ -1465,9 +1465,6 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
          */
         CASE (EJS_OP_POP):
             ejs->result = pop(ejs);
-#if MACOSX || UNUSED
-            mprAssert(ejs->result != (void*) 0xf7f7f7f7f7f7f7f7);
-#endif
             mprAssert(ejs->exception || ejs->result);
             BREAK;
 
@@ -2087,14 +2084,6 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
                 qname.space = ejsToString(ejs, v1)->value;
             }
             vp = pop(ejs);
-#if OLD
-            slotNum = ejsLookupVar(ejs, vp, &qname, &lookup);
-            if (slotNum < 0) {
-                ejsThrowReferenceError(ejs, "Property \"%s\" does not exist", qname.name);
-            } else {
-                slotNum = ejsDeleteProperty(ejs, vp, slotNum);
-            }
-#endif
             ejsDeletePropertyByName(ejs, vp, &qname);
             CHECK; BREAK;
 
@@ -2988,11 +2977,7 @@ static void createExceptionBlock(Ejs *ejs, EjsEx *ex, int flags)
         for (i = 0; i < count; i++) {
             ejsPopBlock(ejs);
         }
-#if OLD
-        count = (state->stack - fp->stackReturn - fp->argc);
-#else
         count = state->stack - fp->stackBase;
-#endif
         state->stack -= (count - ex->numStack);
     }
     

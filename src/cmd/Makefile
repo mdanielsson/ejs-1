@@ -11,11 +11,6 @@ ifeq ($(BUILDING_CROSS),1)
 	ifeq ($(BLD_FEATURE_EJS_CROSS_COMPILER),1)
 		TARGETS		+= $(BLD_BIN_DIR)/ejs$(BLD_EXE) 
 		TARGETS		+= $(BLD_BIN_DIR)/ejsc$(BLD_EXE)
-		ifeq ($(BLD_UNIX_LIKE),0)
-			ifeq ($(BLD_FEATURE_EJS_WEB),1)
-				MOB_TARGETS	+= $(BLD_BIN_DIR)/ejsweb$(BLD_EXE)
-			endif
-		endif
 	endif
 else
 	TARGETS		+= $(BLD_BIN_DIR)/ejs$(BLD_EXE) 
@@ -62,13 +57,6 @@ $(BLD_BIN_DIR)/ejsvm$(BLD_EXE): $(OBJECTS) $(BLD_LIB_DIR)/libejs$(BLD_LIB) $(BLD
 $(BLD_BIN_DIR)/ejs$(BLD_EXE): $(OBJECTS) $(BLD_LIB_DIR)/libejs$(BLD_LIB) $(BLD_LIB_DIR)/libec$(BLD_LIB) \
 		$(BLD_LIB_DIR)/libmpr$(BLD_LIB)
 	bld --exe $(BLD_BIN_DIR)/ejs$(BLD_EXE) --search "$(BLD_EJS_LIBPATHS)" --libs "ec $(BLD_EJS_LIBS)" $(EJS_OBJECTS)
-
-#
-#	Deprecated. Now uses ejs.cmd for windows
-#
-$(BLD_BIN_DIR)/ejsweb$(BLD_EXE): $(OBJECTS) $(BLD_LIB_DIR)/libmpr$(BLD_LIB)
-	bld --exe $(BLD_BIN_DIR)/ejsweb$(BLD_EXE) --search "$(BLD_EJS_LIBPATHS)" --libs "ec $(BLD_EJS_LIBS)" \
-		"$(BLD_OBJ_DIR)/ejsweb$(BLD_OBJ)"
 
 #
 #   Local variables:
