@@ -12816,7 +12816,7 @@ static cchar *getExtension(MaConn *conn, cchar *path)
         *ep = '\0';
         return ext;
     }
-    return "";
+    return 0;
 }
 
 /*
@@ -12830,8 +12830,11 @@ cchar *maGetExtension(MaConn *conn)
 
     req = conn->request;
     ext = getExtension(conn, &req->url[req->alias->prefixLen]);
-    if (*ext == '\0') {
+    if (ext == 0) {
         ext = getExtension(conn, conn->response->filename);
+    }
+    if (ext == 0) {
+        ext = "";
     }
     return ext;
 }
@@ -12855,6 +12858,7 @@ static MaStage *findHandler(MaConn *conn)
     req = conn->request;
     resp = conn->response;
     location = req->location;
+    handler = 0;
     
     ext = resp->extension;
     if (*ext) {
@@ -13077,7 +13081,7 @@ static MaStage *processDirectory(MaConn *conn, MaStage *handler)
 
         /*
          *  External redirect. Ask the client to re-issue a request for a new location. See if an index exists and if so, 
-         *  construct a new location for the index. If the index can't be accessed, just append a "/" to the URI and redirect.
+         *  construct a new location for the index. If the index can't be accessed, append a "/" to the URI and redirect.
          */
         if (req->parsedUri->query && req->parsedUri->query[0]) {
             path = mprAsprintf(resp, -1, "%s/%s?%s", req->url, index, req->parsedUri->query);
@@ -13207,10 +13211,8 @@ static void setEnv(MaConn *conn)
 
     setPathInfo(conn);
 
-    if (handler->flags & MA_STAGE_VARS) {
-        if (req->parsedUri->query) {
-            maAddVars(conn, req->parsedUri->query, (int) strlen(req->parsedUri->query));
-        }
+    if (handler->flags & MA_STAGE_VARS && req->parsedUri->query) {
+        maAddVars(conn, req->parsedUri->query, (int) strlen(req->parsedUri->query));
     }
     if (handler->flags & MA_STAGE_ENV_VARS) {
         maCreateEnvVars(conn);
@@ -15147,8 +15149,10 @@ int maSetRequestUri(MaConn *conn, cchar *uri, cchar *query)
 {
     MaRequest   *req;
     MaResponse  *resp;
+    MaHost      *host;
     char        *oldQuery;
 
+    host = conn->host;
     req = conn->request;
     resp = conn->response;
     oldQuery = (req->parsedUri) ? req->parsedUri->query : 0; 
@@ -15161,15 +15165,14 @@ int maSetRequestUri(MaConn *conn, cchar *uri, cchar *query)
     } else if (*query) {
         req->parsedUri->query = mprStrdup(req->parsedUri, query);
     }
-    conn->response->extension = req->parsedUri->ext;
     req->url = mprValidateUrl(req, mprUrlDecode(req, req->parsedUri->url));
-    req->location = maLookupBestLocation(req->host, req->url);
+    req->location = maLookupBestLocation(host, req->url);
     req->auth = req->location->auth;
-    req->alias = maGetAlias(req->host, req->url);
+    req->alias = maGetAlias(host, req->url);
     resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
     mprGetPathInfo(conn, resp->filename, &resp->fileInfo);
     resp->extension = maGetExtension(conn);
-    if ((resp->mimeType = (char*) maLookupMimeType(conn->host, resp->extension)) == 0) {
+    if ((resp->mimeType = (char*) maLookupMimeType(host, resp->extension)) == 0) {
         resp->mimeType = (char*) "text/html";
     }
     return 0;
