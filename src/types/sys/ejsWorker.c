@@ -164,7 +164,6 @@ static EjsVar *startWorker(Ejs *ejs, EjsWorker *worker, int timeout)
         ejsThrowStateError(ejs, "Worker has already started");
         return 0;
     }
-
     mprAssert(worker->pair->state == EJS_WORKER_BEGIN);
 
     addWorker(ejs, worker);

@@ -150,10 +150,12 @@ static EjsVar *exitApp(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
 
     status = argc == 0 ? 0 : ejsGetInt(argv[0]);
     mprBreakpoint();
-    if (status != 0) {
-        exit(status);
-    } else {
-        mprTerminate(mprGetMpr(ejs), 1);
+    if (!ejs->dontExit) {
+        if (status != 0) {
+            exit(status);
+        } else {
+            mprTerminate(mprGetMpr(ejs), 1);
+        }
     }
     return 0;
 }

@@ -140,6 +140,7 @@ static int initInterp(Ejs *ejs, EjsWebControl *control)
 #endif
     ejsMakePermanent(ejs, sessions);
     control->sessions = (EjsObject*) sessions;
+    ejs->dontExit = 1;
     return 0;
 }
 
