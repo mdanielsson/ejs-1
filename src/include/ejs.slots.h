@@ -159,7 +159,30 @@
 #define ES_ejs_sys_worker_set_onerror                                  138
 #define ES_ejs_sys_worker_onmessage                                    139
 #define ES_ejs_sys_worker_set_onmessage                                140
-#define ES_global_NUM_CLASS_PROP                                       141
+#define ES_ejs_db_Database                                             141
+#define ES_ejs_db_DatabaseConnector                                    142
+#define ES_ejs_db_Record                                               143
+#define ES_ejs_db_Column                                               144
+#define ES_ejs_db_plural                                               145
+#define ES_ejs_db_singular                                             146
+#define ES_ejs_db_mapType                                              147
+#define ES_ejs_web_Cache                                               148
+#define ES_ejs_web_action                                              149
+#define ES_ejs_web_view                                                150
+#define ES_ejs_web_Controller                                          151
+#define ES_ejs_web__SoloController                                     152
+#define ES_ejs_web_Cookie                                              153
+#define ES_ejs_web_Host                                                154
+#define ES_ejs_web_Request                                             155
+#define ES_ejs_web_Response                                            156
+#define ES_ejs_web_sessions                                            157
+#define ES_ejs_web_Session                                             158
+#define ES_ejs_web_UploadFile                                          159
+#define ES_ejs_web_View                                                160
+#define ES_LocalModel                                                  161
+#define ES_ejs_web_HtmlConnector                                       162
+#define ES_ejs_web_GoogleConnector                                     163
+#define ES_global_NUM_CLASS_PROP                                       164
 
 /**
  * Instance slots for "global" type 
@@ -241,6 +264,10 @@
 #define ES_ejs_sys_worker_postMessage_data                             0
 #define ES_ejs_sys_worker_set_onerror_fun                              0
 #define ES_ejs_sys_worker_set_onmessage_fun                            0
+#define ES_ejs_db_plural_name                                          0
+#define ES_ejs_db_singular_name                                        0
+#define ES_ejs_db_singular_s                                           1
+#define ES_ejs_db_mapType_value                                        0
 
 
 /**

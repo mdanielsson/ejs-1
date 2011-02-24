@@ -25,6 +25,7 @@ EXPORTS
   freedtoa
   gethex
   gettimeofday
+  mprAcceptProc
   mprActivateWorker
   mprAddDuplicateHash
   mprAddFileSystem
@@ -59,6 +60,7 @@ EXPORTS
   mprCreateAllocService
   mprCreateBuf
   mprCreateCmd
+  mprCreateCmdService
   mprCreateCond
   mprCreateDiskFileSystem
   mprCreateDispatcher
@@ -93,7 +95,6 @@ EXPORTS
   mprDedicateWorker
   mprDedicateWorkerToHandler
   mprDeletePath
-  mprDisableCmdEvents
   mprDisableFileBuffering
   mprDisableSocketEvents
   mprDisableWaitEvents
@@ -104,7 +105,6 @@ EXPORTS
   mprDoEvent
   mprDtoa
   mprDupList
-  mprEnableCmdEvents
   mprEnableFileBuffering
   mprEnableHttpUpload
   mprEnableSocketEvents
@@ -221,12 +221,14 @@ EXPORTS
   mprGetSocketError
   mprGetSocketFd
   mprGetSocketFlags
+  mprGetSocketInfo
   mprGetSocketPort
   mprGetStderr
   mprGetStdin
   mprGetStdout
   mprGetTempPath
   mprGetThreadData
+  mprGetTicks
   mprGetTime
   mprGetTimeZoneOffset
   mprGetTransformedPath
@@ -252,9 +254,12 @@ EXPORTS
   mprInsertItemAtPos
   mprInvokeWaitCallback
   mprIsAbsPath
+  mprIsCmdComplete
   mprIsCmdRunning
+  mprIsComplete
   mprIsExiting
   mprIsHttpComplete
+  mprIsIdle
   mprIsInfinite
   mprIsNan
   mprIsPathSeparator
@@ -277,6 +282,7 @@ EXPORTS
   mprLookupItem
   mprLookupMimeType
   mprLookupModule
+  mprLookupModuleData
   mprMakeArgv
   mprMakeCmdIO
   mprMakeDir
@@ -303,9 +309,11 @@ EXPORTS
   mprPathExists
   mprPeekc
   mprPollCmdPipes
+  mprPopItem
   mprPrintAllocReport
   mprPrintf
   mprPrintfError
+  mprPushItem
   mprPutBlockToBuf
   mprPutCharToBuf
   mprPutFmtToBuf
@@ -355,6 +363,7 @@ EXPORTS
   mprSendFileToSocket
   mprServiceEvents
   mprServiceWinIO
+  mprServicesAreIdle
   mprSetAllocError
   mprSetAllocLimits
   mprSetAllocNotifier
@@ -387,6 +396,7 @@ EXPORTS
   mprSetHttpRetries
   mprSetHttpTimeout
   mprSetHwnd
+  mprSetIdleCallback
   mprSetInst
   mprSetIpAddr
   mprSetItem
@@ -409,6 +419,7 @@ EXPORTS
   mprSetSocketEventMask
   mprSetSocketMessage
   mprSetSocketNoDelay
+  mprSetSocketPrebindCallback
   mprSetThreadData
   mprSetThreadPriority
   mprSetThreadStackSize
@@ -430,6 +441,7 @@ EXPORTS
   mprStartEventsThread
   mprStartHttpRequest
   mprStartHttpService
+  mprStartModule
   mprStartModuleService
   mprStartOsService
   mprStartSocketService
@@ -446,12 +458,14 @@ EXPORTS
   mprStopCmd
   mprStopContinuousEvent
   mprStopHttpService
+  mprStopModule
   mprStopModuleService
   mprStopOsService
   mprStopSocketService
   mprStopThreadService
   mprStopWorkerService
   mprStrLower
+  mprStrStartsWith
   mprStrTok
   mprStrTrim
   mprStrUpper
@@ -460,6 +474,7 @@ EXPORTS
   mprStrcmp
   mprStrcmpAnyCase
   mprStrcmpAnyCaseCount
+  mprStrcmpCount
   mprStrcpy
   mprStrcpyCount
   mprStrlen
