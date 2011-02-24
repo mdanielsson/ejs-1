@@ -4673,12 +4673,10 @@ static void openAuth(MaQueue *q)
         maFailRequest(conn, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Authorization enabled.");
         return;
     }
-
     ad = q->queueData = mprAllocObjZeroed(q, AuthData);
     if (ad == 0) {
         return;
     }
-
     if (auth->type == 0) {
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Authorization required.", 0);
         return;
@@ -4703,13 +4701,12 @@ static void openAuth(MaQueue *q)
     } else {
         actualAuthType = MA_AUTH_UNKNOWN;
     }
-    mprLog(q, 4, "run: type %d, url %s\nDetails %s\n", auth->type, req->url, req->authDetails);
+    mprLog(q, 4, "openAuth: type %d, url %s\nDetails %s\n", auth->type, req->url, req->authDetails);
 
     if (ad->userName == 0) {
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Missing user name.", 0);
         return;
     }
-
     if (auth->type != actualAuthType) {
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Wrong authentication protocol.", 0);
         return;
@@ -5843,33 +5840,33 @@ MprModule *maRangeFilterInit(MaHttp *http, cchar *path)
 #endif /* BLD_FEATURE_RANGE */
 
 /*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
+    @copy   default
+    
+    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+    
+    This software is distributed under commercial and open source licenses.
+    You may use the GPL open source license described below or you may acquire 
+    a commercial license from Embedthis Software. You agree to be fully bound 
+    by the terms of either license. Consult the LICENSE.TXT distributed with 
+    this software for full details.
+    
+    This software is open source; you can redistribute it and/or modify it 
+    under the terms of the GNU General Public License as published by the 
+    Free Software Foundation; either version 2 of the License, or (at your 
+    option) any later version. See the GNU General Public License for more 
+    details at: http://www.embedthis.com/downloads/gplLicense.html
+    
+    This program is distributed WITHOUT ANY WARRANTY; without even the 
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+    
+    This GPL license does NOT permit incorporating this software into 
+    proprietary programs. If you are unable to comply with the GPL, you must
+    acquire a commercial license to use this software. Commercial licenses 
+    for this software and support services are available from Embedthis 
+    Software at http://www.embedthis.com 
+    
+    Local variables:
     tab-width: 4
     c-basic-offset: 4
     End:
@@ -5949,6 +5946,7 @@ static bool matchUpload(MaConn *conn, MaStage *filter, cchar *uri)
     len = (int) strlen(pat);
     if (mprStrcmpAnyCaseCount(req->mimeType, pat, len) == 0) {
         req->flags |= MA_REQ_UPLOADING;
+        mprLog(conn, 5, "matchUpload for %s", uri);
         return 1;
     }
     return 0;
@@ -6016,8 +6014,6 @@ static void closeUpload(MaQueue *q)
     
     if (up->currentFile) {
         file = up->currentFile;
-        mprDeletePath(q->conn, file->filename);
-        file->filename = 0;
         mprFree(up->file);
     }
     if (req->location->autoDelete) {
@@ -6307,7 +6303,7 @@ static int writeToFile(MaQueue *q, char *data, int len)
     file = up->currentFile;
 
     if ((file->size + len) > limits->maxUploadSize) {
-        maFailRequest(conn, MPR_HTTP_CODE_REQUEST_TOO_LARGE, 
+        maFailConnection(conn, MPR_HTTP_CODE_REQUEST_TOO_LARGE, 
             "Uploaded file %s exceeds maximum %d\n", up->tmpPath, limits->maxUploadSize);
         return MPR_ERR_CANT_WRITE;
     }
@@ -6481,7 +6477,6 @@ static int parseUpload(MaHttp *http, cchar *key, char *value, MaConfigState *sta
     if (mprStrcmpAnyCase(key, "UploadDir") == 0 || mprStrcmpAnyCase(key, "FileUploadDir") == 0) {
         host = http->defaultServer->defaultHost;
         path = maMakePath(host, mprStrTrim(value, "\""));
-
         mprFree(location->uploadDir);
         location->uploadDir = mprStrdup(location, path);
         mprLog(http, MPR_CONFIG, "Upload directory: %s", path);
@@ -9533,6 +9528,8 @@ static void runPhp(MaQueue *q)
         while (hp) {
             if (hp->data) {
                 php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
+                mprLog(q, 6, "php: header var %s = %s", hp->key, hp->data);
+
             }
             hp = mprGetNextHash(req->headers, hp);
         }
@@ -9540,6 +9537,7 @@ static void runPhp(MaQueue *q)
         while (hp) {
             if (hp->data) {
                 php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
+                mprLog(q, 6, "php: form var %s = %s", hp->key, hp->data);
             }
             hp = mprGetNextHash(req->formVars, hp);
         }
@@ -10479,7 +10477,7 @@ MaLocation *maLookupBestLocation(MaHost *host, cchar *uri)
     if (uri) {
         for (next = 0; (location = mprGetNextItem(host->locations, &next)) != 0; ) {
             rc = strncmp(location->prefix, uri, location->prefixLen);
-            if (rc == 0 && uri[location->prefixLen] == '/') {
+            if (rc == 0 /* UNUSED && uri[location->prefixLen] == '/' */) {
                 return location;
             }
         }
@@ -11659,10 +11657,7 @@ void maRotateAccessLog(MaHost *host)
     MprTime         when;
     char            bak[MPR_MAX_FNAME];
 
-    /*
-     *  Rotate logs when full
-     */
-    if (mprGetPathInfo(host, host->logPath, &info) == 0 && info.size > MA_MAX_ACCESS_LOG) {
+    if (mprGetPathInfo(host, host->logPath, &info) == 0) {
         when = mprGetTime(host);
         mprDecodeUniversalTime(host, &tm, when);
         mprSprintf(bak, sizeof(bak), "%s-%02d-%02d-%02d-%02d:%02d:%02d", host->logPath, 
@@ -12430,11 +12425,13 @@ void maMatchHandler(MaConn *conn)
     }
     if (handler == 0) {
         handler = conn->http->passHandler;
-        if (req->rewrites >= MA_MAX_REWRITE) {
-            maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Too many request rewrites");
-        } else if (!(req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE))) {
-            maFailRequest(conn, MPR_HTTP_CODE_BAD_METHOD, "Requested method %s not supported for URL: %s", 
-                req->methodName, req->url);
+        if (!conn->requestFailed) {
+            if (req->rewrites >= MA_MAX_REWRITE) {
+                maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Too many request rewrites");
+            } else if (!(req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE))) {
+                maFailRequest(conn, MPR_HTTP_CODE_BAD_METHOD, "Requested method %s not supported for URL: %s", 
+                    req->methodName, req->url);
+            }
         }
 
     } else if (req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE)) {
@@ -14314,7 +14311,7 @@ static bool parseRequest(MaConn *conn, MaPacket *packet)
     req = conn->request;
     if (conn->connectionFailed) {
         /* Discard input data */
-        mprAssert(conn->keepAliveCount == 0);
+        mprAssert(conn->keepAliveCount <= 0);
         conn->state = MPR_HTTP_STATE_PROCESSING;
         maRunPipeline(conn);
     } else if (req->remainingContent > 0) {
@@ -14481,7 +14478,7 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
     strcpy(keyBuf, "HTTP_");
     mprAssert(strstr((char*) content->start, "\r\n"));
 
-    for (count = 0; content->start[0] != '\r'; count++) {
+    for (count = 0; content->start[0] != '\r' && !conn->connectionFailed; count++) {
 
         if (count >= limits->maxNumHeaders) {
             maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Too many headers");
@@ -14903,12 +14900,11 @@ static bool processContent(MaConn *conn, MaPacket *packet)
         conn->input = 0;
         mprStealBlock(resp, packet);
     }
-
-    if (req->remainingContent == 0) {
+    if (req->remainingContent == 0 || conn->requestFailed) {
         /*
          *  End of input. Send a zero packet EOF signal and enable the handler send queue.
          */
-        if (req->remainingContent > 0 && conn->protocol > 0) {
+        if (req->remainingContent > 0 && conn->protocol > 0 && !conn->requestFailed) {
             maFailConnection(conn, MPR_HTTP_CODE_COMMS_ERROR, "Insufficient content data sent with request");
 
         } else {
@@ -14962,7 +14958,7 @@ bool maProcessCompletion(MaConn *conn)
      *  This will free the request, response, pipeline and call maPrepConnection to reset the state.
      */
     mprFree(req->arena);
-    return (conn->disconnected) ? 0 : more;
+    return (conn->disconnected || conn->connectionFailed) ? 0 : more;
 }
 
 
