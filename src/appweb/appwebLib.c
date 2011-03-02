@@ -8433,8 +8433,21 @@ MprModule *maEgiHandlerInit(MaHttp *http, cchar *path)
  */
 
 #if EGI_TEST
+
+#if UNUSED
+static char *cback(MaConn *conn, int *code, char *targetUri)
+{
+    *code = 302;
+    return mprAsprintf(conn, -1, "https://%s/vpn", "localhost");
+}
+#endif
+
 static void simpleTest(MaQueue *q)
 {
+#if UNUSED
+    maSetRedirectCallback(q->conn, cback);
+    maRedirect(q->conn, 302, "anything");
+#endif
     maWrite(q, "Hello %s\r\n", maGetFormVar(q->conn, "name", "unknown"));
 }
 
@@ -15923,7 +15936,9 @@ void maRedirect(MaConn *conn, int code, cchar *targetUri)
 
 void maDontCacheResponse(MaConn *conn)
 {
-    conn->response->flags |= MA_RESP_DONT_CACHE;
+    if (conn->response) {
+        conn->response->flags |= MA_RESP_DONT_CACHE;
+    }
 }
 
 
