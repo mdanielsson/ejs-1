@@ -3408,7 +3408,7 @@ static int connectionDestructor(MaConn *conn)
     maRemoveConn(conn->host, conn);
 
     if (conn->sock) {
-        mprLog(conn, 4, "Closing connection");
+        mprLog(conn, 4, "Closing connection fd %d", conn->sock->fd);
         mprCloseSocket(conn->sock, conn->connectionFailed ? 0 : MPR_SOCKET_GRACEFUL);
         mprFree(conn->sock);
     }
@@ -3428,6 +3428,7 @@ void maDisconnectConn(MaConn *conn)
     conn->requestFailed = 1;
 
     if (conn->response) {
+        mprLog(conn, 4, "Disconnect conn fd %d", conn->sock ? conn->sock->fd : 0);
         maCompleteRequest(conn);
         maDiscardPipeData(conn);
     }
@@ -6148,6 +6149,7 @@ static int processContentBoundary(MaQueue *q, char *line)
         return MPR_ERR_BAD_STATE;
     }
     if (line[up->boundaryLen] && strcmp(&line[up->boundaryLen], "--") == 0) {
+        mprLog(q, 4, "Upload file end of data");
         up->contentState = MA_UPLOAD_CONTENT_END;
     } else {
         up->contentState = MA_UPLOAD_CONTENT_HEADER;
@@ -6418,6 +6420,7 @@ static int processContentData(MaQueue *q)
         /*
          *  Now have all the data (we've seen the boundary)
          */
+        mprLog(q, 4, "Close upload file %s, size %d", up->tmpPath, up->file->size);
         mprFree(up->file);
         up->file = 0;
         mprFree(up->clientFilename);
@@ -15140,6 +15143,7 @@ void maAbortConnection(MaConn *conn, int code, cchar *fmt, ...)
 
     mprAssert(fmt);
 
+    mprLog(conn, 4, "Abort conn fd %d", conn->sock ? conn->sock->fd : 0);
     if (!conn->requestFailed) {
         va_start(args, fmt);
         reportFailure(conn, code, fmt, args);
