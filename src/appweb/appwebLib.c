@@ -4686,7 +4686,6 @@ static void openAuth(MaQueue *q)
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Missing authorization details.", 0);
         return;
     }
-
     if (mprStrcmpAnyCase(req->authType, "basic") == 0) {
         decodeBasicAuth(q);
         actualAuthType = MA_AUTH_BASIC;
@@ -5211,7 +5210,6 @@ MprModule *maAuthFilterInit(MaHttp *http, cchar *path)
     if (module == 0) {
         return 0;
     }
-
     filter = maCreateFilter(http, "authFilter", MA_STAGE_ALL);
     if (filter == 0) {
         mprFree(module);
@@ -12397,7 +12395,6 @@ MprModule *maSslModuleInit(MaHttp *http, cchar *path)
 
 
 
-static char *addIndexToUrl(MaConn *conn, cchar *index);
 static MaStage *checkStage(MaConn *conn, MaStage *stage);
 static MaStage *findHandler(MaConn *conn);
 static MaStage *mapToFile(MaConn *conn, MaStage *handler);
@@ -12774,21 +12771,6 @@ void maDiscardPipeData(MaConn *conn)
 }
 
 
-static char *addIndexToUrl(MaConn *conn, cchar *index)
-{
-    MaRequest       *req;
-    char            *path;
-
-    req = conn->request;
-
-    path = mprJoinPath(req, req->url, index);
-    if (req->parsedUri->query && req->parsedUri->query[0]) {
-        return mprReallocStrcat(req, -1, path, "?", req->parsedUri->query, NULL);
-    }
-    return path;
-}
-
-
 static MaStage *checkStage(MaConn *conn, MaStage *stage)
 {
     MaRequest   *req;
@@ -13073,45 +13055,46 @@ static MaStage *processDirectory(MaConn *conn, MaStage *handler)
 {
     MaRequest       *req;
     MaResponse      *resp;
+    MprUri          *prior;
     MprPath         *info;
-    char            *path, *index;
+    char            *path, *index, *uri, *pathInfo;
 
     req = conn->request;
     resp = conn->response;
     info = &resp->fileInfo;
+    prior = req->parsedUri;
     mprAssert(info->isDir);
 
     index = req->dir->indexName;
+    path = mprJoinPath(resp, resp->filename, index);
+   
     if (req->url[strlen(req->url) - 1] == '/') {
         /*
             Internal directory redirections
          */
-        path = mprJoinPath(resp, resp->filename, index);
         if (mprPathExists(resp, path, R_OK)) {
             /*
                 Index file exists, so do an internal redirect to it. Client will not be aware of this happening.
                 Return zero so the request will be rematched on return.
              */
-            maSetRequestUri(conn, addIndexToUrl(conn, index), NULL);
+            pathInfo = mprJoinPath(req, req->url, index);
+            uri = mprFormatUri(req, prior->scheme, prior->host, prior->port, pathInfo, prior->query);
+            maSetRequestUri(conn, uri, NULL);
             return 0;
         }
         mprFree(path);
 
     } else {
-
         /*
-         *  External redirect. Ask the client to re-issue a request for a new location. See if an index exists and if so, 
-         *  construct a new location for the index. If the index can't be accessed, append a "/" to the URI and redirect.
+         *  External redirect. If the index exists, redirect to it. If not, append a "/" to the URI and redirect.
          */
-        if (req->parsedUri->query && req->parsedUri->query[0]) {
-            path = mprAsprintf(resp, -1, "%s/%s?%s", req->url, index, req->parsedUri->query);
+        if (mprPathExists(resp, path, R_OK)) {
+            pathInfo = mprJoinPath(req, req->url, index);
         } else {
-            path = mprJoinPath(resp, req->url, index);
+            pathInfo = mprJoinPath(req, req->url, "/");
         }
-        if (!mprPathExists(resp, path, R_OK)) {
-            path = mprStrcat(resp, -1, req->url, "/", NULL);
-        }
-        maRedirect(conn, MPR_HTTP_CODE_MOVED_PERMANENTLY, path);
+        uri = mprFormatUri(req, prior->scheme, prior->host, prior->port, pathInfo, prior->query);
+        maRedirect(conn, MPR_HTTP_CODE_MOVED_PERMANENTLY, uri);
         handler = conn->http->passHandler;
     }
     return handler;
@@ -13202,13 +13185,6 @@ static void setPathInfo(MaConn *conn)
         if (req->pathInfo == 0) {
             req->pathInfo = req->url;
             maSetRequestUri(conn, "/", NULL);
-#if UNUSED
-            if ((cp = strrchr(req->pathInfo, '.')) != 0) {
-                resp->extension = mprStrdup(req, ++cp);
-            } else {
-                resp->extension = "";
-            }
-#endif
             req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0); 
         }
     }
@@ -14779,6 +14755,10 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
         maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad URI format");
         return 0;
     }
+    if (conn->host->secure) {
+        req->parsedUri->scheme = mprStrdup(req, "https");
+    }
+    req->parsedUri->port = conn->sock->port;
     return 1;
 }
 
@@ -15171,18 +15151,28 @@ int maSetRequestUri(MaConn *conn, cchar *uri, cchar *query)
     MaRequest   *req;
     MaResponse  *resp;
     MaHost      *host;
-    char        *oldQuery;
+    MprUri      *prior;
+    char        *cp;
 
+    if (uri == 0 || *uri == 0) {
+        uri = "/";
+    }
     host = conn->host;
     req = conn->request;
     resp = conn->response;
-    oldQuery = (req->parsedUri) ? req->parsedUri->query : 0; 
-
+    prior = req->parsedUri;
     if ((req->parsedUri = mprParseUri(req, uri)) == 0) {
         return MPR_ERR_BAD_ARGS;
     }
-    if (query == NULL) {
-        req->parsedUri->query = oldQuery;
+    if (prior) {
+        if ((cp = strstr(uri, "://")) == 0) {
+            req->parsedUri->scheme = prior->scheme;
+        } else if (strchr(&cp[3], ':') == 0) {
+            req->parsedUri->port = prior->port;
+        } 
+    }
+    if (query == 0 && prior) {
+        req->parsedUri->query = prior->query;
     } else if (*query) {
         req->parsedUri->query = mprStrdup(req->parsedUri, query);
     }
