@@ -4686,7 +4686,6 @@ static void openAuth(MaQueue *q)
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Missing authorization details.", 0);
         return;
     }
-
     if (mprStrcmpAnyCase(req->authType, "basic") == 0) {
         decodeBasicAuth(q);
         actualAuthType = MA_AUTH_BASIC;
@@ -5211,7 +5210,6 @@ MprModule *maAuthFilterInit(MaHttp *http, cchar *path)
     if (module == 0) {
         return 0;
     }
-
     filter = maCreateFilter(http, "authFilter", MA_STAGE_ALL);
     if (filter == 0) {
         mprFree(module);
@@ -6645,10 +6643,10 @@ static void startCgi(MaQueue *q)
     req = conn->request;
     resp = conn->response;
 
-    if (req->flags & MA_REQ_UPLOADING && conn->state <= MPR_HTTP_STATE_CONTENT) {
+    if ((req->form || req->flags & MA_REQ_UPLOADING) && conn->state <= MPR_HTTP_STATE_CONTENT) {
         /*
-            Delay start while the upload filter extracts the uploaded files so the CGI process can be informed via
-            env vars of the file details. 
+            Delay starting the CGI process if uploading files or a form request. This enables env vars to be defined
+            with file upload and form data before starting the CGI gateway.
          */
         return;
     }
@@ -6735,8 +6733,8 @@ static void runCgi(MaQueue *q)
     if (cmd == 0) {
         startCgi(q);
         cmd = (MprCmd*) q->queueData;
-        if (q->count > 0) {
-            writeToCGI(q);
+        if (q->pair->count > 0) {
+            writeToCGI(q->pair);
         }
     }
 
@@ -6797,13 +6795,19 @@ static void incomingCgiData(MaQueue *q, MaPacket *packet)
             q->queueData = 0;
             maFailRequest(conn, MPR_HTTP_CODE_BAD_REQUEST, "Client supplied insufficient body data");
         }
-        maAddVarsFromQueue(q);
+        if (req->form) {
+            maAddVarsFromQueue(req->formVars, q);
+        }
 
     } else {
         /*
             No service routine, we just need it to be queued for writeToCGI
          */
-        maPutForService(q, packet, 0);
+        if (req->form) {
+            maJoinForService(q, packet, 0);
+        } else {
+            maPutForService(q, packet, 0);
+        }
     }
     if (cmd) {
         writeToCGI(q);
@@ -9529,6 +9533,7 @@ static void runPhp(MaQueue *q)
         PG(max_input_time) = -1;
         EG(timeout_seconds) = 0;
 
+        /* The readPostData callback may be invoked during startup */
         php_request_startup(TSRMLS_C);
         CG(zend_lineno) = 0;
 
@@ -9849,7 +9854,8 @@ MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
 
     if ((handler = maLookupStage(http, "phpHandler")) == 0) {
         handler = maCreateHandler(http, "phpHandler", 
-            MA_STAGE_ALL | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | MA_STAGE_MISSING_EXT);
+            MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | 
+            MA_STAGE_MISSING_EXT);
         if (handler == 0) {
             mprFree(module);
             return 0;
@@ -12397,7 +12403,6 @@ MprModule *maSslModuleInit(MaHttp *http, cchar *path)
 
 
 
-static char *addIndexToUrl(MaConn *conn, cchar *index);
 static MaStage *checkStage(MaConn *conn, MaStage *stage);
 static MaStage *findHandler(MaConn *conn);
 static MaStage *mapToFile(MaConn *conn, MaStage *handler);
@@ -12774,21 +12779,6 @@ void maDiscardPipeData(MaConn *conn)
 }
 
 
-static char *addIndexToUrl(MaConn *conn, cchar *index)
-{
-    MaRequest       *req;
-    char            *path;
-
-    req = conn->request;
-
-    path = mprJoinPath(req, req->url, index);
-    if (req->parsedUri->query && req->parsedUri->query[0]) {
-        return mprReallocStrcat(req, -1, path, "?", req->parsedUri->query, NULL);
-    }
-    return path;
-}
-
-
 static MaStage *checkStage(MaConn *conn, MaStage *stage)
 {
     MaRequest   *req;
@@ -13073,45 +13063,46 @@ static MaStage *processDirectory(MaConn *conn, MaStage *handler)
 {
     MaRequest       *req;
     MaResponse      *resp;
+    MprUri          *prior;
     MprPath         *info;
-    char            *path, *index;
+    char            *path, *index, *uri, *pathInfo;
 
     req = conn->request;
     resp = conn->response;
     info = &resp->fileInfo;
+    prior = req->parsedUri;
     mprAssert(info->isDir);
 
     index = req->dir->indexName;
+    path = mprJoinPath(resp, resp->filename, index);
+   
     if (req->url[strlen(req->url) - 1] == '/') {
         /*
             Internal directory redirections
          */
-        path = mprJoinPath(resp, resp->filename, index);
         if (mprPathExists(resp, path, R_OK)) {
             /*
                 Index file exists, so do an internal redirect to it. Client will not be aware of this happening.
                 Return zero so the request will be rematched on return.
              */
-            maSetRequestUri(conn, addIndexToUrl(conn, index), NULL);
+            pathInfo = mprJoinPath(req, req->url, index);
+            uri = mprFormatUri(req, prior->scheme, prior->host, prior->port, pathInfo, prior->query);
+            maSetRequestUri(conn, uri, NULL);
             return 0;
         }
         mprFree(path);
 
     } else {
-
         /*
-         *  External redirect. Ask the client to re-issue a request for a new location. See if an index exists and if so, 
-         *  construct a new location for the index. If the index can't be accessed, append a "/" to the URI and redirect.
+         *  External redirect. If the index exists, redirect to it. If not, append a "/" to the URI and redirect.
          */
-        if (req->parsedUri->query && req->parsedUri->query[0]) {
-            path = mprAsprintf(resp, -1, "%s/%s?%s", req->url, index, req->parsedUri->query);
+        if (mprPathExists(resp, path, R_OK)) {
+            pathInfo = mprJoinPath(req, req->url, index);
         } else {
-            path = mprJoinPath(resp, req->url, index);
+            pathInfo = mprJoinPath(req, req->url, "/");
         }
-        if (!mprPathExists(resp, path, R_OK)) {
-            path = mprStrcat(resp, -1, req->url, "/", NULL);
-        }
-        maRedirect(conn, MPR_HTTP_CODE_MOVED_PERMANENTLY, path);
+        uri = mprFormatUri(req, prior->scheme, prior->host, prior->port, pathInfo, prior->query);
+        maRedirect(conn, MPR_HTTP_CODE_MOVED_PERMANENTLY, uri);
         handler = conn->http->passHandler;
     }
     return handler;
@@ -13202,13 +13193,6 @@ static void setPathInfo(MaConn *conn)
         if (req->pathInfo == 0) {
             req->pathInfo = req->url;
             maSetRequestUri(conn, "/", NULL);
-#if UNUSED
-            if ((cp = strrchr(req->pathInfo, '.')) != 0) {
-                resp->extension = mprStrdup(req, ++cp);
-            } else {
-                resp->extension = "";
-            }
-#endif
             req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0); 
         }
     }
@@ -13232,7 +13216,7 @@ static void setEnv(MaConn *conn)
     setPathInfo(conn);
 
     if (handler->flags & MA_STAGE_VARS && req->parsedUri->query) {
-        maAddVars(conn, req->parsedUri->query, (int) strlen(req->parsedUri->query));
+        maAddVars(req->formVars, req->parsedUri->query, (int) strlen(req->parsedUri->query));
     }
     if (handler->flags & MA_STAGE_ENV_VARS) {
         maCreateEnvVars(conn);
@@ -14025,6 +14009,23 @@ MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
 }
 
 
+void maJoinPackets(MaQueue *q)
+{
+    MaPacket    *first, *packet, *next;
+
+    if (q->first) {
+        first = (q->first->flags & MA_PACKET_HEADER) ? q->first->next : q->first;
+
+        for (packet = first->next; packet; packet = next) {
+            next = packet->next;
+            maJoinPacket(first, packet);
+            maCheckQueueCount(q);
+            maFreePacket(q, packet);
+        }
+    }
+}
+
+
 /*
  *  Remove packets from a queue which do not need to be processed.
  *  Remove data packets if no body is required (HEAD|TRACE|OPTIONS|PUT|DELETE method, not modifed content, or error)
@@ -14609,6 +14610,7 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
 
             } else if (strcmp(key, "CONTENT_TYPE") == 0) {
                 req->mimeType = value;
+                req->form = strstr(value, "application/x-www-form-urlencoded") != 0;
 
             } else if (strcmp(key, "COOKIE") == 0) {
                 if (req->cookie && *req->cookie) {
@@ -14779,6 +14781,10 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
         maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad URI format");
         return 0;
     }
+    if (conn->host->secure) {
+        req->parsedUri->scheme = mprStrdup(req, "https");
+    }
+    req->parsedUri->port = conn->sock->port;
     return 1;
 }
 
@@ -15171,18 +15177,28 @@ int maSetRequestUri(MaConn *conn, cchar *uri, cchar *query)
     MaRequest   *req;
     MaResponse  *resp;
     MaHost      *host;
-    char        *oldQuery;
+    MprUri      *prior;
+    char        *cp;
 
+    if (uri == 0 || *uri == 0) {
+        uri = "/";
+    }
     host = conn->host;
     req = conn->request;
     resp = conn->response;
-    oldQuery = (req->parsedUri) ? req->parsedUri->query : 0; 
-
+    prior = req->parsedUri;
     if ((req->parsedUri = mprParseUri(req, uri)) == 0) {
         return MPR_ERR_BAD_ARGS;
     }
-    if (query == NULL) {
-        req->parsedUri->query = oldQuery;
+    if (prior) {
+        if ((cp = strstr(uri, "://")) == 0) {
+            req->parsedUri->scheme = prior->scheme;
+        } else if (strchr(&cp[3], ':') == 0) {
+            req->parsedUri->port = prior->port;
+        } 
+    }
+    if (query == 0 && prior) {
+        req->parsedUri->query = prior->query;
     } else if (*query) {
         req->parsedUri->query = mprStrdup(req->parsedUri, query);
     }
@@ -17074,21 +17090,25 @@ static void outgoingData(MaQueue *q, MaPacket *packet)
 static void incomingData(MaQueue *q, MaPacket *packet)
 {
     MaResponse  *resp;
+    MaRequest   *req;
     
     mprAssert(q);
     mprAssert(packet);
     
     resp = q->conn->response;
+    req = q->conn->request;
 
     if (q->nextQ->put) {
         maPutNext(q, packet);
+
     } else if (maGetPacketLength(packet)) { 
         maJoinForService(q, packet, 0);
-    } else if ((q->stage->flags & MA_STAGE_HANDLER) && resp->handler->flags & MA_STAGE_VARS) {
+
+    } else if (req->form && (q->stage->flags & MA_STAGE_HANDLER) && resp->handler->flags & MA_STAGE_VARS) {
         /*
-         *  Do this just for handlers that don't want to define an incoming data handler but do want query/form vars (EGI)
+            Do this just for handlers that don't want to define an incoming data handler but do want query/form vars (EGI)
          */
-        maAddVarsFromQueue(q);
+        maAddVarsFromQueue(req->formVars, q);
     }
 }
 
@@ -17347,23 +17367,14 @@ void maCreateEnvVars(MaConn *conn)
  *  Make variables for each keyword in a query string. The buffer must be url encoded (ie. key=value&key2=value2..., 
  *  spaces converted to '+' and all else should be %HEX encoded).
  */
-void maAddVars(MaConn *conn, cchar *buf, int len)
+void maAddVars(MprHashTable *table, cchar *buf, int len)
 {
-    MaResponse      *resp;
-    MaRequest       *req;
-    MprHashTable    *vars;
-    cchar           *oldValue;
-    char            *newValue, *decoded, *keyword, *value, *tok;
+    cchar   *oldValue;
+    char    *newValue, *decoded, *keyword, *value, *tok;
 
-    resp = conn->response;
-    req = conn->request;
-    vars = req->formVars;
-    
-    if (vars == 0) {
-        return;
-    }
-    
-    decoded = (char*) mprAlloc(resp, len + 1);
+    mprAssert(table);
+
+    decoded = (char*) mprAlloc(table, len + 1);
     decoded[len] = '\0';
     memcpy(decoded, buf, len);
 
@@ -17371,54 +17382,51 @@ void maAddVars(MaConn *conn, cchar *buf, int len)
     while (keyword != 0) {
         if ((value = strchr(keyword, '=')) != 0) {
             *value++ = '\0';
-            value = mprUrlDecode(req, value);
+            value = mprUrlDecode(table, value);
         } else {
             value = "";
         }
-        keyword = mprUrlDecode(req, keyword);
+        keyword = mprUrlDecode(table, keyword);
 
         if (*keyword) {
             /*
              *  Append to existing keywords.
              */
-            oldValue = mprLookupHash(vars, keyword);
+            oldValue = mprLookupHash(table, keyword);
             if (oldValue != 0 && *oldValue) {
                 if (*value) {
-                    newValue = mprStrcat(vars, MA_MAX_HEADERS, oldValue, " ", value, NULL);
-                    mprAddHash(vars, keyword, newValue);
+                    newValue = mprStrcat(table, MA_MAX_HEADERS, oldValue, " ", value, NULL);
+                    mprAddHash(table, keyword, newValue);
                 }
             } else {
-                mprAddHash(vars, keyword, value);
+                mprAddHash(table, keyword, value);
             }
         }
         keyword = mprStrTok(0, "&", &tok);
     }
     /*
-     *  Must not free "decoded". This will be freed when the response completes.
+     *  Must not free "decoded". This will be freed when the table is freed.
      */
 }
 
 
-void maAddVarsFromQueue(MaQueue *q)
+void maAddVarsFromQueue(MprHashTable *table, MaQueue *q)
 {
     MaConn      *conn;
     MaRequest   *req;
     MprBuf      *content;
-    cchar       *pat;
 
     mprAssert(q);
     
     conn = q->conn;
     req = conn->request;
     
-    pat = "application/x-www-form-urlencoded";
-    if (mprStrcmpAnyCaseCount(req->mimeType, pat, (int) strlen(pat)) == 0) {
-        if (q->first && q->first->content) {
-            content = q->first->content;
-            mprAddNullToBuf(content);
-            mprLog(q, 3, "encoded body data: length %d, \"%s\"", mprGetBufLength(content), mprGetBufStart(content));
-            maAddVars(conn, mprGetBufStart(content), mprGetBufLength(content));
-        }
+    if (req->form && q->first && q->first->content) {
+        maJoinPackets(q);
+        content = q->first->content;
+        mprAddNullToBuf(content);
+        mprLog(q, 3, "encoded body data: length %d, \"%s\"", mprGetBufLength(content), mprGetBufStart(content));
+        maAddVars(table, mprGetBufStart(content), mprGetBufLength(content));
     }
 }
 
