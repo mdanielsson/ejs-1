@@ -5883,6 +5883,127 @@ MprModule *maRangeFilterInit(MaHttp *http, cchar *path)
 
 /************************************************************************/
 /*
+ *  Start of file "../src/http/filters/spyFilter.c"
+ */
+/************************************************************************/
+
+/*
+    spyFilter.c - Eavesdrop on input data
+
+    This sample filter examines form data for name/password fields. If the name and password match
+    an AUTH variable is defined. Form data is passed onto the handler.
+  
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+
+
+#if BLD_FEATURE_SAMPLES || 1
+
+static bool matchSpy(MaConn *conn, MaStage *handler, cchar *url)
+{
+    return (conn->request->form && strncmp(url, "/", 1) == 0);
+}
+
+
+static void incomingSpyData(MaQueue *q, MaPacket *packet)
+{
+    MprHashTable    *table;
+    cchar       *name, *password;
+    
+    if (packet->content == 0) {
+        /*
+            Create form vars for all the input data
+         */
+        table = mprCreateHash(q, -1);
+        maAddVarsFromQueue(table, q);
+        name = mprLookupHash(table, "name");
+        password = mprLookupHash(table, "password");
+        if (name && password && strcmp(name, "admin") == 0 && strcmp(password, "secret") == 0) {
+            maSetHeader(q->conn, 0, "AUTH", "authorized");
+        }
+        mprFree(table);
+        if (q->first) {
+            maPutNext(q, q->first);
+        }
+        maPutNext(q, packet);
+    } else {
+        maJoinForService(q, packet, 0);
+    }
+}
+
+
+MprModule *maSpyFilterInit(MaHttp *http, cchar *path)
+{
+    MprModule   *module;
+    MaStage     *filter;
+
+    if ((module = mprCreateModule(http, "spyFilter", BLD_VERSION, NULL, NULL, NULL)) == 0) {
+        return 0;
+    }
+    if ((filter = maCreateFilter(http, "spyFilter", MA_STAGE_ALL)) == 0) {
+        mprFree(module);
+        return 0;
+    }
+    filter->match = matchSpy; 
+    filter->incomingData = incomingSpyData; 
+    return module;
+}
+
+
+#else
+
+MprModule *maSpyFilterInit(MaHttp *http, cchar *path)
+{
+    return 0;
+}
+#endif /* BLD_FEATURE_SAMPLES */
+
+/*
+    @copy   default
+    
+    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+    
+    This software is distributed under commercial and open source licenses.
+    You may use the GPL open source license described below or you may acquire 
+    a commercial license from Embedthis Software. You agree to be fully bound 
+    by the terms of either license. Consult the LICENSE.TXT distributed with 
+    this software for full details.
+    
+    This software is open source; you can redistribute it and/or modify it 
+    under the terms of the GNU General Public License as published by the 
+    Free Software Foundation; either version 2 of the License, or (at your 
+    option) any later version. See the GNU General Public License for more 
+    details at: http://www.embedthis.com/downloads/gplLicense.html
+    
+    This program is distributed WITHOUT ANY WARRANTY; without even the 
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+    
+    This GPL license does NOT permit incorporating this software into 
+    proprietary programs. If you are unable to comply with the GPL, you must
+    acquire a commercial license to use this software. Commercial licenses 
+    for this software and support services are available from Embedthis 
+    Software at http://www.embedthis.com 
+    
+    Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/filters/spyFilter.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
  *  Start of file "../src/http/filters/uploadFilter.c"
  */
 /************************************************************************/
@@ -6643,10 +6764,10 @@ static void startCgi(MaQueue *q)
     req = conn->request;
     resp = conn->response;
 
-    if (req->flags & MA_REQ_UPLOADING && conn->state <= MPR_HTTP_STATE_CONTENT) {
+    if ((req->form || req->flags & MA_REQ_UPLOADING) && conn->state <= MPR_HTTP_STATE_CONTENT) {
         /*
-            Delay start while the upload filter extracts the uploaded files so the CGI process can be informed via
-            env vars of the file details. 
+            Delay starting the CGI process if uploading files or a form request. This enables env vars to be defined
+            with file upload and form data before starting the CGI gateway.
          */
         return;
     }
@@ -6733,8 +6854,8 @@ static void runCgi(MaQueue *q)
     if (cmd == 0) {
         startCgi(q);
         cmd = (MprCmd*) q->queueData;
-        if (q->count > 0) {
-            writeToCGI(q);
+        if (q->pair->count > 0) {
+            writeToCGI(q->pair);
         }
     }
 
@@ -6795,13 +6916,19 @@ static void incomingCgiData(MaQueue *q, MaPacket *packet)
             q->queueData = 0;
             maFailRequest(conn, MPR_HTTP_CODE_BAD_REQUEST, "Client supplied insufficient body data");
         }
-        maAddVarsFromQueue(q);
+        if (req->form) {
+            maAddVarsFromQueue(req->formVars, q);
+        }
 
     } else {
         /*
             No service routine, we just need it to be queued for writeToCGI
          */
-        maPutForService(q, packet, 0);
+        if (req->form) {
+            maJoinForService(q, packet, 0);
+        } else {
+            maPutForService(q, packet, 0);
+        }
     }
     if (cmd) {
         writeToCGI(q);
@@ -9847,7 +9974,8 @@ MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
 
     if ((handler = maLookupStage(http, "phpHandler")) == 0) {
         handler = maCreateHandler(http, "phpHandler", 
-            MA_STAGE_ALL | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | MA_STAGE_MISSING_EXT);
+            MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | 
+            MA_STAGE_MISSING_EXT);
         if (handler == 0) {
             mprFree(module);
             return 0;
@@ -13208,7 +13336,7 @@ static void setEnv(MaConn *conn)
     setPathInfo(conn);
 
     if (handler->flags & MA_STAGE_VARS && req->parsedUri->query) {
-        maAddVars(conn, req->parsedUri->query, (int) strlen(req->parsedUri->query));
+        maAddVars(req->formVars, req->parsedUri->query, (int) strlen(req->parsedUri->query));
     }
     if (handler->flags & MA_STAGE_ENV_VARS) {
         maCreateEnvVars(conn);
@@ -14001,6 +14129,23 @@ MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
 }
 
 
+void maJoinPackets(MaQueue *q)
+{
+    MaPacket    *first, *packet, *next;
+
+    if (q->first) {
+        first = (q->first->flags & MA_PACKET_HEADER) ? q->first->next : q->first;
+
+        for (packet = first->next; packet; packet = next) {
+            next = packet->next;
+            maJoinPacket(first, packet);
+            maCheckQueueCount(q);
+            maFreePacket(q, packet);
+        }
+    }
+}
+
+
 /*
  *  Remove packets from a queue which do not need to be processed.
  *  Remove data packets if no body is required (HEAD|TRACE|OPTIONS|PUT|DELETE method, not modifed content, or error)
@@ -14585,6 +14730,7 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
 
             } else if (strcmp(key, "CONTENT_TYPE") == 0) {
                 req->mimeType = value;
+                req->form = strstr(value, "application/x-www-form-urlencoded") != 0;
 
             } else if (strcmp(key, "COOKIE") == 0) {
                 if (req->cookie && *req->cookie) {
@@ -17064,21 +17210,25 @@ static void outgoingData(MaQueue *q, MaPacket *packet)
 static void incomingData(MaQueue *q, MaPacket *packet)
 {
     MaResponse  *resp;
+    MaRequest   *req;
     
     mprAssert(q);
     mprAssert(packet);
     
     resp = q->conn->response;
+    req = q->conn->request;
 
     if (q->nextQ->put) {
         maPutNext(q, packet);
+
     } else if (maGetPacketLength(packet)) { 
         maJoinForService(q, packet, 0);
-    } else if ((q->stage->flags & MA_STAGE_HANDLER) && resp->handler->flags & MA_STAGE_VARS) {
+
+    } else if (req->form && (q->stage->flags & MA_STAGE_HANDLER) && resp->handler->flags & MA_STAGE_VARS) {
         /*
-         *  Do this just for handlers that don't want to define an incoming data handler but do want query/form vars (EGI)
+            Do this just for handlers that don't want to define an incoming data handler but do want query/form vars (EGI)
          */
-        maAddVarsFromQueue(q);
+        maAddVarsFromQueue(req->formVars, q);
     }
 }
 
@@ -17337,23 +17487,14 @@ void maCreateEnvVars(MaConn *conn)
  *  Make variables for each keyword in a query string. The buffer must be url encoded (ie. key=value&key2=value2..., 
  *  spaces converted to '+' and all else should be %HEX encoded).
  */
-void maAddVars(MaConn *conn, cchar *buf, int len)
+void maAddVars(MprHashTable *table, cchar *buf, int len)
 {
-    MaResponse      *resp;
-    MaRequest       *req;
-    MprHashTable    *vars;
-    cchar           *oldValue;
-    char            *newValue, *decoded, *keyword, *value, *tok;
+    cchar   *oldValue;
+    char    *newValue, *decoded, *keyword, *value, *tok;
 
-    resp = conn->response;
-    req = conn->request;
-    vars = req->formVars;
-    
-    if (vars == 0) {
-        return;
-    }
-    
-    decoded = (char*) mprAlloc(resp, len + 1);
+    mprAssert(table);
+
+    decoded = (char*) mprAlloc(table, len + 1);
     decoded[len] = '\0';
     memcpy(decoded, buf, len);
 
@@ -17361,54 +17502,51 @@ void maAddVars(MaConn *conn, cchar *buf, int len)
     while (keyword != 0) {
         if ((value = strchr(keyword, '=')) != 0) {
             *value++ = '\0';
-            value = mprUrlDecode(req, value);
+            value = mprUrlDecode(table, value);
         } else {
             value = "";
         }
-        keyword = mprUrlDecode(req, keyword);
+        keyword = mprUrlDecode(table, keyword);
 
         if (*keyword) {
             /*
              *  Append to existing keywords.
              */
-            oldValue = mprLookupHash(vars, keyword);
+            oldValue = mprLookupHash(table, keyword);
             if (oldValue != 0 && *oldValue) {
                 if (*value) {
-                    newValue = mprStrcat(vars, MA_MAX_HEADERS, oldValue, " ", value, NULL);
-                    mprAddHash(vars, keyword, newValue);
+                    newValue = mprStrcat(table, MA_MAX_HEADERS, oldValue, " ", value, NULL);
+                    mprAddHash(table, keyword, newValue);
                 }
             } else {
-                mprAddHash(vars, keyword, value);
+                mprAddHash(table, keyword, value);
             }
         }
         keyword = mprStrTok(0, "&", &tok);
     }
     /*
-     *  Must not free "decoded". This will be freed when the response completes.
+     *  Must not free "decoded". This will be freed when the table is freed.
      */
 }
 
 
-void maAddVarsFromQueue(MaQueue *q)
+void maAddVarsFromQueue(MprHashTable *table, MaQueue *q)
 {
     MaConn      *conn;
     MaRequest   *req;
     MprBuf      *content;
-    cchar       *pat;
 
     mprAssert(q);
     
     conn = q->conn;
     req = conn->request;
     
-    pat = "application/x-www-form-urlencoded";
-    if (mprStrcmpAnyCaseCount(req->mimeType, pat, (int) strlen(pat)) == 0) {
-        if (q->first && q->first->content) {
-            content = q->first->content;
-            mprAddNullToBuf(content);
-            mprLog(q, 3, "encoded body data: length %d, \"%s\"", mprGetBufLength(content), mprGetBufStart(content));
-            maAddVars(conn, mprGetBufStart(content), mprGetBufLength(content));
-        }
+    if (req->form && q->first && q->first->content) {
+        maJoinPackets(q);
+        content = q->first->content;
+        mprAddNullToBuf(content);
+        mprLog(q, 3, "encoded body data: length %d, \"%s\"", mprGetBufLength(content), mprGetBufStart(content));
+        maAddVars(table, mprGetBufStart(content), mprGetBufLength(content));
     }
 }
 
