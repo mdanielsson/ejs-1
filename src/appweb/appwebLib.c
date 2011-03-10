@@ -8439,10 +8439,11 @@ MprModule *maEgiHandlerInit(MaHttp *http, cchar *path)
 #if EGI_TEST
 
 #if UNUSED
-static char *cback(MaConn *conn, int *code, char *targetUri)
+static cchar *cback(MaConn *conn, int *code, cchar *targetUri)
 {
     *code = 302;
-    return mprAsprintf(conn, -1, "https://%s/vpn", "localhost");
+    // return mprAsprintf(conn, -1, "https://www.embedthis.com/vpn");
+    return mprAsprintf(conn, -1, "/vpn");
 }
 #endif
 
@@ -8450,7 +8451,7 @@ static void simpleTest(MaQueue *q)
 {
 #if UNUSED
     maSetRedirectCallback(q->conn, cback);
-    maRedirect(q->conn, 302, "anything");
+    maRedirect(q->conn, 302, "/abc/anything");
 #endif
     maWrite(q, "Hello %s\r\n", maGetFormVar(q->conn, "name", "unknown"));
 }
@@ -14785,6 +14786,7 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
         req->parsedUri->scheme = mprStrdup(req, "https");
     }
     req->parsedUri->port = conn->sock->port;
+    req->parsedUri->host = conn->host->name;
     return 1;
 }
 
@@ -15193,6 +15195,7 @@ int maSetRequestUri(MaConn *conn, cchar *uri, cchar *query)
     if (prior) {
         if ((cp = strstr(uri, "://")) == 0) {
             req->parsedUri->scheme = prior->scheme;
+            req->parsedUri->host = prior->host;
         } else if (strchr(&cp[3], ':') == 0) {
             req->parsedUri->port = prior->port;
         } 
