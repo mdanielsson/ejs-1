@@ -6873,9 +6873,8 @@ static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
      */
     while ((len = mprGetBufLength(buf)) > 0) {
         if (!conn->requestFailed) {
-            mprLog(q, 5, "CGI: write %d bytes to client. Rc rc %d, errno %d", len, rc, mprGetOsError());
             rc = maWriteBlock(q, mprGetBufStart(buf), len, 1);
-            mprLog(cmd, 5, "Write to browser ask %d, actual %d", len, rc);
+            mprLog(q, 5, "CGI: write %d bytes to client. Rc rc %d, errno %d", len, rc, mprGetOsError());
         } else {
             /* Request has failed so just eat the data */
             rc = len;
@@ -9590,9 +9589,10 @@ static void runPhp(MaQueue *q)
      */
     file_handle.handle.fp = fp;
     shebang[0] = '\0';
-    fgets(shebang, sizeof(shebang), file_handle.handle.fp);
-    if (shebang[0] != '#' || shebang[1] != '!') {
-        fseek(fp, 0L, SEEK_SET);
+    if (fgets(shebang, sizeof(shebang), file_handle.handle.fp) != 0) {
+        if (shebang[0] != '#' || shebang[1] != '!') {
+            fseek(fp, 0L, SEEK_SET);
+        }
     }
 #endif
 
