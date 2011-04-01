@@ -78,3 +78,5 @@ test/ss.es
 bin/*.manifest
 test/*.h
 test/file.dat
+project.xcworkspace
+xcuserdata
