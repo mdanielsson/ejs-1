@@ -401,7 +401,7 @@
 #define ES_ejs_db_Record_makeLazyReader_model                          2
 #define ES_ejs_db_Record_makeLazyReader_key                            3
 #define ES_ejs_db_Record_makeLazyReader_options                        4
-#define ES_ejs_db_Record_makeLazyReader___fun_15842__                  5
+#define ES_ejs_db_Record_makeLazyReader___fun_3932__                   5
 #define ES_ejs_db_Record_makeLazyReader_lazyReader                     6
 #define ES_ejs_db_Record_mapSqlTypeToEjs_sqlType                       0
 #define ES_ejs_db_Record_mapSqlTypeToEjs_ejsType                       1
@@ -476,6 +476,6 @@
 #define ES_ejs_db_Column_Column_ejsType                                2
 #define ES_ejs_db_Column_Column_sqlType                                3
 
-#define _ES_CHECKSUM_ejs_db 307223
+#define _ES_CHECKSUM_ejs_db 307494
 
 #endif

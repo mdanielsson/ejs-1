@@ -1617,8 +1617,8 @@ static int readWord(Ejs *ejs, MprFile *file, int *number)
  */
 static int readNumber(Ejs *ejs, MprFile *file, int *number)
 {
-    uint    t, c;
-    int     sign, shift;
+    uint    t;
+    int     c, sign, shift;
 
     mprAssert(file);
     mprAssert(number);

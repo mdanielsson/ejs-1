@@ -3861,7 +3861,7 @@ static int buildNetVec(MaQueue *q)
             }
             
         } else if (resp->flags & MA_RESP_NO_BODY) {
-            maCleanQueue(q);
+            maDiscardData(q, 0);
             continue;
         }
         if (q->ioIndex >= (MA_MAX_IOVEC - 2)) {
@@ -4231,7 +4231,7 @@ static int buildSendVec(MaQueue *q)
             }
 
         } else if (resp->flags & MA_RESP_NO_BODY) {
-            maCleanQueue(q);
+            maDiscardData(q, 0);
             continue;
         }
         if (q->ioIndex >= (MA_MAX_IOVEC - 2)) {
@@ -6333,6 +6333,7 @@ static int writeToFile(MaQueue *q, char *data, int len)
 static int processContentData(MaQueue *q)
 {
     MaConn          *conn;
+    MaRequest       *req;
     MaUploadFile    *file;
     MaLimits        *limits;
     MaPacket        *packet;
@@ -6342,6 +6343,7 @@ static int processContentData(MaQueue *q)
     int             size, dataLen;
 
     conn = q->conn;
+    req = conn->request;
     up = q->queueData;
     content = q->first->content;
     limits = conn->host->limits;
@@ -6410,6 +6412,8 @@ static int processContentData(MaQueue *q)
                  *  Need to add www-form-urlencoding separators
                  */
                 mprPutCharToBuf(packet->content, '&');
+            } else {
+                req->mimeType = mprStrdup(req, "application/x-www-form-urlencoded");
             }
             mprPutFmtToBuf(packet->content, "%s=%s", up->id, data);
         }
@@ -10505,7 +10509,7 @@ MaLocation *maLookupBestLocation(MaHost *host, cchar *uri)
     if (uri) {
         for (next = 0; (location = mprGetNextItem(host->locations, &next)) != 0; ) {
             rc = strncmp(location->prefix, uri, location->prefixLen);
-            if (rc == 0 /* UNUSED && uri[location->prefixLen] == '/' */) {
+            if (rc == 0) {
                 return location;
             }
         }
@@ -11094,10 +11098,8 @@ MaLocation *maCreateBareLocation(MprCtx ctx)
     location->expires = mprCreateHash(location, MA_HANDLER_HASH_SIZE);
     location->inputStages = mprCreateList(location);
     location->outputStages = mprCreateList(location);
-
     location->prefix = mprStrdup(location, "");
     location->prefixLen = (int) strlen(location->prefix);
-
 #if BLD_FEATURE_AUTH
     location->auth = maCreateAuth(location, 0);
 #endif
@@ -11393,13 +11395,14 @@ void maSetLocationPrefix(MaLocation *location, cchar *uri)
     mprFree(location->prefix);
     location->prefix = mprStrdup(location, uri);
     location->prefixLen = (int) strlen(location->prefix);
-
+#if UNUSED
     /*
      *  Always strip trailing "/". Note this is a URI not a path.
      */
     if (location->prefixLen > 0 && location->prefix[location->prefixLen - 1] == '/') {
         location->prefix[--location->prefixLen] = '\0';
     }
+#endif
 }
 
 
@@ -17283,9 +17286,6 @@ void maCreateEnvVars(MaConn *conn)
     
     vars = req->headers;
 
-    /*
-     *  Alias for REMOTE_USER. Define both for broader compatibility with CGI.
-     */
     mprAddHash(vars, "AUTH_TYPE", req->authType);
     mprAddHash(vars, "AUTH_USER", (req->user && *req->user) ? req->user : 0);
     mprAddHash(vars, "AUTH_GROUP", req->group);
