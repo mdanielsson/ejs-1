@@ -3769,16 +3769,17 @@ static void showRequest(MprBuf *content, int nbytes, int len);
 #if BLD_FEATURE_NET
 
 static void addPacketForNet(MaQueue *q, MaPacket *packet);
-static void adjustNetVec(MaQueue *q, int written);
-static int  buildNetVec(MaQueue *q);
-static void freeNetPackets(MaQueue *q, int written);
+static void adjustNetVec(MaQueue *q, int64 written);
+static int64  buildNetVec(MaQueue *q);
+static void freeNetPackets(MaQueue *q, int64 written);
 
 
 static void netOutgoingService(MaQueue *q)
 {
     MaConn      *conn;
     MaResponse  *resp;
-    int         written, errCode;
+    int64       written;
+    int         errCode;
 
     conn = q->conn;
     resp = conn->response;
@@ -3832,7 +3833,7 @@ static void netOutgoingService(MaQueue *q)
 /*
  *  Build the IO vector. Return the count of bytes to be written. Return -1 for EOF.
  */
-static int buildNetVec(MaQueue *q)
+static int64 buildNetVec(MaQueue *q)
 {
     MaConn      *conn;
     MaResponse  *resp;
@@ -3876,7 +3877,7 @@ static int buildNetVec(MaQueue *q)
 /*
  *  Add one entry to the io vector
  */
-static void addToNetVector(MaQueue *q, char *ptr, int bytes)
+static void addToNetVector(MaQueue *q, char *ptr, int64 bytes)
 {
     mprAssert(bytes > 0);
 
@@ -3918,10 +3919,10 @@ static void addPacketForNet(MaQueue *q, MaPacket *packet)
 }
 
 
-static void freeNetPackets(MaQueue *q, int bytes)
+static void freeNetPackets(MaQueue *q, int64 bytes)
 {
     MaPacket    *packet;
-    int         len;
+    int64       len;
 
     mprAssert(q->first);
     mprAssert(q->count >= 0);
@@ -3967,11 +3968,12 @@ static void freeNetPackets(MaQueue *q, int bytes)
 /*
  *  Clear entries from the IO vector that have actually been transmitted. Support partial writes.
  */
-static void adjustNetVec(MaQueue *q, int written)
+static void adjustNetVec(MaQueue *q, int64 written)
 {
     MprIOVec    *iovec;
     MaResponse  *resp;
-    int         i, j, len;
+    int64       len;
+    int         i, j;
 
     resp = q->conn->response;
 
@@ -4099,9 +4101,9 @@ void __dummyNetConnector() {}
 
 
 static void addPacketForSend(MaQueue *q, MaPacket *packet);
-static void adjustSendVec(MaQueue *q, int written);
-static int  buildSendVec(MaQueue *q);
-static void freeSentPackets(MaQueue *q, int written);
+static void adjustSendVec(MaQueue *q, int64 written);
+static int64  buildSendVec(MaQueue *q);
+static void freeSentPackets(MaQueue *q, int64 written);
 
 /*
  *  Invoked to initialize the send connector for a request
@@ -4136,7 +4138,8 @@ static void sendOutgoingService(MaQueue *q)
 {
     MaConn      *conn;
     MaResponse  *resp;
-    int         written, ioCount, errCode;
+    int64       written, ioCount;
+    int         errCode;
 
     conn = q->conn;
     resp = conn->response;
@@ -4194,9 +4197,9 @@ static void sendOutgoingService(MaQueue *q)
 /*
  *  Build the IO vector. This connector uses the send file API which permits multiple IO blocks to be written with 
  *  file data. This is used to write transfer the headers and chunk encoding boundaries. Return the count of bytes to 
- *  be written. Return -1 for EOF.
+ *  be written.
  */
-static int buildSendVec(MaQueue *q)
+static int64 buildSendVec(MaQueue *q)
 {
     MaConn      *conn;
     MaResponse  *resp;
@@ -4246,7 +4249,7 @@ static int buildSendVec(MaQueue *q)
 /*
  *  Add one entry to the io vector
  */
-static void addToSendVector(MaQueue *q, char *ptr, int bytes)
+static void addToSendVector(MaQueue *q, char *ptr, int64 bytes)
 {
     mprAssert(bytes > 0);
 
@@ -4303,10 +4306,10 @@ static void addPacketForSend(MaQueue *q, MaPacket *packet)
  *  being full. Don't come here if we've seen all the packets and all the data has been completely written. ie. small files
  *  don't come here.
  */
-static void freeSentPackets(MaQueue *q, int bytes)
+static void freeSentPackets(MaQueue *q, int64 bytes)
 {
     MaPacket    *packet;
-    int         len;
+    int64       len;
 
     mprAssert(q->first);
     mprAssert(q->count >= 0);
@@ -4353,11 +4356,12 @@ static void freeSentPackets(MaQueue *q, int bytes)
  *  being full. Don't come here if we've seen all the packets and all the data has been completely written. ie. small files
  *  don't come here.
  */
-static void adjustSendVec(MaQueue *q, int written)
+static void adjustSendVec(MaQueue *q, int64 written)
 {
     MprIOVec    *iovec;
     MaResponse  *resp;
-    int         i, j, len;
+    int64       len;
+    int         i, j;
 
     resp = q->conn->response;
 
@@ -8873,7 +8877,7 @@ static void openFile(MaQueue *q)
             maSetResponseCode(conn, MPR_HTTP_CODE_NOT_MODIFIED);
             maOmitResponseBody(conn);
         } else {
-            maSetEntityLength(conn, (int) resp->fileInfo.size);
+            maSetEntityLength(conn, resp->fileInfo.size);
         }
         
         if (!resp->fileInfo.isReg && !resp->fileInfo.isLink) {
@@ -9008,8 +9012,8 @@ static void outgoingFileService(MaQueue *q)
                 if ((len = readFileData(q, packet)) < 0) {
                     return;
                 }
-                mprLog(q, 7, "outgoingFileService readData %d", len);
                 resp->pos += len;
+                mprLog(q, 7, "outgoingFileService readData %d", len);
             }
             maPutNext(q, packet);
         }
@@ -9073,7 +9077,8 @@ static int readFileData(MaQueue *q, MaPacket *packet)
     MaConn      *conn;
     MaResponse  *resp;
     MaRequest   *req;
-    int         len, rc;
+    int64       len;
+    int         rc;
 
     conn = q->conn;
     resp = conn->response;
@@ -9081,13 +9086,15 @@ static int readFileData(MaQueue *q, MaPacket *packet)
     
     if (packet->content == 0) {
         len = packet->entityLength;
+        if (len > q->max) {
+            len = q->max;
+        }
         if ((packet->content = mprCreateBuf(packet, len, len)) == 0) {
             return MPR_ERR_NO_MEMORY;
         }
     } else {
         len = mprGetBufSpace(packet->content);
     }
-    
     mprLog(q, 7, "readFileData len %d, pos %d", len, resp->pos);
     
     if (req->ranges) {
@@ -13549,7 +13556,7 @@ MaPacket *maCreateEndPacket(MprCtx ctx)
 void maCheckQueueCount(MaQueue *q)
 {
     MaPacket    *packet;
-    int         count;
+    int64       count;
 
     count = 0;
     for (packet = q->first; packet; packet = packet->next) {
@@ -13679,7 +13686,7 @@ bool maWillNextQueueAccept(MaQueue *q, MaPacket *packet)
 {
     MaConn      *conn;
     MaQueue     *next;
-    int         size;
+    int64       size;
 
     conn = q->conn;
     next = q->nextQ;
@@ -13822,12 +13829,12 @@ bool maPacketTooBig(MaQueue *q, MaPacket *packet)
  *  Split a packet if required so it fits in the downstream queue. Put back the 2nd portion of the split packet on the queue.
  *  Ensure that the packet is not larger than "size" if it is greater than zero.
  */
-int maResizePacket(MaQueue *q, MaPacket *packet, int size)
+int maResizePacket(MaQueue *q, MaPacket *packet, int64 size)
 {
     MaPacket    *tail;
     MaConn      *conn;
     MprCtx      ctx;
-    int         len;
+    int64       len;
     
     if (size <= 0) {
         size = MAXINT;
@@ -13981,7 +13988,7 @@ int maJoinPacket(MaPacket *packet, MaPacket *p)
 MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
 {
     MaPacket    *packet;
-    int         count, size;
+    int64       count, size;
 
     if (offset >= maGetPacketLength(orig)) {
         mprAssert(0);
@@ -14564,7 +14571,7 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
                     maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Mulitple content length headers");
                     continue;
                 }
-                req->length = atoi(value);
+                req->length = mprAtoi(value, 10);
                 if (req->length < 0) {
                     maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad content length");
                     continue;
@@ -15715,7 +15722,7 @@ void maFillHeaders(MaConn *conn, MaPacket *packet)
         putFormattedHeader(conn, packet, "ETag", "%s", resp->etag);
     }
     if (resp->altBody) {
-        resp->length = (int) strlen(resp->altBody);
+        resp->length = strlen(resp->altBody);
     }
     if (resp->chunkSize > 0 && !resp->altBody) {
         if (!(req->method & MA_REQ_HEAD)) {
@@ -15723,7 +15730,7 @@ void maFillHeaders(MaConn *conn, MaPacket *packet)
         }
 
     } else if (resp->length >= 0) {
-        putFormattedHeader(conn, packet, "Content-Length", "%d", resp->length);
+        putFormattedHeader(conn, packet, "Content-Length", "%Ld", resp->length);
     }
 
     if (req->ranges) {
@@ -16055,7 +16062,7 @@ void maSetCookie(MaConn *conn, cchar *name, cchar *value, cchar *path, cchar *co
 }
 
 
-void maSetEntityLength(MaConn *conn, int len)
+void maSetEntityLength(MaConn *conn, int64 len)
 {
     MaRequest       *req;
     MaResponse      *resp;
