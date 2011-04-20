@@ -13977,7 +13977,7 @@ MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
     MaPacket    *packet;
     int         count, size;
 
-    if (packet->esize) {
+    if (orig->esize) {
         if ((packet = maCreateEntityPacket(ctx, orig->epos + offset, orig->esize - offset, orig->fill)) == 0) {
             return 0;
         }
