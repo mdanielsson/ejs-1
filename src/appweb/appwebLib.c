@@ -1996,11 +1996,7 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
 
     case 'L':
         if (mprStrcmpAnyCase(key, "LimitChunkSize") == 0) {
-            num = atoi(value);
-            if (num < MA_BOT_CHUNK_SIZE || num > MA_TOP_CHUNK_SIZE) {
-                return MPR_ERR_BAD_SYNTAX;
-            }
-            limits->maxChunkSize = num;
+            limits->maxChunkSize = atoi(value);
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "LimitClients") == 0) {
@@ -2008,59 +2004,31 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "LimitRequestBody") == 0) {
-            num = atoi(value);
-            if (num < MA_BOT_BODY || num > MA_TOP_BODY) {
-                return MPR_ERR_BAD_SYNTAX;
-            }
-            limits->maxBody = num;
+            limits->maxBody = mprAtoi(value, 10);
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "LimitRequestFields") == 0) {
-            num = atoi(value);
-            if (num < MA_BOT_NUM_HEADERS || num > MA_TOP_NUM_HEADERS) {
-                return MPR_ERR_BAD_SYNTAX;
-            }
-            limits->maxNumHeaders = num;
+            limits->maxNumHeaders = (int) mprAtoi(value, 10);
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "LimitRequestFieldSize") == 0) {
-            num = atoi(value);
-            if (num < MA_BOT_HEADER || num > MA_TOP_HEADER) {
-                return MPR_ERR_BAD_SYNTAX;
-            }
-            limits->maxHeader = num;
+            limits->maxHeader = (int) mprAtoi(value, 10);
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "LimitResponseBody") == 0) {
-            num = atoi(value);
-            if (num < MA_BOT_RESPONSE_BODY || num > MA_TOP_RESPONSE_BODY) {
-                return MPR_ERR_BAD_SYNTAX;
-            }
-            limits->maxResponseBody = num;
+            limits->maxResponseBody = mprAtoi(value, 10);
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "LimitStageBuffer") == 0) {
-            num = atoi(value);
-            if (num < MA_BOT_STAGE_BUFFER || num > MA_TOP_STAGE_BUFFER) {
-                return MPR_ERR_BAD_SYNTAX;
-            }
-            limits->maxStageBuffer = num;
+            limits->maxStageBuffer = (int) mprAtoi(value, 10);
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "LimitUrl") == 0) {
-            num = atoi(value);
-            if (num < MA_BOT_URL || num > MA_TOP_URL){
-                return MPR_ERR_BAD_SYNTAX;
-            }
-            limits->maxUrl = num;
+            limits->maxUrl = (int) mprAtoi(value, 10);
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "LimitUploadSize") == 0) {
-            num = atoi(value);
-            if (num != -1 && (num < MA_BOT_UPLOAD_SIZE || num > MA_TOP_UPLOAD_SIZE)){
-                return MPR_ERR_BAD_SYNTAX;
-            }
-            limits->maxUploadSize = num;
+            limits->maxUploadSize = mprAtoi(value, 10);
             return 1;
 
 #if DEPRECATED
@@ -2407,9 +2375,6 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
         } else if (mprStrcmpAnyCase(key, "StartThreads") == 0) {
 #if BLD_FEATURE_MULTITHREAD
             num = atoi(value);
-            if (num < 0 || num > MA_TOP_THREADS) {
-                return MPR_ERR_BAD_SYNTAX;
-            }
             limits->minThreads = num;
 #endif
             return 1;
@@ -2419,20 +2384,13 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
     case 'T':
         if (mprStrcmpAnyCase(key, "ThreadLimit") == 0) {
 #if BLD_FEATURE_MULTITHREAD
-            num = atoi(value);
-            if (num < 0 || num > MA_TOP_THREADS) {
-                return MPR_ERR_BAD_SYNTAX;
-            }
-            limits->maxThreads = num;
+            limits->maxThreads = atoi(value);
 #endif
             return 1;
 
         } else if (mprStrcmpAnyCase(key, "ThreadStackSize") == 0) {
 #if BLD_FEATURE_MULTITHREAD
             num = atoi(value);
-            if (num < MA_BOT_STACK || num > MA_TOP_STACK) {
-                return MPR_ERR_BAD_SYNTAX;
-            }
             mprSetThreadStackSize(server, num);
             return 1;
 #endif
@@ -4156,7 +4114,7 @@ static void sendOutgoingService(MaQueue *q)
         /*
          *  Write the vector and file data. Exclude the file entry in the io vector.
          */
-        written = (int) mprSendFileToSocket(conn->sock, resp->file, resp->pos, q->ioCount, q->iovec, q->ioIndex, NULL, 0);
+        written = (int) mprSendFileToSocket(conn->sock, resp->file, q->ioPos, q->ioCount, q->iovec, q->ioIndex, NULL, 0);
         mprLog(q, 5, "Send connector written %d", written);
         if (written < 0) {
             errCode = mprGetError();
@@ -4219,7 +4177,7 @@ static int64 buildSendVec(MaQueue *q)
             maFillHeaders(conn, packet);
             q->count += maGetPacketLength(packet);
 
-        } else if (maGetPacketLength(packet) == 0 && packet->entityLength == 0) {
+        } else if (maGetPacketLength(packet) == 0 && packet->esize == 0) {
             q->flags |= MA_QUEUE_EOF;
             if (packet->prefix == NULL) {
                 break;
@@ -4271,10 +4229,10 @@ static void addPacketForSend(MaQueue *q, MaPacket *packet)
     if (packet->prefix) {
         addToSendVector(q, mprGetBufStart(packet->prefix), mprGetBufLength(packet->prefix));
     }
-    if (packet->entityLength > 0) {
+    if (packet->esize > 0) {
         mprAssert(q->ioFile == 0);
         q->ioFile = 1;
-        q->ioCount += packet->entityLength;
+        q->ioCount += packet->esize;
 
     } else if (maGetPacketLength(packet) > 0) {
         /*
@@ -4315,13 +4273,14 @@ static void freeSentPackets(MaQueue *q, int64 bytes)
                 packet->prefix = 0;
             }
         }
-        if (packet->entityLength) {
-            len = min(packet->entityLength, bytes);
-            packet->entityLength -= len;
+        if (packet->esize) {
+            len = min(packet->esize, bytes);
+            packet->esize -= len;
+            packet->epos += len;
             bytes -= len;
-            mprAssert(packet->entityLength >= 0);
+            mprAssert(packet->esize >= 0);
             mprAssert(bytes == 0);
-            if (packet->entityLength > 0) {
+            if (packet->esize > 0) {
                 break;
             }
         } else if ((len = maGetPacketLength(packet)) > 0) {
@@ -4367,15 +4326,15 @@ static void adjustSendVec(MaQueue *q, int64 written)
         }
         written -= len;
         q->ioCount -= len;
-        for (j = i; i < q->ioIndex; ) {
+        for (j = i + 1; i < q->ioIndex; ) {
             iovec[j++] = iovec[i++];
         }
-        q->ioIndex = j;
+        q->ioIndex--;
         i--;
     }
     if (written > 0 && q->ioFile) {
         /* All remaining data came from the file */
-        resp->pos += written;
+        q->ioPos += written;
     }
     q->ioIndex = 0;
     q->ioCount = 0;
@@ -5544,6 +5503,7 @@ MprModule *maChunkFilterInit(MaHttp *http, cchar *path)
 
 #if BLD_FEATURE_RANGE
 
+static void applyRange(MaQueue *q, MaPacket *packet);
 static MaPacket *createRangePacket(MaConn *conn, MaRange *range);
 static MaPacket *createFinalRangePacket(MaConn *conn);
 static bool fixRangeLength(MaConn *conn);
@@ -5558,8 +5518,6 @@ static void outgoingRangeService(MaQueue *q)
     MaConn      *conn;
     MaRequest   *req;
     MaResponse  *resp;
-    int64       endpos, bytes, gap, span;
-    int         count;
 
     conn = q->conn;
     req = conn->request;
@@ -5578,7 +5536,9 @@ static void outgoingRangeService(MaQueue *q)
     }
 
     for (packet = maGet(q); packet; packet = maGet(q)) {
-        if (!(packet->flags & MA_PACKET_DATA)) {
+        if (packet->flags & MA_PACKET_DATA) {
+            applyRange(q, packet);
+        } else {
             if (packet->flags & MA_PACKET_END && resp->rangeBoundary) {
                 maPutNext(q, createFinalRangePacket(conn));
             }
@@ -5589,70 +5549,76 @@ static void outgoingRangeService(MaQueue *q)
             maPutNext(q, packet);
             continue;
         }
+    }
+}
 
+
+
+static void applyRange(MaQueue *q, MaPacket *packet)
+{
+    MaRange     *range;
+    MaConn      *conn;
+    MaRequest   *req;
+    MaResponse  *resp;
+    MprOff      endPacket, length, gap, span;
+    int         count;
+
+    conn = q->conn;
+    req = conn->request;
+    resp = conn->response;
+    range = resp->currentRange;
+
+    while (range) {
         /*
          *  Process the current packet over multiple ranges ranges until all the data is processed or discarded.
          */
-        bytes = packet->content ? mprGetBufLength(packet->content) : (packet->entityLength - resp->rangePos);
-        while (range && bytes > 0) {
+        length = maGetPacketEntityLength(packet);
+        if (length <= 0) {
+            break;
+        }
+        endPacket = resp->rangePos + length;
+        if (endPacket < range->start) {
+            /* Packet is before the next range, so discard the entire packet */
+            resp->rangePos += length;
+            maFreePacket(q, packet);
+            break;
 
-            endpos = resp->rangePos + bytes;
-            if (endpos < range->start) {
-                /* Packet is before the next range, so discard the entire packet */
-                resp->rangePos += bytes;
-                maFreePacket(q, packet);
-                bytes = 0;
-
-            } else if (resp->rangePos > range->end) {
-                /* Missing some output - should not happen */
-                mprAssert(0);
-
-            } else if (resp->rangePos < range->start) {
-                /*  Packets starts before range with some data in range so skip some data */
-                gap = range->start - resp->rangePos;
-                bytes -= gap;
-                resp->rangePos += gap;
-                if (packet->content) {
-                    if (gap < mprGetBufLength(packet->content)) {
-                        mprAdjustBufStart(packet->content, (int) gap);
-                    }
-                }
-                continue;
-
-            } else {
-                /* In range */
-                mprAssert(range->start <= resp->rangePos && resp->rangePos < range->end);
-                span = min(bytes, range->end - resp->rangePos);
-                count = (int) min(span, q->nextQ->packetSize);
-                mprAssert(count > 0);
-
-                if (!maWillNextQueueAcceptSize(q, count)) {
-                    maPutBack(q, packet);
-                    return;
-                }
-                if (packet->entityLength > count) {
-                    /*
-                        Put back a new entity packet to be processed after this range, if the entityLength will be
-                        not satisfied by this range.
-                     */
-                    maPutBack(q, maCloneEntityPacket(q, packet));
-                }
-                if (packet->fill && (*packet->fill)(q, packet, resp->rangePos, count) < 0) {
-                    return;
-                }
-                if (resp->rangeBoundary) {
-                    maPutNext(q, createRangePacket(conn, range));
-                }
-                maPutNext(q, packet);
-                resp->rangePos += count;
-                bytes = 0;
+        } else if (resp->rangePos < range->start) {
+            /*  Packets starts before range with some data in range so skip some data */
+            gap = range->start - resp->rangePos;
+            resp->rangePos += gap;
+            if (gap < length) {
+                maAdjustPacketStart(packet, (int) gap);
             }
-            if (resp->rangePos >= range->end) {
-                range = range->next;
+            /* Keep going and examine next range */
+
+        } else {
+            /* In range */
+            mprAssert(range->start <= resp->rangePos && resp->rangePos < range->end);
+            span = min(length, range->end - resp->rangePos);
+            count = (int) min(span, q->nextQ->packetSize);
+            mprAssert(count > 0);
+            if (!maWillNextQueueAcceptSize(q, count)) {
+                maPutBack(q, packet);
+                return;
             }
+            if (length > count) {
+                /*  Split packet if packet extends past range */
+                maPutBack(q, maSplitPacket(q, packet, count));
+            }
+            if (packet->fill && (*packet->fill)(q, packet, resp->rangePos, count) < 0) {
+                return;
+            }
+            if (resp->rangeBoundary) {
+                maPutNext(q, createRangePacket(conn, range));
+            }
+            maPutNext(q, packet);
+            resp->rangePos += count;
+        }
+        if (resp->rangePos >= range->end) {
+            resp->currentRange = range = range->next;
         }
     }
-    resp->currentRange = range;
 }
 
 
@@ -8920,9 +8886,7 @@ static void runFile(MaQueue *q)
         /*
          *  Create a single data packet based on the entity length.
          */
-        packet = maCreateDataPacket(q, 0);
-        packet->entityLength = resp->entityLength;
-        packet->fill = readFileData;
+        packet = maCreateEntityPacket(q, 0, resp->entityLength, readFileData);
         if (!req->ranges) {
             resp->length = resp->entityLength;
         }
@@ -8943,25 +8907,20 @@ static void runFile(MaQueue *q)
 static int prepPacket(MaQueue *q, MaPacket *packet)
 {
     MaConn      *conn;
+    MaResponse  *resp;
     MaQueue     *nextQ;
-    MaPacket    *tail;
-    MprOff      length;
-    int         size;
+    int         size, nbytes;
 
     conn = q->conn;
+    resp = conn->response;
     nextQ = q->nextQ;
 
-    length = packet->entityLength;
-    if (length > nextQ->packetSize || (length + nextQ->count) > nextQ->max) {
-        if ((tail = maSplitPacket(conn->response, packet, MA_BUFSIZE)) == 0) {
-            return MPR_ERR_NO_MEMORY;
-        }
-        maPutBack(q, tail);
-        size = MA_BUFSIZE;
+    if (packet->esize > nextQ->packetSize) {
+        maPutBack(q, maSplitPacket(resp, packet, nextQ->packetSize));
+        size = nextQ->packetSize;
     } else {
-        size = (int) length;
+        size = (int) packet->esize;
     }
-    mprAssert(size <= nextQ->packetSize);
     if ((size + nextQ->count) > nextQ->max) {
         /*  
             The downstream queue is full, so disable the queue and mark the downstream queue as full and service 
@@ -8975,7 +8934,11 @@ static int prepPacket(MaQueue *q, MaPacket *packet)
         }
         return 0;
     }
-    return readFileData(q, packet, conn->response->pos, size);
+    nbytes = readFileData(q, packet, q->ioPos, size);
+    if (nbytes > 0) {
+        q->ioPos += nbytes;
+    }
+    return nbytes;
 }
 
 
@@ -9000,7 +8963,7 @@ static void outgoingFileService(MaQueue *q)
     mprLog(q, 7, "\noutgoingFileService");
 
     for (packet = maGet(q); packet; packet = maGet(q)) {
-        if (req->ranges && !usingSend && packet->flags & MA_PACKET_DATA) {
+        if (!req->ranges && !usingSend && packet->flags & MA_PACKET_DATA) {
             if ((len = prepPacket(q, packet)) <= 0) {
                 if (len < 0) {
                     return;
@@ -9077,7 +9040,7 @@ static int readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size)
     if (packet->content == 0 && (packet->content = mprCreateBuf(packet, size, size)) == 0) {
         return MPR_ERR_NO_MEMORY;
     }
-    mprLog(q, 7, "readFileData size %Ld, pos %Ld", size, resp->pos);
+    mprLog(q, 7, "readFileData size %Ld, pos %Ld", size, pos);
     
     if (pos >= 0) {
         mprSeek(resp->file, SEEK_SET, pos);
@@ -9091,7 +9054,8 @@ static int readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size)
         return MPR_ERR_CANT_READ;
     }
     mprAdjustBufEnd(packet->content, nbytes);
-    resp->pos += nbytes;
+    packet->esize -= nbytes;
+    mprAssert(packet->esize == 0);
     return nbytes;
 }
 
@@ -11382,14 +11346,6 @@ void maSetLocationPrefix(MaLocation *location, cchar *uri)
     mprFree(location->prefix);
     location->prefix = mprStrdup(location, uri);
     location->prefixLen = (int) strlen(location->prefix);
-#if UNUSED
-    /*
-     *  Always strip trailing "/". Note this is a URI not a path.
-     */
-    if (location->prefixLen > 0 && location->prefix[location->prefixLen - 1] == '/') {
-        location->prefix[--location->prefixLen] = '\0';
-    }
-#endif
 }
 
 
@@ -12546,7 +12502,7 @@ void maCreatePipeline(MaConn *conn)
                     continue;
                 }
             }
-            if (filter->stage == http->rangeFilter && (req->ranges == 0 || handler == http->fileHandler)) {
+            if (filter->stage == http->rangeFilter && req->ranges == 0) {
                 continue;
             }
             if ((filter->stage->flags & MA_STAGE_ALL & req->method) == 0) {
@@ -13519,6 +13475,22 @@ MaPacket *maCreateDataPacket(MprCtx ctx, int size)
 }
 
 
+MaPacket *maCreateEntityPacket(MprCtx ctx, MprOff pos, MprOff size, MaFillProc fill)
+{
+    MaPacket    *packet;
+
+    packet = maCreatePacket(ctx, 0);
+    if (packet == 0) {
+        return 0;
+    }
+    packet->flags = MA_PACKET_DATA;
+    packet->epos = pos;
+    packet->esize = size;
+    packet->fill = fill;
+    return packet;
+}
+
+
 MaPacket *maCreateEndPacket(MprCtx ctx)
 {
     MaPacket    *packet;
@@ -13834,30 +13806,30 @@ int maResizePacket(MaQueue *q, MaPacket *packet, int size)
     MprCtx      ctx;
     int         len;
     
+    conn = q->conn;
     if (size <= 0) {
         size = MAXINT;
     }
-
-    /*
-     *  Calculate the size that will fit
-     */
-    len = packet->content ? maGetPacketLength(packet) : 0;
-    size = min(size, len);
-    size = min(size, q->nextQ->max);
-    size = min(size, q->nextQ->packetSize);
-
-    if (size == 0) {
-        /* Can't fit anything downstream, no point splitting yet */
-        return 0;
-    }
-    if (size == len) {
-        return 0;
-    }
-    conn = q->conn;
     ctx = conn->request ? (MprCtx) conn->request : (MprCtx) conn;
-    tail = maSplitPacket(ctx, packet, size);
-    if (tail == 0) {
-        return MPR_ERR_NO_MEMORY;
+
+    if (packet->esize > size) {
+        if ((tail = maSplitPacket(ctx, packet, size)) == 0) {
+            return MPR_ERR_NO_MEMORY;
+        }
+    } else {
+        /*
+         *  Calculate the size that will fit
+         */
+        len = packet->content ? maGetPacketLength(packet) : 0;
+        size = min(size, len);
+        size = min(size, q->nextQ->max);
+        size = min(size, q->nextQ->packetSize);
+        if (size == 0 || size == len) {
+            return 0;
+        }
+        if ((tail = maSplitPacket(ctx, packet, size)) == 0) {
+            return MPR_ERR_NO_MEMORY;
+        }
     }
     maPutBack(q, tail);
     return 0;
@@ -13872,7 +13844,8 @@ MaPacket *maCloneEntityPacket(MprCtx ctx, MaPacket *orig)
         return 0;
     }
     packet->flags = orig->flags;
-    packet->entityLength = orig->entityLength;
+    packet->esize = orig->esize;
+    packet->epos = orig->epos;
     packet->fill = orig->fill;
     return packet;
 }
@@ -13984,8 +13957,10 @@ int maJoinPacket(MaPacket *packet, MaPacket *p)
 {
     int     len;
 
-    len = maGetPacketLength(p);
+    mprAssert(packet->esize == 0);
+    mprAssert(p->esize == 0);
 
+    len = maGetPacketLength(p);
     if (mprPutBlockToBuf(packet->content, mprGetBufStart(p->content), len) != len) {
         return MPR_ERR_NO_MEMORY;
     }
@@ -14002,24 +13977,23 @@ MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
     MaPacket    *packet;
     int         count, size;
 
-    if (offset >= maGetPacketLength(orig)) {
-        mprAssert(0);
-        return 0;
-    }
-    count = maGetPacketLength(orig) - offset;
-    size = max(count, MA_BUFSIZE);
-    size = MA_PACKET_ALIGN(size);
-    
-    if ((packet = maCreateDataPacket(ctx, (orig->content == 0) ? 0: size)) == 0) {
-        return 0;
-    }
-    packet->flags = orig->flags;
+    if (packet->esize) {
+        if ((packet = maCreateEntityPacket(ctx, orig->epos + offset, orig->esize - offset, orig->fill)) == 0) {
+            return 0;
+        }
+        orig->esize = offset;
 
-    if (orig->entityLength) {
-        orig->entityLength = offset;
-        packet->entityLength = count;
-    }
-    if (orig->content && maGetPacketLength(orig) > 0) {
+    } else {
+        if (offset >= maGetPacketLength(orig)) {
+            mprAssert(offset < maGetPacketLength(orig));
+            return 0;
+        }
+        count = maGetPacketLength(orig) - offset;
+        size = max(count, MA_BUFSIZE);
+        size = MA_PACKET_ALIGN(size);
+        if ((packet = maCreateDataPacket(ctx, size)) == 0) {
+            return 0;
+        }
         mprAdjustBufEnd(orig->content, -count);
         if (mprPutBlockToBuf(packet->content, mprGetBufEnd(orig->content), count) != count) {
             return 0;
@@ -14028,7 +14002,29 @@ MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
         mprAddNullToBuf(orig->content);
 #endif
     }
+    packet->flags = orig->flags;
     return packet;
+}
+
+
+void maAdjustPacketStart(MaPacket *packet, MprOff size)
+{
+    if (packet->esize) {
+        packet->epos += size;
+        packet->esize -= size;
+    } else if (packet->content) {
+        mprAdjustBufStart(packet->content, (int) size);
+    }
+}
+
+
+void maAdjustPacketEnd(MaPacket *packet, MprOff size)
+{
+    if (packet->esize) {
+        packet->esize += size;
+    } else if (packet->content) {
+        mprAdjustBufEnd(packet->content, (int) size);
+    }
 }
 
 

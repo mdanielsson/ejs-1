@@ -251,38 +251,6 @@
 #define MA_HANDLER_HASH_SIZE    17              /* Size of handler hash */
 #define MA_ACTION_HASH_SIZE     13              /* Size of action program hash */
 
-/*
- *  These constants are to sanity check user input in the http.conf
- */
-#define MA_TOP_THREADS          100
-
-#define MA_BOT_BODY             512
-#define MA_TOP_BODY             (0x7fffffff)        /* 2 GB */
-
-#define MA_BOT_CHUNK_SIZE       512
-#define MA_TOP_CHUNK_SIZE       (4 * 1024 * 1024)   /* 4 MB */
-
-#define MA_BOT_NUM_HEADERS      8
-#define MA_TOP_NUM_HEADERS      (20 * 1024)
-
-#define MA_BOT_HEADER           512
-#define MA_TOP_HEADER           (20 * 1024 * 1024)
-
-#define MA_BOT_URL              64
-#define MA_TOP_URL              (255 * 1024 * 1024) /* 256 MB */
-
-#define MA_BOT_RESPONSE_BODY    512
-#define MA_TOP_RESPONSE_BODY    0x7fffffff          /* 2 GB */
-
-#define MA_BOT_STACK            (16 * 1024)
-#define MA_TOP_STACK            (4 * 1024 * 1024)
-
-#define MA_BOT_STAGE_BUFFER     (2 * 1024)
-#define MA_TOP_STAGE_BUFFER     (1 * 1024 * 1024)   /* 1 MB */
-
-#define MA_BOT_UPLOAD_SIZE      1
-#define MA_TOP_UPLOAD_SIZE      0x7fffffff          /* 2 GB */
-
 #define MA_MAX_USER             MPR_HTTP_MAX_USER
 
 #endif /* _h_HTTP_TUNE */
@@ -371,15 +339,15 @@ typedef int (*MaFillProc)(struct MaQueue *q, struct MaPacket *packet, MprOff pos
  *  @see MaLimits
  */
 typedef struct MaLimits {
-    int             maxBody;                /**< Max size of an incoming request */
+    MprOff          maxBody;                /**< Max size of an incoming request */
+    MprOff          maxResponseBody;        /**< Max size of generated response content */
+    MprOff          maxUploadSize;          /**< Max size of an uploaded file */
     int             maxChunkSize;           /**< Max chunk size for transfer encoding */
     int             maxHeader;              /**< Max size of the total header */
     int             maxNumHeaders;          /**< Max number of lines of header */
-    int             maxResponseBody;        /**< Max size of generated response content */
     int             maxStageBuffer;         /**< Max buffering by any pipeline stage */
     int             maxThreads;             /**< Max number of pool threads */
     int             minThreads;             /**< Min number of pool threads */
-    int             maxUploadSize;          /**< Max size of an uploaded file */
     int             maxUrl;                 /**< Max size of a URL */
     int             threadStackSize;        /**< Stack size for each pool thread */
 } MaLimits;
@@ -418,9 +386,6 @@ typedef struct MaHttp {
     struct MaStage  *passHandler;           /**< Pass through handler */
     struct MaStage  *phpHandler;            /**< PHP handler */
 
-#if UNUSED
-    void            (*rangeService)(struct MaQueue *q, MaRangeFillProc fill);
-#endif
     MaListenCallback listenCallback;        /**< Invoked when creating listeners */
 #if BLD_FEATURE_CMD
     MprForkCallback forkCallback;
@@ -1148,15 +1113,15 @@ extern bool maFixRangeLength(struct MaConn *conn);
  *      The pipeline stages will fill or transform packet data as required.
  *  @stability Evolving
  *  @defgroup MaPacket MaPacket
- *  @see MaPacket MaQueue maCreateDataPackage maCreatePacket maCreateEndPacket maJoinPacket maSplitPacket 
+ *  @see MaPacket MaQueue maCreateDataPacket maCreatePacket maCreateEndPacket maJoinPacket maSplitPacket 
  *      maGetPacketLength maCreateHeaderPacket
  */
 typedef struct MaPacket {
     MprBuf          *prefix;                /**< Prefix message to be emitted before the content */
     MprBuf          *content;               /**< Chunk content */
-    MprBuf          *suffix;                /**< Prefix message to be emitted after the content */
     int             flags;                  /**< Packet flags */
-    int64           entityLength;           /**< Entity length. Content is null. */
+    MprOff          esize;                  /**< Data size in entity */
+    MprOff          epos;                   /**< Data position in entity */
     MaFillProc      fill;                   /**< Callback to fill packet with data */
     struct MaPacket *next;                  /**< Next packet in chain */
 } MaPacket;
@@ -1185,6 +1150,7 @@ extern MaPacket *maCloneEntityPacket(MprCtx ctx, MaPacket *orig);
  *  @ingroup MaPacket
  */
 extern MaPacket *maCreateDataPacket(MprCtx ctx, int size);
+extern MaPacket *maCreateEntityPacket(MprCtx ctx, MprOff pos, MprOff size, MaFillProc fill);
 
 /**
  *  Create a response header packet
@@ -1245,6 +1211,11 @@ extern int maGetPacketLength(MaPacket *packet);
 #else
 #define maGetPacketLength(p) (p->content ? mprGetBufLength(p->content) : 0)
 #endif
+#define maGetPacketEntityLength(p) (p->content ? mprGetBufLength(p->content) : packet->esize)
+
+extern void maAdjustPacketEnd(MaPacket *packet, MprOff size);
+extern void maAdjustPacketStart(MaPacket *packet, MprOff size);
+
 
 /*
  *  Queue directions
@@ -1325,7 +1296,8 @@ typedef struct MaQueue {
     MprIOVec        iovec[MA_MAX_IOVEC];
     int             ioIndex;                /**< Next index into iovec */
     int             ioFile;                 /**< Doing file send */
-    int64           ioCount;                /**< Count of bytes in iovec */
+    MprOff          ioCount;                /**< Count of bytes in iovec including file I/O */
+    MprOff          ioPos;                  /**< Position in file for sendfile */
 } MaQueue;
 
 
@@ -2201,7 +2173,9 @@ typedef struct MaResponse {
     MaQueue         queue[2];               /**< Dummy head for the response queues */
 
     int64           length;                 /**< Response content length */
+#if UNUSED
     int64           pos;                    /**< Current I/O position */
+#endif
 
     /*
      *  File information for file based handlers

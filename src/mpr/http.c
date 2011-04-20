@@ -696,7 +696,7 @@ static int setContentLength(MprHttp *http, MprList *fields, MprList *files)
 {
     MprPath     info;
     char        *path, *pair;
-    int         len;
+    int64       len;
     int         next, count;
 
     len = 0;
@@ -711,17 +711,21 @@ static int setContentLength(MprHttp *http, MprList *fields, MprList *files)
                 mprError(http, "Can't access file %s", path);
                 return MPR_ERR_CANT_ACCESS;
             }
-            len += (int) info.size;
+            len += info.size;
         }
         if (fields) {
             count = mprGetListCount(fields);
             for (next = 0; (pair = mprGetNextItem(fields, &next)) != 0; ) {
-                len += (int) strlen(pair);
+                len += strlen(pair);
             }
             len += mprGetListCount(fields) - 1;
         }
     }
-    mprSetHttpBody(http, NULL, len);
+    if (len > (16 * MPR_HTTP_BUFSIZE)) {
+        mprSetHttpChunked(http, 1);
+    } else {
+        mprSetHttpBody(http, NULL, (int) len);
+    }
     return 0;
 }
 
@@ -862,7 +866,9 @@ static char *resolveUrl(MprHttp *http, cchar *url)
         }
     } 
     if (mprStrcmpAnyCaseCount(url, "http://", 7) != 0 && mprStrcmpAnyCaseCount(url, "https://", 8) != 0) {
-        if (isPort(url)) {
+        if (*url == ':' && isPort(&url[1])) {
+            return mprAsprintf(http, -1, "http://127.0.0.1%s", url);
+        } else if (isPort(url)) {
             return mprAsprintf(http, -1, "http://127.0.0.1:%s", url);
         } else {
             return mprAsprintf(http, -1, "http://%s", url);
