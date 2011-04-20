@@ -170,7 +170,7 @@ static int loadModuleFile(Ejs *ejs, char *fileName)
      *  Strip trailing ".mod" if present
      */
     fileName = mprStrdup(ejs, fileName);
-    len = strlen(fileName);
+    len = (int) strlen(fileName);
     if (len > 4 && strcmp(&fileName[len - 4], EJS_MODULE_EXT) == 0) {
         fileName[len - 4] = '\0';
     }

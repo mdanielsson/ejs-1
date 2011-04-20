@@ -1919,7 +1919,7 @@ static void genDefaultParameterCode(EcCompiler *cp, EcNode *np, EjsFunction *fun
     mprAssert(parameters);
 
     count = mprGetListCount(parameters->children);
-    buffers = (EcCodeGen**) mprAllocZeroed(state, count * sizeof(EcCodeGen*));
+    buffers = (EcCodeGen**) mprAllocZeroed(state, count * (int) sizeof(EcCodeGen*));
 
     for (next = 0; (child = getNextNode(cp, parameters, &next)) && !cp->error; ) {
         mprAssert(child->kind == N_VAR_DEFINITION);

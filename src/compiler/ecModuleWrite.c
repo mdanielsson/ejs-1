@@ -79,7 +79,7 @@ int ecCreateModuleSection(EcCompiler *cp)
     /*
      *  Remember this location for the module checksum. Reserve 4 bytes.
      */
-    state->checksumOffset = mprGetBufEnd(buf) - buf->data;
+    state->checksumOffset = (int) (mprGetBufEnd(buf) - buf->data);
     mprAdjustBufEnd(buf, 4);
 
     /*
@@ -659,7 +659,7 @@ static int createDocSection(EcCompiler *cp, EjsVar *block, int slotNum, EjsTrait
     }
     if (slotNum < 0) {
         mprAssert(ejsIsBlock(block));
-        slotNum = trait - ((EjsBlock*) block)->traits;
+        slotNum = (int) (trait - ((EjsBlock*) block)->traits);
     }
     mprAssert(slotNum >= 0);
     mprSprintf(key, sizeof(key), "%Lx %d", PTOL(block), slotNum);
@@ -783,7 +783,7 @@ int ecAddDocConstant(EcCompiler *cp, EjsTrait *trait, EjsVar *block, int slotNum
         }
         if (slotNum < 0) {
             mprAssert(ejsIsBlock(block));
-            slotNum = trait - ((EjsBlock*) block)->traits;
+            slotNum = (int) (trait - ((EjsBlock*) block)->traits);
         }
         mprAssert(slotNum >= 0);
         mprSprintf(key, sizeof(key), "%Lx %d", PTOL(block), slotNum);

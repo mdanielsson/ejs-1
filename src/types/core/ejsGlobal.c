@@ -111,11 +111,11 @@ static EjsVar *error(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
             }
             if (vp) {
                 s = (EjsString*) vp;
-                junk = write(2, s->value, s->length);
+                junk = (int) write(2, s->value, s->length);
             }
         }
     }
-    junk = write(2, "\n", 1);
+    junk = (int) write(2, "\n", 1);
     return 0;
 }
 
@@ -323,15 +323,15 @@ static EjsVar *outputData(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
                 if (ejsIsObject(vp) && s->length > 0 && s->value[0] == '"') {
                     tmp = mprStrdup(ejs, s->value);
                     cp = mprStrTrim(tmp, "\"");
-                    junk = write(1, cp, strlen(cp));
+                    junk = (int) write(1, cp, strlen(cp));
                     mprFree(tmp);
                 } else {
-                    junk = write(1, s->value, s->length);
+                    junk = (int) write(1, s->value, s->length);
                 }
             }
         }
     }
-    junk = write(1, "\n", 1);
+    junk = (int) write(1, "\n", 1);
     return 0;
 }
 

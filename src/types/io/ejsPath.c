@@ -1130,7 +1130,7 @@ static EjsVar *pathToJSON(Ejs *ejs, EjsPath *fp, int argc, EjsVar **argv)
     int     i, c, len;
 
     buf = mprCreateBuf(fp, 0, 0);
-    len = strlen(fp->path);
+    len = (int) strlen(fp->path);
     mprPutCharToBuf(buf, '"');
     for (i = 0; i < len; i++) {
         c = fp->path[i];

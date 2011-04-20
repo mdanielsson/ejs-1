@@ -367,7 +367,7 @@ EjsEx *ejsAddException(EjsFunction *fun, uint tryStart, uint tryEnd, EjsType *ca
 
     if (preferredIndex >= code->sizeHandlers) {
         size = code->sizeHandlers + EJS_EX_INC;
-        code->handlers = (EjsEx**) mprRealloc(fun, code->handlers, size * sizeof(EjsEx));
+        code->handlers = (EjsEx**) mprRealloc(fun, code->handlers, (int) (size * sizeof(EjsEx)));
         if (code->handlers == 0) {
             mprAssert(0);
             return 0;
@@ -433,7 +433,7 @@ static EjsFrame *allocFrame(Ejs *ejs, int numSlots)
 
     mprAssert(ejs);
 
-    size = numSlots * sizeof(EjsVar*) + sizeof(EjsFrame);
+    size = (int) (numSlots * sizeof(EjsVar*) + sizeof(EjsFrame));
 
     if ((obj = (EjsObject*) mprAllocZeroed(ejsGetAllocCtx(ejs), size)) == 0) {
         ejsThrowMemoryError(ejs);

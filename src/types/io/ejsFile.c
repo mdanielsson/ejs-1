@@ -43,7 +43,8 @@ static void destroyFile(Ejs *ejs, EjsFile *fp)
  */
 static EjsVar *getFileProperty(Ejs *ejs, EjsFile *fp, int slotNum)
 {
-    int     c, offset;
+    MprOff  offset;
+    int     c;
 
     if (!(fp->mode & FILE_OPEN)) {
         ejsThrowIOError(ejs, "File is not open");
@@ -61,7 +62,6 @@ static EjsVar *getFileProperty(Ejs *ejs, EjsFile *fp, int slotNum)
         return 0;
     }
 #endif
-
     offset = mprSeek(fp->file, SEEK_CUR, 0);
     if (offset != slotNum) {
         if (mprSeek(fp->file, SEEK_SET, slotNum) != slotNum) {
@@ -83,7 +83,8 @@ static EjsVar *getFileProperty(Ejs *ejs, EjsFile *fp, int slotNum)
  */
 static int setFileProperty(Ejs *ejs, EjsFile *fp, int slotNum, EjsVar *value)
 {
-    int     c, offset;
+    MprOff  offset;
+    int     c;
 
     if (!(fp->mode & FILE_OPEN)) {
         ejsThrowIOError(ejs, "File is not open");
@@ -98,7 +99,7 @@ static int setFileProperty(Ejs *ejs, EjsFile *fp, int slotNum, EjsVar *value)
     offset = mprSeek(fp->file, SEEK_CUR, 0);
     if (slotNum < 0) {
         //  could have an mprGetPosition(file) API
-        slotNum = offset;
+        slotNum = (int) offset;
     }
 
     if (offset != slotNum && mprSeek(fp->file, SEEK_SET, slotNum) != slotNum) {

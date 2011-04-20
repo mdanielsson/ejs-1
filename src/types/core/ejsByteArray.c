@@ -722,7 +722,7 @@ static EjsVar *readDate(Ejs *ejs, EjsByteArray *ap, int argc, EjsVar **argv)
 
     value = * (double*) &ap->value[ap->readPosition];
     value = swapDouble(ap, value);
-    adjustReadPosition(ap, sizeof(double));
+    adjustReadPosition(ap, (int) sizeof(double));
 
     return (EjsVar*) ejsCreateDate(ejs, (MprTime) value);
 }
@@ -747,7 +747,7 @@ static EjsVar *readDouble(Ejs *ejs, EjsByteArray *ap, int argc, EjsVar **argv)
     memcpy(&value, (char*) &ap->value[ap->readPosition], sizeof(double));
 #endif
     value = swapDouble(ap, value);
-    adjustReadPosition(ap, sizeof(double));
+    adjustReadPosition(ap, (int) sizeof(double));
     return (EjsVar*) ejsCreateNumber(ejs, (MprNumber) value);
 }
 #endif
@@ -767,7 +767,7 @@ static EjsVar *readInteger(Ejs *ejs, EjsByteArray *ap, int argc, EjsVar **argv)
 
     value = * (int*) &ap->value[ap->readPosition];
     value = swap32(ap, value);
-    adjustReadPosition(ap, sizeof(int));
+    adjustReadPosition(ap, (int) sizeof(int));
 
     return (EjsVar*) ejsCreateNumber(ejs, value);
 }
@@ -788,7 +788,7 @@ static EjsVar *readLong(Ejs *ejs, EjsByteArray *ap, int argc, EjsVar **argv)
 
     value = * (int64*) &ap->value[ap->readPosition];
     value = swap64(ap, value);
-    adjustReadPosition(ap, sizeof(int64));
+    adjustReadPosition(ap, (int) sizeof(int64));
 
     return (EjsVar*) ejsCreateNumber(ejs, (MprNumber) value);
 }
@@ -844,7 +844,7 @@ static EjsVar *readShort(Ejs *ejs, EjsByteArray *ap, int argc, EjsVar **argv)
     }
     value = * (short*) &ap->value[ap->readPosition];
     value = swap16(ap, value);
-    adjustReadPosition(ap, sizeof(short));
+    adjustReadPosition(ap, (int) sizeof(short));
     return (EjsVar*) ejsCreateNumber(ejs, value);
 }
 
@@ -1324,7 +1324,7 @@ static void putShort(EjsByteArray *ap, int value)
     value = swap16(ap, value);
 
     *((short*) &ap->value[ap->writePosition]) = (short) value;
-    ap->writePosition += sizeof(short);
+    ap->writePosition += (int) sizeof(short);
 }
 
 
@@ -1333,7 +1333,7 @@ static void putInteger(EjsByteArray *ap, int value)
     value = swap32(ap, value);
 
     *((int*) &ap->value[ap->writePosition]) = (int) value;
-    ap->writePosition += sizeof(int);
+    ap->writePosition += (int) sizeof(int);
 }
 
 
@@ -1342,7 +1342,7 @@ static void putLong(EjsByteArray *ap, int64 value)
     value = swap64(ap, value);
 
     *((int64*) &ap->value[ap->writePosition]) = value;
-    ap->writePosition += sizeof(int64);
+    ap->writePosition += (int) sizeof(int64);
 }
 
 
@@ -1356,7 +1356,7 @@ static void putDouble(EjsByteArray *ap, double value)
 #else
     memcpy((char*) &ap->value[ap->writePosition], &value, sizeof(double));
 #endif
-    ap->writePosition += sizeof(double);
+    ap->writePosition += (int) sizeof(double);
 }
 #endif
 

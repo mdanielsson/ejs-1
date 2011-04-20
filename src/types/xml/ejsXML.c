@@ -1082,7 +1082,7 @@ static int readStringData(MprXml *xp, void *data, char *buf, int size)
     parser = (EjsXmlState*) xp->parseArg;
 
     if (parser->inputPos < parser->inputSize) {
-        len = min(size, (parser->inputSize - parser->inputPos));
+        len = (int) min(size, (parser->inputSize - parser->inputPos));
         rc = mprMemcpy(buf, size, &parser->inputBuf[parser->inputPos], len);
         parser->inputPos += len;
         return rc;

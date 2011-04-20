@@ -12,7 +12,7 @@
 
 static int growList(MprCtx ctx, EjsList *lp, int incr);
 
-#define CAPACITY(lp) (mprGetBlockSize(lp) / sizeof(void*))
+#define CAPACITY(lp) ((int) (mprGetBlockSize(lp) / sizeof(void*)))
 
 //  OPT - inline some of these functions as macros
 
@@ -41,7 +41,7 @@ int ejsSetListLimits(MprCtx ctx, EjsList *lp, int initialSize, int maxSize)
     if (maxSize <= 0) {
         maxSize = MAXINT;
     }
-    size = initialSize * sizeof(void*);
+    size = (int) (initialSize * sizeof(void*));
 
     if (lp->items == 0) {
         lp->items = (void**) mprAllocZeroed(ctx, size);
@@ -292,7 +292,7 @@ static int growList(MprCtx ctx, EjsList *lp, int incr)
     } else {
         len = capacity + incr;
     }
-    memsize = len * sizeof(void*);
+    memsize = (int) (len * sizeof(void*));
 
     /*
      *  Grow the list of items. Use the existing context for lp->items if it already exists. Otherwise use the list as the

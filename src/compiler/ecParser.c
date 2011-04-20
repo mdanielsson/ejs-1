@@ -515,7 +515,7 @@ static int compileInner(EcCompiler *cp, int argc, char **argv, int flags)
     saveFlags = ejs->flags;
     ejs->flags |= EJS_FLAG_COMPILER;
 
-    nodes = (EcNode**) mprAllocZeroed(cp, sizeof(EcNode*) * argc);
+    nodes = (EcNode**) mprAllocZeroed(cp, argc * (int) sizeof(EcNode*));
     if (nodes == 0) {
         return EJS_ERR;
     }
@@ -871,7 +871,7 @@ static EcNode *parseXMLText(EcCompiler *cp, EcNode *np)
         for (p = cp->peekToken->text; p && *p; p++) {
             if (*p == '{' || *p == '<') {
                 if (cp->peekToken->text < p) {
-                    mprPutBlockToBuf(np->literal.data, (cchar*) cp->token->text, p - cp->token->text);
+                    mprPutBlockToBuf(np->literal.data, (cchar*) cp->token->text, (int) (p - cp->token->text));
                     mprAddNullToBuf(np->literal.data);
                     if (getToken(cp) == T_EOF || cp->token->tokenId == T_ERR || cp->token->tokenId == T_NOP) {
                         return 0;

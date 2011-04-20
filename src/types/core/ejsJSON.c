@@ -164,7 +164,7 @@ Token getNextJsonToken(MprBuf *buf, char **token, JsonState *js)
             }
         }
         if (buf) {
-            mprPutBlockToBuf(buf, (char*) start, cp - start);
+            mprPutBlockToBuf(buf, (char*) start, (int) (cp - start));
             mprAddNullToBuf(buf);
         }
         if (quote > 0) {

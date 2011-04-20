@@ -859,13 +859,12 @@ static int ejsGetBlockSize(Ejs *ejs, EjsBlock *block)
 
     numProp = ejsGetPropertyCount(ejs, (EjsVar*) block);
 
-    size = sizeof(EjsType) + sizeof(EjsTypeHelpers) + (numProp * sizeof(EjsVar*));
+    size = (int) (sizeof(EjsType) + sizeof(EjsTypeHelpers) + (numProp * sizeof(EjsVar*)));
     if (block->obj.names) {
-        size += sizeof(EjsNames) + (block->obj.names->sizeEntries * sizeof(EjsHashEntry));
-        size += (block->obj.names->sizeBuckets * sizeof(int*));
+        size += (int) (sizeof(EjsNames) + (block->obj.names->sizeEntries * sizeof(EjsHashEntry)));
+        size += (int) ((block->obj.names->sizeBuckets * sizeof(int*)));
     }
-    size += ejsGetNumTraits(block) * sizeof(EjsTrait);
-
+    size += (int) (ejsGetNumTraits(block) * sizeof(EjsTrait));
     return size;
 }
 

@@ -248,7 +248,7 @@ static EjsVar *sqliteSql(Ejs *ejs, EjsSqlite *db, int argc, EjsVar **argv)
                         /*
                          *  Append the table name for columns from foreign tables. Convert to camel case (tableColumn)
                          */
-                        len = strlen(tableName) + 1;
+                        len = (int) strlen(tableName) + 1;
                         tableName = mprStrcat(row->names, -1, "_", tableName, colName, NULL);
                         if (len > 3 && tableName[len - 1] == 's' && tableName[len - 2] == 'e' && tableName[len - 3] == 'i') {
                             tableName[len - 3] = 'y';

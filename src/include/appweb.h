@@ -355,7 +355,7 @@ struct MaStage;
 struct MaSsl;
 #endif
 
-typedef int (*MaRangeFillProc)(struct MaQueue *q, struct MaPacket *packet);
+typedef int (*MaFillProc)(struct MaQueue *q, struct MaPacket *packet, MprOff pos, int size);
 
 /********************************** Defaults **********************************/
 
@@ -418,7 +418,9 @@ typedef struct MaHttp {
     struct MaStage  *passHandler;           /**< Pass through handler */
     struct MaStage  *phpHandler;            /**< PHP handler */
 
+#if UNUSED
     void            (*rangeService)(struct MaQueue *q, MaRangeFillProc fill);
+#endif
     MaListenCallback listenCallback;        /**< Invoked when creating listeners */
 #if BLD_FEATURE_CMD
     MprForkCallback forkCallback;
@@ -1115,13 +1117,15 @@ extern MaLocation *maCreateLocationAlias(MaHttp *http, MaConfigState *state, cch
  *  @see MaRange
  */
 typedef struct MaRange {
-    int             start;                  /**< Start of range */
-    int             end;                    /**< End byte of range + 1 */
-    int             len;                    /**< Redundant range length */
+    int64           start;                  /**< Start of range */
+    int64           end;                    /**< End byte of range + 1 */
+    int64           len;                    /**< Redundant range length */
     struct MaRange  *next;                  /**< Next range */
 } MaRange;
 
+#if UNUSED
 extern void maRangeService(struct MaQueue *q, MaRangeFillProc fill);
+#endif
 extern void maCreateRangeBoundary(struct MaConn *conn);
 extern bool maFixRangeLength(struct MaConn *conn);
 
@@ -1153,6 +1157,7 @@ typedef struct MaPacket {
     MprBuf          *suffix;                /**< Prefix message to be emitted after the content */
     int             flags;                  /**< Packet flags */
     int64           entityLength;           /**< Entity length. Content is null. */
+    MaFillProc      fill;                   /**< Callback to fill packet with data */
     struct MaPacket *next;                  /**< Next packet in chain */
 } MaPacket;
 
@@ -1167,6 +1172,8 @@ typedef struct MaPacket {
 extern MaPacket *maCreatePacket(MprCtx ctx, int size);
 extern MaPacket *maCreateConnPacket(struct MaConn *conn, int size);
 extern void maFreePacket(struct MaQueue *q, MaPacket *packet);
+extern MaPacket *maCloneEntityPacket(MprCtx ctx, MaPacket *orig);
+
 
 /**
  *  Create a data packet
@@ -1236,7 +1243,7 @@ extern MaPacket *maSplitPacket(MprCtx ctx, MaPacket *packet, int offset);
  */
 extern int maGetPacketLength(MaPacket *packet);
 #else
-#define maGetPacketLength(p) (p->content ? mprGetBufLength(p->content) : p->entityLength)
+#define maGetPacketLength(p) (p->content ? mprGetBufLength(p->content) : 0)
 #endif
 
 /*
@@ -1304,9 +1311,9 @@ typedef struct MaQueue {
     MaPacket        *first;                 /**< First packet in queue (singly linked) */
     MaPacket        *last;                  /**< Last packet in queue (tail pointer) */
     MprCond         *cond;                  /**< Optional multithread sync */
-    int64           count;                  /**< Bytes in queue */
-    int64           max;                    /**< Maxiumum queue size */
-    int64           low;                    /**< Low water mark for flow control */
+    int             count;                  /**< Bytes in queue */
+    int             max;                    /**< Maxiumum queue size */
+    int             low;                    /**< Low water mark for flow control */
     int             flags;                  /**< Queue flags */
     int             packetSize;             /**< Maximum acceptable packet size */
     int             direction;              /**< Flow direction */
@@ -1317,9 +1324,8 @@ typedef struct MaQueue {
      */
     MprIOVec        iovec[MA_MAX_IOVEC];
     int             ioIndex;                /**< Next index into iovec */
-    int             ioFileEntry;            /**< Has file entry in iovec */
+    int             ioFile;                 /**< Doing file send */
     int64           ioCount;                /**< Count of bytes in iovec */
-    int64           ioFileOffset;           /**< The next file position to use */
 } MaQueue;
 
 
@@ -1468,7 +1474,7 @@ extern void maRemoveQueue(MaQueue *q);
  *  @return Zero if successful, otherwise a negative Mpr error code
  *  @ingroup MaQueue
  */
-extern int  maResizePacket(MaQueue *q, MaPacket *packet, int64 size);
+extern int  maResizePacket(MaQueue *q, MaPacket *packet, int size);
 
 /**
  *  Schedule a queue
@@ -1513,6 +1519,7 @@ extern void maServiceQueue(MaQueue *q);
  *  @ingroup MaQueue
  */
 extern bool maWillNextQueueAccept(MaQueue *q, MaPacket *packet);
+extern bool maWillNextQueueAcceptSize(MaQueue *q, int size);
 
 /**
  *  Write a formatted string
@@ -1914,7 +1921,7 @@ extern void maSetRequestGroup(MaConn *conn, cchar *group);
 extern void maSetRequestUser(MaConn *conn, cchar *user);
 
 #define maShouldTrace(conn, mask) ((conn->trace & (mask)) == (mask))
-extern void maTraceContent(MaConn *conn, MaPacket *packet, int size, int offset, int mask);
+extern void maTraceContent(MaConn *conn, MaPacket *packet, int64 size, int64 offset, int mask);
 
 /********************************** MaRequest *********************************/
 /*
@@ -2141,7 +2148,7 @@ extern cvoid        *maGetStageData(MaConn *conn, cchar *key);
 extern bool         maProcessCompletion(MaConn *conn);
 extern void         maCompleteRequest(MaConn *conn);
 extern bool         maContentNotModified(MaConn *conn);
-extern MaRange      *maCreateRange(MaConn *conn, int start, int end);
+extern MaRange      *maCreateRange(MaConn *conn, int64 start, int64 end);
 extern MaRequest    *maCreateRequest(MaConn *conn);
 extern MaRequest    *maCreateRequest(struct MaConn *conn);
 extern void         maDisconnectConn(struct MaConn *conn);
@@ -2209,6 +2216,7 @@ typedef struct MaResponse {
 
     MaRange         *currentRange;          /**< Current range being fullfilled */
     char            *rangeBoundary;         /**< Inter-range boundary */
+    int64           rangePos;               /**< Current range I/O position */
 
     MaRedirectCallback redirectCallback;    /**< Redirect callback */
     MaEnvCallback   envCallback;            /**< SetEnv callback */

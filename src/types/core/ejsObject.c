@@ -107,7 +107,7 @@ EjsObject *ejsCreateObject(Ejs *ejs, EjsType *type, int numExtraSlots)
             }
 
         } else {
-            if ((obj = (EjsObject*) ejsAllocVar(ejs, type, roundSlots * sizeof(EjsVar*))) == 0) {
+            if ((obj = (EjsObject*) ejsAllocVar(ejs, type, roundSlots * (int) sizeof(EjsVar*))) == 0) {
                 return 0;
             }
             /*
@@ -118,7 +118,7 @@ EjsObject *ejsCreateObject(Ejs *ejs, EjsType *type, int numExtraSlots)
         }
 
     } else {
-        size = type->instanceSize - sizeof(EjsObject);
+        size = type->instanceSize - (int) sizeof(EjsObject);
     }
     obj->var.type = type;
     obj->var.isObject = 1;
@@ -838,7 +838,7 @@ static int growSlots(Ejs *ejs, EjsObject *obj, int capacity)
         if (obj->slots == 0) {
             mprAssert(obj->capacity == 0);
             mprAssert(capacity > 0);
-            obj->slots = (EjsVar**) mprAlloc(obj, sizeof(EjsVar*) * capacity);
+            obj->slots = (EjsVar**) mprAlloc(obj, (int) sizeof(EjsVar*) * capacity);
             if (obj->slots == 0) {
                 return EJS_ERR;
             }
@@ -847,9 +847,9 @@ static int growSlots(Ejs *ejs, EjsObject *obj, int capacity)
         } else {
             if (obj->var.separateSlots) {
                 mprAssert(obj->capacity > 0);
-                obj->slots = (EjsVar**) mprRealloc(obj, obj->slots, sizeof(EjsVar*) * capacity);
+                obj->slots = (EjsVar**) mprRealloc(obj, obj->slots, (int) sizeof(EjsVar*) * capacity);
             } else {
-                slots = (EjsVar**) mprAlloc(obj, sizeof(EjsVar*) * capacity);
+                slots = (EjsVar**) mprAlloc(obj, (int) sizeof(EjsVar*) * capacity);
                 memcpy(slots, obj->slots, obj->capacity * sizeof(EjsVar*));
                 obj->var.separateSlots = 1;
                 obj->slots = slots;
@@ -962,13 +962,13 @@ int ejsGrowObjectNames(EjsObject *obj, int size)
     size = EJS_PROP_ROUNDUP(size);
     
     if (ownNames) {
-        entries = (EjsHashEntry*) mprRealloc(names, names->entries, sizeof(EjsHashEntry) * size);
+        entries = (EjsHashEntry*) mprRealloc(names, names->entries, (int) sizeof(EjsHashEntry) * size);
         if (entries == 0) {
             return EJS_ERR;
         }
 
     } else {
-        entries = (EjsHashEntry*) mprAlloc(names, sizeof(EjsHashEntry) * size);
+        entries = (EjsHashEntry*) mprAlloc(names, (int) sizeof(EjsHashEntry) * size);
         if (entries == 0) {
             return EJS_ERR;
         }
@@ -1086,7 +1086,7 @@ static int makeHash(EjsObject *obj)
     newHashSize = ejsGetHashSize(obj->numProp);
     if (names->sizeBuckets < newHashSize) {
         mprFree(names->buckets);
-        names->buckets = (int*) mprAlloc(names, newHashSize * sizeof(int));
+        names->buckets = (int*) mprAlloc(names, newHashSize * (int) sizeof(int));
         if (names->buckets == 0) {
             return EJS_ERR;
         }

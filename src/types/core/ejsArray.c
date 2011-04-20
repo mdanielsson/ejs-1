@@ -1501,8 +1501,7 @@ static int growArray(Ejs *ejs, EjsArray *ap, int len)
     if (len <= ap->length) {
         return 0;
     }
-
-    size = mprGetBlockSize(ap->data) / sizeof(EjsVar*);
+    size = mprGetBlockSize(ap->data) / (int) sizeof(EjsVar*);
 
     /*
      *  Allocate or grow the data structures.
@@ -1521,14 +1520,14 @@ static int growArray(Ejs *ejs, EjsArray *ap, int len)
         if (ap->data == 0) {
             mprAssert(ap->length == 0);
             mprAssert(count > 0);
-            ap->data = (EjsVar**) mprAllocZeroed(ap, sizeof(EjsVar*) * count);
+            ap->data = (EjsVar**) mprAllocZeroed(ap, (int) sizeof(EjsVar*) * count);
             if (ap->data == 0) {
                 return EJS_ERR;
             }
 
         } else {
             mprAssert(size > 0);
-            ap->data = (EjsVar**) mprRealloc(ap, ap->data, sizeof(EjsVar*) * count);
+            ap->data = (EjsVar**) mprRealloc(ap, ap->data, (int) sizeof(EjsVar*) * count);
             if (ap->data == 0) {
                 return EJS_ERR;
             }

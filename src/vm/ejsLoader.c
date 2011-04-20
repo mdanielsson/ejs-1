@@ -191,7 +191,7 @@ static char *makeModuleName(MprCtx ctx, cchar *nameArg)
 {
     char        *name, *cp, *filename;
 
-    name = mprAlloc(ctx, strlen(nameArg) + strlen(EJS_MODULE_EXT) + 1);
+    name = mprAlloc(ctx, (int) (strlen(nameArg) + strlen(EJS_MODULE_EXT) + 1));
     strcpy(name, nameArg);
     if ((cp = strrchr(name, '.')) != 0 && strcmp(cp, EJS_MODULE_EXT) == 0) {
         *cp = '\0';
@@ -1227,7 +1227,7 @@ static char *probe(Ejs *ejs, cchar *path, int minVersion, int maxVersion)
         *ext = '\0';
     }
     files = mprGetPathFiles(ejs, dir, 0);
-    nameLen = strlen(base);
+    nameLen = (int) strlen(base);
     bestVersion = -1;
     best = 0;
 

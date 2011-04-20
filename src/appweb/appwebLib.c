@@ -291,7 +291,7 @@ bool maValidateNativeCredentials(MaConn *conn, cchar *realm, cchar *user, cchar 
     
     if (auth->type == MA_AUTH_BASIC) {
         mprSprintf(passbuf, sizeof(passbuf), "%s:%s:%s", user, realm, password);
-        len = strlen(passbuf);
+        len = (int) strlen(passbuf);
         hashedPassword = mprGetMD5Hash(conn, passbuf, len, NULL);
         password = hashedPassword;
     }
@@ -2162,7 +2162,7 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
                     if (*hostName == '[') {
                         hostName++;
                     }
-                    len = strlen(hostName);
+                    len = (int) strlen(hostName);
                     if (hostName[len - 1] == ']') {
                         hostName[len - 1] = '\0';
                     }
@@ -2587,7 +2587,7 @@ static int matchRef(cchar *key, char **src)
     mprAssert(src);
     mprAssert(key && *key);
 
-    len = strlen(key);
+    len = (int) strlen(key);
     if (strncmp(*src, key, len) == 0) {
         *src += len;
         return 1;
@@ -3619,8 +3619,9 @@ static void readEvent(MaConn *conn)
 static inline MaPacket *getPacket(MaConn *conn, int *bytesToRead)
 {
     MaPacket    *packet;
-    MprBuf      *content;
     MaRequest   *req;
+    MprBuf      *content;
+    MprOff      remaining;
     int         len;
 
     req = conn->request;
@@ -3639,13 +3640,14 @@ static inline MaPacket *getPacket(MaConn *conn, int *bytesToRead)
         if (req) {
             /*
              *  Don't read more than the remainingContent unless chunked. We do this to minimize requests split 
-             *  accross packets.
+             *  across packets.
              */
             if (req->remainingContent) {
-                len = req->remainingContent;
+                remaining = req->remainingContent;
                 if (req->flags & MA_REQ_CHUNKED) {
-                    len = max(len, MA_BUFSIZE);
+                    remaining = max(remaining, MA_BUFSIZE);
                 }
+                len = (int) min(remaining, MAXINT);
             }
             len = min(len, MA_BUFSIZE);
             mprAssert(len > 0);
@@ -3769,7 +3771,7 @@ static void showRequest(MprBuf *content, int nbytes, int len);
 #if BLD_FEATURE_NET
 
 static void addPacketForNet(MaQueue *q, MaPacket *packet);
-static void adjustNetVec(MaQueue *q, int64 written);
+static void adjustNetVec(MaQueue *q, int written);
 static int64  buildNetVec(MaQueue *q);
 static void freeNetPackets(MaQueue *q, int64 written);
 
@@ -3778,8 +3780,7 @@ static void netOutgoingService(MaQueue *q)
 {
     MaConn      *conn;
     MaResponse  *resp;
-    int64       written;
-    int         errCode;
+    int         written, errCode;
 
     conn = q->conn;
     resp = conn->response;
@@ -3877,7 +3878,7 @@ static int64 buildNetVec(MaQueue *q)
 /*
  *  Add one entry to the io vector
  */
-static void addToNetVector(MaQueue *q, char *ptr, int64 bytes)
+static void addToNetVector(MaQueue *q, char *ptr, int bytes)
 {
     mprAssert(bytes > 0);
 
@@ -3922,7 +3923,7 @@ static void addPacketForNet(MaQueue *q, MaPacket *packet)
 static void freeNetPackets(MaQueue *q, int64 bytes)
 {
     MaPacket    *packet;
-    int64       len;
+    int         len;
 
     mprAssert(q->first);
     mprAssert(q->count >= 0);
@@ -3931,7 +3932,7 @@ static void freeNetPackets(MaQueue *q, int64 bytes)
     while ((packet = q->first) != 0) {
         if (packet->prefix) {
             len = mprGetBufLength(packet->prefix);
-            len = min(len, bytes);
+            len = (int) min(len, bytes);
             mprAdjustBufStart(packet->prefix, len);
             bytes -= len;
             /* Prefixes don't count in the q->count. No need to adjust */
@@ -3943,7 +3944,7 @@ static void freeNetPackets(MaQueue *q, int64 bytes)
 
         if (packet->content) {
             len = mprGetBufLength(packet->content);
-            len = min(len, bytes);
+            len = (int) min(len, bytes);
             mprAdjustBufStart(packet->content, len);
             bytes -= len;
             q->count -= len;
@@ -3968,12 +3969,11 @@ static void freeNetPackets(MaQueue *q, int64 bytes)
 /*
  *  Clear entries from the IO vector that have actually been transmitted. Support partial writes.
  */
-static void adjustNetVec(MaQueue *q, int64 written)
+static void adjustNetVec(MaQueue *q, int written)
 {
     MprIOVec    *iovec;
     MaResponse  *resp;
-    int64       len;
-    int         i, j;
+    int         len, i, j;
 
     resp = q->conn->response;
 
@@ -4116,12 +4116,6 @@ static void sendOpen(MaQueue *q)
     conn = q->conn;
     resp = conn->response;
 
-    /*
-     *  To write an entire file, reset the maximum and packet size to the maximum response body size (LimitResponseBody)
-     */
-    q->max = conn->http->limits.maxResponseBody;
-    q->packetSize = conn->http->limits.maxResponseBody;
-
     if (!conn->requestFailed && !(resp->flags & MA_RESP_NO_BODY)) {
         resp->file = mprOpen(q, resp->filename, O_RDONLY | O_BINARY, 0);
         if (resp->file == 0) {
@@ -4138,11 +4132,15 @@ static void sendOutgoingService(MaQueue *q)
 {
     MaConn      *conn;
     MaResponse  *resp;
-    int64       written, ioCount;
+    int         written;
     int         errCode;
 
     conn = q->conn;
     resp = conn->response;
+
+    if (conn->sock == 0) {
+        return;
+    }
 
     /*
      *  Loop doing non-blocking I/O until blocked or all the packets received are written.
@@ -4158,9 +4156,7 @@ static void sendOutgoingService(MaQueue *q)
         /*
          *  Write the vector and file data. Exclude the file entry in the io vector.
          */
-        ioCount = q->ioIndex - q->ioFileEntry;
-        mprAssert(ioCount >= 0);
-        written = (int) mprSendFileToSocket(conn->sock, resp->file, resp->pos, q->ioCount, q->iovec, ioCount, NULL, 0);
+        written = (int) mprSendFileToSocket(conn->sock, resp->file, resp->pos, q->ioCount, q->iovec, q->ioIndex, NULL, 0);
         mprLog(q, 5, "Send connector written %d", written);
         if (written < 0) {
             errCode = mprGetError();
@@ -4210,7 +4206,7 @@ static int64 buildSendVec(MaQueue *q)
 
     mprAssert(q->ioIndex == 0);
     q->ioCount = 0;
-    q->ioFileEntry = 0;
+    q->ioFile = 0;
 
     /*
      *  Examine each packet and accumulate as many packets into the I/O vector as possible. Can only have one data packet at
@@ -4218,26 +4214,21 @@ static int64 buildSendVec(MaQueue *q)
      *  vector entries. Leave the packets on the queue for now, they are removed after the IO is complete for the 
      *  entire packet.
      */
-    for (packet = q->first; packet && !q->ioFileEntry; packet = packet->next) {
+    for (packet = q->first; packet; packet = packet->next) {
         if (packet->flags & MA_PACKET_HEADER) {
             maFillHeaders(conn, packet);
             q->count += maGetPacketLength(packet);
 
-        } else if (maGetPacketLength(packet) == 0) {
-            /*
-             *  This is the end of file packet. If chunking, we must still add this to the vector as we need to emit 
-             *  a trailing chunk termination line.
-             */
+        } else if (maGetPacketLength(packet) == 0 && packet->entityLength == 0) {
             q->flags |= MA_QUEUE_EOF;
             if (packet->prefix == NULL) {
                 break;
             }
-
         } else if (resp->flags & MA_RESP_NO_BODY) {
             maDiscardData(q, 0);
             continue;
         }
-        if (q->ioIndex >= (MA_MAX_IOVEC - 2)) {
+        if (q->ioFile || q->ioIndex >= (MA_MAX_IOVEC - 2)) {
             break;
         }
         addPacketForSend(q, packet);
@@ -4249,7 +4240,7 @@ static int64 buildSendVec(MaQueue *q)
 /*
  *  Add one entry to the io vector
  */
-static void addToSendVector(MaQueue *q, char *ptr, int64 bytes)
+static void addToSendVector(MaQueue *q, char *ptr, int bytes)
 {
     mprAssert(bytes > 0);
 
@@ -4280,23 +4271,20 @@ static void addPacketForSend(MaQueue *q, MaPacket *packet)
     if (packet->prefix) {
         addToSendVector(q, mprGetBufStart(packet->prefix), mprGetBufLength(packet->prefix));
     }
-    if (maGetPacketLength(packet) > 0) {
+    if (packet->entityLength > 0) {
+        mprAssert(q->ioFile == 0);
+        q->ioFile = 1;
+        q->ioCount += packet->entityLength;
+
+    } else if (maGetPacketLength(packet) > 0) {
         /*
          *  Header packets have actual content. File data packets are virtual and only have a count.
          */
-        if (packet->content) {
-            addToSendVector(q, mprGetBufStart(packet->content), mprGetBufLength(packet->content));
-
-        } else {
-            addToSendVector(q, 0, maGetPacketLength(packet));
-            mprAssert(q->ioFileEntry == 0);
-            q->ioFileEntry = 1;
-            q->ioFileOffset += maGetPacketLength(packet);
+        addToSendVector(q, mprGetBufStart(packet->content), mprGetBufLength(packet->content));
+        mask = (packet->flags & MA_PACKET_HEADER) ? MA_TRACE_HEADERS : MA_TRACE_BODY;
+        if (maShouldTrace(conn, mask)) {
+            maTraceContent(conn, packet, 0, resp->bytesWritten, mask);
         }
-    }
-    mask = (packet->flags & MA_PACKET_HEADER) ? MA_TRACE_HEADERS : MA_TRACE_BODY;
-    if (maShouldTrace(conn, mask)) {
-        maTraceContent(conn, packet, 0, resp->bytesWritten, mask);
     }
 }
 
@@ -4319,23 +4307,28 @@ static void freeSentPackets(MaQueue *q, int64 bytes)
         if (packet->prefix) {
             len = mprGetBufLength(packet->prefix);
             len = min(len, bytes);
-            mprAdjustBufStart(packet->prefix, len);
+            mprAdjustBufStart(packet->prefix, (int) len);
             bytes -= len;
-            /* Prefixes dont' count in the q->count. No need to adjust */
+            /* Prefixes don't count in the q->count. No need to adjust */
             if (mprGetBufLength(packet->prefix) == 0) {
                 mprFree(packet->prefix);
                 packet->prefix = 0;
             }
         }
-        if ((len = maGetPacketLength(packet)) > 0) {
-            len = min(len, bytes);
-            if (packet->content) {
-                mprAdjustBufStart(packet->content, len);
-            } else {
-                packet->entityLength -= len;
-            }
+        if (packet->entityLength) {
+            len = min(packet->entityLength, bytes);
+            packet->entityLength -= len;
             bytes -= len;
-            q->count -= len;
+            mprAssert(packet->entityLength >= 0);
+            mprAssert(bytes == 0);
+            if (packet->entityLength > 0) {
+                break;
+            }
+        } else if ((len = maGetPacketLength(packet)) > 0) {
+            len = min(len, bytes);
+            mprAdjustBufStart(packet->content, (int) len);
+            bytes -= len;
+            q->count -= (int) len;
             mprAssert(q->count >= 0);
         }
         if (maGetPacketLength(packet) == 0) {
@@ -4360,58 +4353,33 @@ static void adjustSendVec(MaQueue *q, int64 written)
 {
     MprIOVec    *iovec;
     MaResponse  *resp;
-    int64       len;
+    size_t      len;
     int         i, j;
 
     resp = q->conn->response;
-
-    /*
-     *  Cleanup the IO vector
-     */
-    if (written == q->ioCount) {
-        /*
-         *  Entire vector written. Just reset.
-         */
-        q->ioIndex = 0;
-        q->ioCount = 0;
-        resp->pos = q->ioFileOffset;
-
-    } else {
-        /*
-         *  Partial write of an vector entry. Need to copy down the unwritten vector entries.
-         */
-        q->ioCount -= written;
-        mprAssert(q->ioCount >= 0);
-        iovec = q->iovec;
-        for (i = 0; i < q->ioIndex; i++) {
-            len = (int) iovec[i].len;
-            if (iovec[i].start) {
-                if (written < len) {
-                    iovec[i].start += written;
-                    iovec[i].len -= written;
-                    break;
-                } else {
-                    written -= len;
-                }
-            } else {
-                /*
-                 *  File data has a null start ptr
-                 */
-                resp->pos += written;
-                q->ioIndex = 0;
-                q->ioCount = 0;
-                return;
-            }
+    iovec = q->iovec;
+    for (i = 0; i < q->ioIndex; i++) {
+        len = iovec[i].len;
+        if (written < len) {
+            iovec[i].start += (size_t) written;
+            iovec[i].len -= (size_t) written;
+            return;
         }
-
-        /*
-         *  Compact
-         */
-        for (j = 0; i < q->ioIndex; ) {
+        written -= len;
+        q->ioCount -= len;
+        for (j = i; i < q->ioIndex; ) {
             iovec[j++] = iovec[i++];
         }
         q->ioIndex = j;
+        i--;
     }
+    if (written > 0 && q->ioFile) {
+        /* All remaining data came from the file */
+        resp->pos += written;
+    }
+    q->ioIndex = 0;
+    q->ioCount = 0;
+    q->ioFile = 0;
 }
 
 
@@ -4512,7 +4480,7 @@ MaDir *maCreateBareDir(MaHost *host, cchar *path)
 
     if (path) {
         dir->path = mprStrdup(dir, path);
-        dir->pathLen = strlen(path);
+        dir->pathLen = (int) strlen(path);
     }
 
     return dir;
@@ -5303,7 +5271,7 @@ static void openChunk(MaQueue *q)
     conn = q->conn;
     req = conn->request;
 
-    q->packetSize = min(conn->http->limits.maxChunkSize, q->max);
+    q->packetSize = (int) min(conn->http->limits.maxChunkSize, q->max);
     req->chunkState = MA_CHUNK_START;
 }
 
@@ -5368,7 +5336,7 @@ static void incomingChunkData(MaQueue *q, MaPacket *packet)
             maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad chunk specification");
             return;
         }
-        mprAdjustBufStart(buf, cp - start + 1);
+        mprAdjustBufStart(buf, (int) (cp - start + 1));
         req->remainingContent = req->chunkSize;
         if (req->chunkSize == 0) {
             req->chunkState = MA_CHUNK_EOF;
@@ -5436,7 +5404,7 @@ static void outgoingChunkService(MaQueue *q)
             }
         } else {
             if (resp->chunkSize < 0) {
-                resp->chunkSize = min(conn->http->limits.maxChunkSize, q->max);
+                resp->chunkSize = (int) min(conn->http->limits.maxChunkSize, q->max);
             }
         }
     }
@@ -5578,18 +5546,20 @@ MprModule *maChunkFilterInit(MaHttp *http, cchar *path)
 
 static MaPacket *createRangePacket(MaConn *conn, MaRange *range);
 static MaPacket *createFinalRangePacket(MaConn *conn);
+static bool fixRangeLength(MaConn *conn);
 
 /*
  *  Apply ranges to outgoing data. 
  */
-static void rangeService(MaQueue *q, MaRangeFillProc fill)
+static void outgoingRangeService(MaQueue *q)
 {
     MaPacket    *packet;
     MaRange     *range;
     MaConn      *conn;
     MaRequest   *req;
     MaResponse  *resp;
-    int         bytes, count, endpos;
+    int64       endpos, bytes, gap, span;
+    int         count;
 
     conn = q->conn;
     req = conn->request;
@@ -5597,22 +5567,14 @@ static void rangeService(MaQueue *q, MaRangeFillProc fill)
     range = resp->currentRange;
 
     if (!(q->flags & MA_QUEUE_SERVICED)) {
-        if (resp->entityLength < 0 && q->last->flags & MA_PACKET_END) {
-           /*
-            *   Have all the data, so compute an entity length. This allows negative ranges computed from the 
-            *   end of the data.
-            */
-           resp->entityLength = q->count;
-        }
-        if (resp->code != MPR_HTTP_CODE_OK || !maFixRangeLength(conn)) {
-            maSendPackets(q);
+        if (resp->code != MPR_HTTP_CODE_OK || !fixRangeLength(conn)) {
             maRemoveQueue(q);
             return;
         }
+        resp->code = MPR_HTTP_CODE_PARTIAL;
         if (req->ranges->next) {
             maCreateRangeBoundary(conn);
         }
-        resp->code = MPR_HTTP_CODE_PARTIAL;
     }
 
     for (packet = maGet(q); packet; packet = maGet(q)) {
@@ -5631,71 +5593,66 @@ static void rangeService(MaQueue *q, MaRangeFillProc fill)
         /*
          *  Process the current packet over multiple ranges ranges until all the data is processed or discarded.
          */
-        bytes = packet->content ? mprGetBufLength(packet->content) : packet->entityLength;
+        bytes = packet->content ? mprGetBufLength(packet->content) : (packet->entityLength - resp->rangePos);
         while (range && bytes > 0) {
 
-            endpos = resp->pos + bytes;
+            endpos = resp->rangePos + bytes;
             if (endpos < range->start) {
                 /* Packet is before the next range, so discard the entire packet */
-                resp->pos += bytes;
+                resp->rangePos += bytes;
                 maFreePacket(q, packet);
-                break;
+                bytes = 0;
 
-            } else if (resp->pos > range->end) {
+            } else if (resp->rangePos > range->end) {
                 /* Missing some output - should not happen */
                 mprAssert(0);
 
-            } else if (resp->pos < range->start) {
+            } else if (resp->rangePos < range->start) {
                 /*  Packets starts before range with some data in range so skip some data */
-                count = range->start - resp->pos;
-                bytes -= count;
-                resp->pos += count;
-                if (packet->content == 0) {
-                    packet->entityLength -= count;
-                }
+                gap = range->start - resp->rangePos;
+                bytes -= gap;
+                resp->rangePos += gap;
                 if (packet->content) {
-                    mprAdjustBufStart(packet->content, count);
+                    if (gap < mprGetBufLength(packet->content)) {
+                        mprAdjustBufStart(packet->content, (int) gap);
+                    }
                 }
                 continue;
 
             } else {
                 /* In range */
-                mprAssert(range->start <= resp->pos && resp->pos < range->end);
-                count = min(bytes, range->end - resp->pos);
-                count = min(count, q->nextQ->packetSize);
+                mprAssert(range->start <= resp->rangePos && resp->rangePos < range->end);
+                span = min(bytes, range->end - resp->rangePos);
+                count = (int) min(span, q->nextQ->packetSize);
                 mprAssert(count > 0);
-                if (count < bytes) {
-                    maResizePacket(q, packet, count);
-                }
-                if (!maWillNextQueueAccept(q, packet)) {
+
+                if (!maWillNextQueueAcceptSize(q, count)) {
                     maPutBack(q, packet);
                     return;
                 }
-                if (fill) {
-                    if ((*fill)(q, packet) < 0) {
-                        return;
-                    }
+                if (packet->entityLength > count) {
+                    /*
+                        Put back a new entity packet to be processed after this range, if the entityLength will be
+                        not satisfied by this range.
+                     */
+                    maPutBack(q, maCloneEntityPacket(q, packet));
                 }
-                bytes -= count;
-                resp->pos += count;
+                if (packet->fill && (*packet->fill)(q, packet, resp->rangePos, count) < 0) {
+                    return;
+                }
                 if (resp->rangeBoundary) {
                     maPutNext(q, createRangePacket(conn, range));
                 }
                 maPutNext(q, packet);
-                if (resp->pos >= range->end) {
-                    range = range->next;
-                }
-                break;
+                resp->rangePos += count;
+                bytes = 0;
+            }
+            if (resp->rangePos >= range->end) {
+                range = range->next;
             }
         }
     }
     resp->currentRange = range;
-}
-
-
-static void outgoingRangeService(MaQueue *q)
-{
-    rangeService(q, NULL);
 }
 
 
@@ -5760,16 +5717,16 @@ void maCreateRangeBoundary(MaConn *conn)
 /*
  *  Ensure all the range limits are within the entity size limits. Fixup negative ranges.
  */
-bool maFixRangeLength(MaConn *conn)
+static bool fixRangeLength(MaConn *conn)
 {
     MaRequest   *req;
     MaResponse  *resp;
     MaRange     *range;
-    int         length;
+    int64       length;
 
     req = conn->request;
     resp = conn->response;
-    length = resp->entityLength;
+    length = resp->entityLength ? resp->entityLength : resp->length;
 
     for (range = req->ranges; range; range = range->next) {
         /*
@@ -5799,6 +5756,7 @@ bool maFixRangeLength(MaConn *conn)
         }
         if (range->end < 0) {
             if (length <= 0) {
+                 maFailRequest(conn, MPR_HTTP_CODE_RANGE_NOT_SATISFIABLE, "Bad content range");
                 return 0;
             }
             range->end = length - range->end - 1;
@@ -5828,7 +5786,9 @@ MprModule *maRangeFilterInit(MaHttp *http, cchar *path)
         return 0;
     }
     http->rangeFilter = filter;
+#if UNUSED
     http->rangeService = rangeService;
+#endif
     filter->outgoingService = outgoingRangeService; 
     return module;
 }
@@ -5991,7 +5951,7 @@ static void openUpload(MaQueue *q)
     if ((boundary = strstr(req->mimeType, "boundary=")) != 0) {
         boundary += 9;
         up->boundary = mprStrcat(up, -1, "--", boundary, NULL);
-        up->boundaryLen = strlen(up->boundary);
+        up->boundaryLen = (int) strlen(up->boundary);
     }
     if (up->boundaryLen == 0 || *up->boundary == '\0') {
         maFailRequest(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad boundary");
@@ -6628,7 +6588,8 @@ static void closeCgi(MaQueue *q)
     MprCmd  *cmd;
 
     cmd = (MprCmd*) q->queueData;
-    if (cmd->pid) {
+    mprAssert(cmd);
+    if (cmd && cmd->pid) {
         mprStopCmd(cmd);
     }
 }
@@ -6684,7 +6645,7 @@ static void startCgi(MaQueue *q)
         Build environment variables
      */
     varCount = mprGetHashCount(req->headers) + mprGetHashCount(req->formVars);
-    envv = (char**) mprAlloc(cmd, (varCount + 1) * sizeof(char*));
+    envv = (char**) mprAlloc(cmd, (varCount + 1) * (int) sizeof(char*));
 
     index = 0;
     hp = mprGetFirstHash(req->headers);
@@ -7283,7 +7244,7 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
     }
 }
 #else
-    len = (argc + 1) * sizeof(char*);
+    len = (argc + 1) * (int) sizeof(char*);
     argv = (char**) mprAlloc(cmd, len);
     memset(argv, 0, len);
 
@@ -8666,7 +8627,7 @@ static int getVars(MaQueue *q, char ***keys, char *buf, int len)
     /*
      *  Crack the input into name/value pairs 
      */
-    keyList = (char**) mprAlloc(q, (keyCount * 2) * sizeof(char**));
+    keyList = (char**) mprAlloc(q, (keyCount * 2) * (int) sizeof(char**));
 
     i = 0;
     tok = 0;
@@ -8845,7 +8806,7 @@ MprModule *maEgiHandlerInit(MaHttp *http, cchar *path)
 
 
 static void handleDeleteRequest(MaQueue *q);
-static int  readFileData(MaQueue *q, MaPacket *packet);
+static int  readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size);
 static void handlePutRequest(MaQueue *q);
 
 /*
@@ -8961,6 +8922,7 @@ static void runFile(MaQueue *q)
          */
         packet = maCreateDataPacket(q, 0);
         packet->entityLength = resp->entityLength;
+        packet->fill = readFileData;
         if (!req->ranges) {
             resp->length = resp->entityLength;
         }
@@ -8971,6 +8933,49 @@ static void runFile(MaQueue *q)
      *  Append end-of-data packet. Signifies end of stream.
      */
     maPutForService(q, maCreateEndPacket(q), 1);
+}
+
+
+/*  
+    Return true if the next queue will accept this packet. If not, then disable the queue's service procedure.
+    This may split the packet if it exceeds the downstreams maximum packet size.
+ */
+static int prepPacket(MaQueue *q, MaPacket *packet)
+{
+    MaConn      *conn;
+    MaQueue     *nextQ;
+    MaPacket    *tail;
+    MprOff      length;
+    int         size;
+
+    conn = q->conn;
+    nextQ = q->nextQ;
+
+    length = packet->entityLength;
+    if (length > nextQ->packetSize || (length + nextQ->count) > nextQ->max) {
+        if ((tail = maSplitPacket(conn->response, packet, MA_BUFSIZE)) == 0) {
+            return MPR_ERR_NO_MEMORY;
+        }
+        maPutBack(q, tail);
+        size = MA_BUFSIZE;
+    } else {
+        size = (int) length;
+    }
+    mprAssert(size <= nextQ->packetSize);
+    if ((size + nextQ->count) > nextQ->max) {
+        /*  
+            The downstream queue is full, so disable the queue and mark the downstream queue as full and service 
+            Will re-enable via a writable event on the connection.
+         */
+        mprLog(q, 7, "Disable queue %s", q->owner);
+        maDisableQueue(q);
+        nextQ->flags |= MA_QUEUE_FULL;
+        if (!(nextQ->flags & MA_QUEUE_DISABLED)) {
+            maScheduleQueue(nextQ);
+        }
+        return 0;
+    }
+    return readFileData(q, packet, conn->response->pos, size);
 }
 
 
@@ -8990,36 +8995,22 @@ static void outgoingFileService(MaQueue *q)
     conn = q->conn;
     req = conn->request;
     resp = conn->response;
-
-    mprLog(q, 7, "\noutgoingFileService");
-    
     usingSend = resp->connector == conn->http->sendConnector;
 
-#if BLD_FEATURE_RANGE
-    if (req->ranges) {
-        mprAssert(conn->http->rangeService);
-        (*conn->http->rangeService)(q, (usingSend) ? NULL : readFileData);
-    
-    } else {
-#endif
-        for (packet = maGet(q); packet; packet = maGet(q)) {
-            if (!usingSend && packet->flags & MA_PACKET_DATA) {
-                if (!maWillNextQueueAccept(q, packet)) {
-                    mprLog(q, 7, "outgoingFileService downstream full, putback");
-                    maPutBack(q, packet);
+    mprLog(q, 7, "\noutgoingFileService");
+
+    for (packet = maGet(q); packet; packet = maGet(q)) {
+        if (req->ranges && !usingSend && packet->flags & MA_PACKET_DATA) {
+            if ((len = prepPacket(q, packet)) <= 0) {
+                if (len < 0) {
                     return;
                 }
-                if ((len = readFileData(q, packet)) < 0) {
-                    return;
-                }
-                resp->pos += len;
-                mprLog(q, 7, "outgoingFileService readData %d", len);
+                maPutBack(q, packet);
+                return;
             }
-            maPutNext(q, packet);
         }
-#if BLD_FEATURE_RANGE
+        maPutNext(q, packet);
     }
-#endif
     mprLog(q, 7, "outgoingFileService complete");
 }
 
@@ -9072,38 +9063,26 @@ static void incomingFileData(MaQueue *q, MaPacket *packet)
 /*
  *  Populate a packet with file data
  */
-static int readFileData(MaQueue *q, MaPacket *packet)
+static int readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size)
 {
     MaConn      *conn;
     MaResponse  *resp;
     MaRequest   *req;
-    int64       len;
-    int         rc;
+    int         nbytes;
 
     conn = q->conn;
     resp = conn->response;
     req = conn->request;
     
-    if (packet->content == 0) {
-        len = packet->entityLength;
-        if (len > q->max) {
-            len = q->max;
-        }
-        if ((packet->content = mprCreateBuf(packet, len, len)) == 0) {
-            return MPR_ERR_NO_MEMORY;
-        }
-    } else {
-        len = mprGetBufSpace(packet->content);
+    if (packet->content == 0 && (packet->content = mprCreateBuf(packet, size, size)) == 0) {
+        return MPR_ERR_NO_MEMORY;
     }
-    mprLog(q, 7, "readFileData len %d, pos %d", len, resp->pos);
+    mprLog(q, 7, "readFileData size %Ld, pos %Ld", size, resp->pos);
     
-    if (req->ranges) {
-        /*
-         *  rangeService will have set resp->pos to the next read position already
-         */
-        mprSeek(resp->file, SEEK_SET, resp->pos);
+    if (pos >= 0) {
+        mprSeek(resp->file, SEEK_SET, pos);
     }
-    if ((rc = mprRead(resp->file, mprGetBufStart(packet->content), len)) != len) {
+    if ((nbytes = mprRead(resp->file, mprGetBufStart(packet->content), size)) != size) {
         /*
          *  As we may have sent some data already to the client, the only thing we can do is abort and hope the client 
          *  notices the short data.
@@ -9111,8 +9090,9 @@ static int readFileData(MaQueue *q, MaPacket *packet)
         maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't read file %s", resp->filename);
         return MPR_ERR_CANT_READ;
     }
-    mprAdjustBufEnd(packet->content, len);
-    return len;
+    mprAdjustBufEnd(packet->content, nbytes);
+    resp->pos += nbytes;
+    return nbytes;
 }
 
 
@@ -13713,6 +13693,24 @@ bool maWillNextQueueAccept(MaQueue *q, MaPacket *packet)
 }
 
 
+bool maWillNextQueueAcceptSize(MaQueue *q, int size)
+{
+    MaQueue     *next;
+
+    next = q->nextQ;
+    if (size <= next->packetSize && (size + next->count) <= next->max) {
+        return 1;
+    }
+    /*
+     *  The downstream queue is full, so disable the queue and mark the downstream queue as full and service immediately. 
+     */
+    maDisableQueue(q);
+    next->flags |= MA_QUEUE_FULL;
+    maScheduleQueue(next);
+    return 0;
+}
+
+
 void maSendEndPacket(MaQueue *q)
 {
     maPutNext(q, maCreateEndPacket(q));
@@ -13829,12 +13827,12 @@ bool maPacketTooBig(MaQueue *q, MaPacket *packet)
  *  Split a packet if required so it fits in the downstream queue. Put back the 2nd portion of the split packet on the queue.
  *  Ensure that the packet is not larger than "size" if it is greater than zero.
  */
-int maResizePacket(MaQueue *q, MaPacket *packet, int64 size)
+int maResizePacket(MaQueue *q, MaPacket *packet, int size)
 {
     MaPacket    *tail;
     MaConn      *conn;
     MprCtx      ctx;
-    int64       len;
+    int         len;
     
     if (size <= 0) {
         size = MAXINT;
@@ -13843,7 +13841,7 @@ int maResizePacket(MaQueue *q, MaPacket *packet, int64 size)
     /*
      *  Calculate the size that will fit
      */
-    len = packet->content ? maGetPacketLength(packet) : packet->entityLength;
+    len = packet->content ? maGetPacketLength(packet) : 0;
     size = min(size, len);
     size = min(size, q->nextQ->max);
     size = min(size, q->nextQ->packetSize);
@@ -13863,6 +13861,20 @@ int maResizePacket(MaQueue *q, MaPacket *packet, int64 size)
     }
     maPutBack(q, tail);
     return 0;
+}
+
+
+MaPacket *maCloneEntityPacket(MprCtx ctx, MaPacket *orig)
+{
+    MaPacket  *packet;
+
+    if ((packet = maCreatePacket(ctx, 0)) == 0) {
+        return 0;
+    }
+    packet->flags = orig->flags;
+    packet->entityLength = orig->entityLength;
+    packet->fill = orig->fill;
+    return packet;
 }
 
 
@@ -13988,7 +14000,7 @@ int maJoinPacket(MaPacket *packet, MaPacket *p)
 MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
 {
     MaPacket    *packet;
-    int64       count, size;
+    int         count, size;
 
     if (offset >= maGetPacketLength(orig)) {
         mprAssert(0);
@@ -14324,7 +14336,7 @@ static bool parseRequest(MaConn *conn, MaPacket *packet)
     if ((end = mprStrnstr(start, "\r\n\r\n", len)) == 0) {
         return 0;
     }
-    len = end - start;
+    len = (int) (end - start);
     if (len >= conn->host->limits->maxHeader) {
         maFailConnection(conn, MPR_HTTP_CODE_REQUEST_TOO_LARGE, "Header too big");
         return 0;
@@ -14475,7 +14487,7 @@ static bool parseFirstLine(MaConn *conn, MaPacket *packet)
                 methodName, uri, httpProtocol);
             content = packet->content;
             endp = strstr((char*) content->start, "\r\n\r\n");
-            len = (endp) ? (endp - mprGetBufStart(content) + 4) : 0;
+            len = (endp) ? (int) (endp - mprGetBufStart(content) + 4) : 0;
             maTraceContent(conn, packet, len, 0, MA_TRACE_REQUEST | MA_TRACE_HEADERS);
         }
     } else {
@@ -14832,7 +14844,7 @@ static int getChunkPacketSize(MaConn *conn, MprBuf *buf)
             }
             return 0;
         }
-        need = cp - start + 1;
+        need = (int) (cp - start + 1);
         size = (int) mprAtoi(&start[2], 16);
         if (size == 0 && &cp[2] < buf->end && cp[1] == '\r' && cp[2] == '\n') {
             /* 
@@ -14843,7 +14855,7 @@ static int getChunkPacketSize(MaConn *conn, MprBuf *buf)
         }
         break;
     case MA_CHUNK_DATA:
-        need = req->remainingContent;
+        need = (int) min(MAXINT, req->remainingContent);
         break;
 
     default:
@@ -14864,7 +14876,8 @@ static bool processContent(MaConn *conn, MaPacket *packet)
     MaQueue         *q;
     MaHost          *host;
     MprBuf          *content;
-    int             nbytes, remaining;
+    int64           remaining;
+    int             nbytes;
 
     req = conn->request;
     resp = conn->response;
@@ -14892,7 +14905,7 @@ static bool processContent(MaConn *conn, MaPacket *packet)
     } else {
         remaining = req->remainingContent;
     }
-    nbytes = min(remaining, mprGetBufLength(content));
+    nbytes = (int) min(remaining, mprGetBufLength(content));
     mprAssert(nbytes >= 0);
     mprLog(conn, 7, "processContent: packet of %d bytes, remaining %d", mprGetBufLength(content), remaining);
 
@@ -15041,7 +15054,7 @@ static void traceBuf(MaConn *conn, cchar *buf, int len, int mask)
 }
 
 
-void maTraceContent(MaConn *conn, MaPacket *packet, int size, int offset, int mask)
+void maTraceContent(MaConn *conn, MaPacket *packet, int64 size, int64 offset, int mask)
 {
     MaHost  *host;
     int     len;
@@ -15059,12 +15072,12 @@ void maTraceContent(MaConn *conn, MaPacket *packet, int size, int offset, int ma
     }
     if (packet->prefix) {
         len = mprGetBufLength(packet->prefix);
-        len = min(len, size);
+        len = (int) min(len, size);
         traceBuf(conn, mprGetBufStart(packet->prefix), len, mask);
     }
     if (packet->content) {
         len = mprGetBufLength(packet->content);
-        len = min(len, size);
+        len = (int) min(len, size);
         traceBuf(conn, mprGetBufStart(packet->content), len, mask);
     }
 }
@@ -15379,7 +15392,7 @@ bool maContentNotModified(MaConn *conn)
 }
 
 
-MaRange *maCreateRange(MaConn *conn, int start, int end)
+MaRange *maCreateRange(MaConn *conn, int64 start, int64 end)
 {
     MaRange     *range;
 
@@ -15880,7 +15893,7 @@ int maFormatBody(MaConn *conn, cchar *title, cchar *fmt, ...)
         title, body);
     mprFree(body);
     va_end(args);
-    return strlen(resp->altBody);
+    return (int) strlen(resp->altBody);
 }
 
 

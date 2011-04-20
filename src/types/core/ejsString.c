@@ -556,7 +556,7 @@ static EjsVar *formatString(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
                 ejsThrowArgError(ejs, "Bad format specifier");
                 return 0;
             }
-            catString(ejs, result, buf, strlen(buf));
+            catString(ejs, result, buf, (int) strlen(buf));
             mprFree(buf);
             last = i + 1;
             nextArg++;

@@ -200,7 +200,7 @@ static int growTraits(EjsBlock *block, int numTraits)
     }
     if (numTraits > block->sizeTraits) {
         count = EJS_PROP_ROUNDUP(numTraits);
-        block->traits = (EjsTrait*) mprRealloc(block, block->traits, sizeof(EjsTrait) * count);
+        block->traits = (EjsTrait*) mprRealloc(block, block->traits, (int) sizeof(EjsTrait) * count);
         if (block->traits == 0) {
             return EJS_ERR;
         }

@@ -72,7 +72,7 @@ EjsVar *addHeader(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
  */
 EjsVar *httpAvailable(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
 {
-    int     len;
+    MprOff  len;
 
     if (!waitForResponse(hp, -1)) {
         return 0;
@@ -178,10 +178,11 @@ static EjsVar *setChunked(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
 {
     mprAssert(hp->http);
     mprAssert(hp->http->state == MPR_HTTP_STATE_BEGIN || hp->http->state == MPR_HTTP_STATE_COMPLETE);
+#if UNUSED
     if (!(hp->http->state == MPR_HTTP_STATE_BEGIN || hp->http->state == MPR_HTTP_STATE_COMPLETE)) {
         printf("STATE IS %d\n", hp->http->state);
     }
-
+#endif
     if (mprSetHttpChunked(hp->http, ejsGetBoolean(argv[0])) < 0) {
         ejsThrowStateError(ejs, "Can't change chunked setting in this state. Request has already started.");
     }
@@ -228,7 +229,7 @@ static EjsVar *contentEncoding(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
  */
 static EjsVar *contentLength(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
 {
-    int     length;
+    MprOff  length;
 
     if (!waitForResponse(hp, -1)) {
         return 0;
@@ -637,14 +638,14 @@ static EjsVar *readLines(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
         lineCreated = 0;
         for (cp = start = mprGetBufStart(buf); cp < buf->end; cp++) {
             if (*cp == '\r' || *cp == '\n') {
-                len = cp - start;
+                len = (int) (cp - start);
                 str = (EjsVar*) ejsCreateStringWithLength(ejs, start, len);
                 mprAdjustBufStart(buf, len);
                 ejsSetProperty(ejs, (EjsVar*) results, nextIndex, str);
                 for (start = cp; *cp == '\r' || *cp == '\n'; ) {
                     cp++;
                 }
-                mprAdjustBufStart(buf, cp - start);
+                mprAdjustBufStart(buf, (int) (cp - start));
                 lineCreated++;
                 break;
             }
