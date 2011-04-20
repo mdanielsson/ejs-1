@@ -5235,6 +5235,12 @@ static void openChunk(MaQueue *q)
 }
 
 
+static bool matchChunk(MaConn *conn, MaStage *handler, cchar *uri)
+{
+    return (conn->response->length <= 0) ? 1: 0;
+}
+
+
 /*
  *  Get the next chunk size. Chunked data format is:
  *      Chunk spec <CRLF>
@@ -5430,6 +5436,7 @@ MprModule *maChunkFilterInit(MaHttp *http, cchar *path)
     }
     http->chunkFilter = filter;
     filter->open = openChunk; 
+    filter->match = matchChunk; 
     filter->outgoingService = outgoingChunkService; 
     filter->incomingData = incomingChunkData; 
     return module;
@@ -5568,7 +5575,7 @@ static void applyRange(MaQueue *q, MaPacket *packet)
     resp = conn->response;
     range = resp->currentRange;
 
-    while (range) {
+    while (range && packet) {
         /*
          *  Process the current packet over multiple ranges ranges until all the data is processed or discarded.
          */
@@ -5588,7 +5595,7 @@ static void applyRange(MaQueue *q, MaPacket *packet)
             gap = range->start - resp->rangePos;
             resp->rangePos += gap;
             if (gap < length) {
-                maAdjustPacketStart(packet, (int) gap);
+                maAdjustPacketStart(packet, gap);
             }
             /* Keep going and examine next range */
 
@@ -5613,6 +5620,7 @@ static void applyRange(MaQueue *q, MaPacket *packet)
                 maPutNext(q, createRangePacket(conn, range));
             }
             maPutNext(q, packet);
+            packet = 0;
             resp->rangePos += count;
         }
         if (resp->rangePos >= range->end) {
@@ -12508,6 +12516,7 @@ void maCreatePipeline(MaConn *conn)
             if ((filter->stage->flags & MA_STAGE_ALL & req->method) == 0) {
                 continue;
             }
+#if UNUSED
             /*
              *  Remove the chunk filter chunking if it is explicitly turned off vi a the X_APPWEB_CHUNK_SIZE header 
              *  setting the chunk size to zero. Also remove if using the fileHandler which always knows the entity 
@@ -12518,6 +12527,7 @@ void maCreatePipeline(MaConn *conn)
                     continue;
                 }
             }
+#endif
             if (matchFilter(conn, filter)) {
                 mprAddItem(resp->outputPipeline, filter->stage);
             }
@@ -14282,7 +14292,7 @@ void maProcessReadEvent(MaConn *conn, MaPacket *packet)
     mprLog(conn, 7, "ENTER maProcessReadEvent state %d, packet %p", conn->state, packet);
     
     while (conn->canProceed) {
-        mprLog(conn, 7, "maProcessReadEvent, state %d, packet %d", conn->state, packet);
+        mprLog(conn, 7, "maProcessReadEvent, state %d, packet %p", conn->state, packet);
 
         switch (conn->state) {
         case MPR_HTTP_STATE_BEGIN:
@@ -14586,7 +14596,7 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
                 }
                 if (req->length >= host->limits->maxBody) {
                     maFailConnection(conn, MPR_HTTP_CODE_REQUEST_TOO_LARGE, 
-                        "Request content length %d is too big. Limit %d", req->length, host->limits->maxBody);
+                        "Request content length %Ld is too big. Limit %Ld", req->length, host->limits->maxBody);
                     continue;
                 }
                 mprAssert(req->length >= 0);
@@ -14903,7 +14913,7 @@ static bool processContent(MaConn *conn, MaPacket *packet)
     }
     nbytes = (int) min(remaining, mprGetBufLength(content));
     mprAssert(nbytes >= 0);
-    mprLog(conn, 7, "processContent: packet of %d bytes, remaining %d", mprGetBufLength(content), remaining);
+    mprLog(conn, 7, "processContent: packet of %d bytes, remaining %Ld", mprGetBufLength(content), remaining);
 
     if (maShouldTrace(conn, MA_TRACE_REQUEST | MA_TRACE_BODY)) {
         maTraceContent(conn, packet, 0, 0, MA_TRACE_REQUEST | MA_TRACE_BODY);
@@ -14917,7 +14927,7 @@ static bool processContent(MaConn *conn, MaPacket *packet)
         if (req->receivedContent >= host->limits->maxBody) {
             conn->keepAliveCount = 0;
             maFailConnection(conn, MPR_HTTP_CODE_REQUEST_TOO_LARGE, 
-                "Request content body is too big %d vs limit %d", 
+                "Request content body is too big %Ld vs limit %Ld", 
                 req->receivedContent, host->limits->maxBody);
             return 1;
         } 
@@ -15746,10 +15756,10 @@ void maFillHeaders(MaConn *conn, MaPacket *packet)
         if (req->ranges->next == 0) {
             range = req->ranges;
             if (resp->entityLength > 0) {
-                putFormattedHeader(conn, packet, "Content-Range", "bytes %d-%d/%d", 
+                putFormattedHeader(conn, packet, "Content-Range", "bytes %Ld-%Ld/%Ld", 
                     range->start, range->end, resp->entityLength);
             } else {
-                putFormattedHeader(conn, packet, "Content-Range", "bytes %d-%d/*", range->start, range->end);
+                putFormattedHeader(conn, packet, "Content-Range", "bytes %Ld-%Ld/*", range->start, range->end);
             }
         } else {
             putFormattedHeader(conn, packet, "Content-Type", "multipart/byteranges; boundary=%s", resp->rangeBoundary);
