@@ -15398,7 +15398,7 @@ bool maContentNotModified(MaConn *conn)
 }
 
 
-MaRange *maCreateRange(MaConn *conn, int64 start, int64 end)
+MaRange *maCreateRange(MaConn *conn, MprOff start, MprOff end)
 {
     MaRange     *range;
 
