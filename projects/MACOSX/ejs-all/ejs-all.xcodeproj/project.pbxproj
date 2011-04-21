@@ -2752,7 +2752,8 @@
 		C97623C20FD06EC4009C78E1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = x86_64;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1)";
+				ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1 = x86_64;
 				COPY_PHASE_STRIP = NO;
 				ES = $SRCROOT/../../../src/es;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -3384,7 +3385,8 @@
 		C999327011ADCED300CDB65F /* Coverage */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = x86_64;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1)";
+				ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1 = x86_64;
 				COPY_PHASE_STRIP = NO;
 				ES = $SRCROOT/../../../src/es;
 				GCC_C_LANGUAGE_STANDARD = gnu99;

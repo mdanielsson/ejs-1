@@ -1,7 +1,6 @@
 /*
- *  Http class tests
+    Http class tests
  */
-
 
 if (test.config["http_client"] == 1 && session["http"]) {
 
@@ -12,7 +11,6 @@ if (test.config["http_client"] == 1 && session["http"]) {
     http.chunked = true
     http.post(URL)
     assert(http.code == 200)
-//BUG
 	http.close()
 
     http.chunked = false

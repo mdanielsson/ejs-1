@@ -1,6 +1,4 @@
 
-
-
 if (test.config["http_client"] != 1 || !session["http"]) {
     test.skip("Requires http client and bin/ejswebserver")
 }
