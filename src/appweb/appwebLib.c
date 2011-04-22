@@ -1677,8 +1677,7 @@ int maParseConfig(MaServer *server, cchar *configFile)
             if (alias->filename) {
                 // mprLog(hp, 0, "Alias \"%s\" %s", alias->prefix, alias->filename);
                 path = maMakePath(hp, alias->filename);
-                bestDir = maLookupBestDir(hp, path);
-                if (bestDir == 0) {
+                if ((bestDir = maLookupBestDir(hp, path)) == 0) {
                     bestDir = maCreateDir(hp, alias->filename, stack[0].dir);
                     maInsertDir(hp, bestDir);
                 }
@@ -5237,7 +5236,14 @@ static void openChunk(MaQueue *q)
 
 static bool matchChunk(MaConn *conn, MaStage *handler, cchar *uri)
 {
-    return (conn->response->length <= 0) ? 1: 0;
+    MaResponse  *resp;
+
+    /*
+        Don't match if chunking is explicitly turned off vi a the X_APPWEB_CHUNK_SIZE header which sets the chunk 
+        size to zero. Also remove if the response length is already known.
+     */
+    resp = conn->response;
+    return (resp->length < 0 && resp->chunkSize != 0) ? 1: 0;
 }
 
 
@@ -6656,6 +6662,9 @@ static void startCgi(MaQueue *q)
         maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't run CGI process: %s, URI %s", fileName, req->url);
         return;
     }
+    /*
+        This will dedicate this thread to the connection. It will also put the socket into blocking mode.
+     */
     maDedicateThreadToConn(conn);
 }
 
@@ -6999,7 +7008,7 @@ static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd)
 /*
     Parse the CGI output headers. 
     Sample CGI program:
- *
+
     Content-type: text/html
    
     <html.....
@@ -12425,7 +12434,6 @@ void maMatchHandler(MaConn *conn)
     }
     resp->handler = handler;
     mprLog(resp, 3, "Select handler: \"%s\" for \"%s\"", handler->name, req->url);
-    setEnv(conn);
 }
 
 
@@ -12516,18 +12524,6 @@ void maCreatePipeline(MaConn *conn)
             if ((filter->stage->flags & MA_STAGE_ALL & req->method) == 0) {
                 continue;
             }
-#if UNUSED
-            /*
-             *  Remove the chunk filter chunking if it is explicitly turned off vi a the X_APPWEB_CHUNK_SIZE header 
-             *  setting the chunk size to zero. Also remove if using the fileHandler which always knows the entity 
-             *  length and an explicit chunk size has not been requested.
-             */
-            if (filter->stage == http->chunkFilter) {
-                if ((handler == http->fileHandler && resp->chunkSize < 0) || resp->chunkSize == 0) {
-                    continue;
-                }
-            }
-#endif
             if (matchFilter(conn, filter)) {
                 mprAddItem(resp->outputPipeline, filter->stage);
             }
@@ -12628,6 +12624,10 @@ void maCreatePipeline(MaConn *conn)
             }
         }
     }
+    /*
+        Now that all stages are open, we can set the environment
+     */
+    setEnv(conn);
 
     /*
         Invoke any start routines
@@ -12815,6 +12815,16 @@ static MaStage *findHandler(MaConn *conn)
     location = req->location;
     handler = 0;
     
+    /*
+        Do custom handler matching first
+     */
+    for (next = 0; (handler = mprGetNextItem(location->handlers, &next)) != 0; ) {
+        if (handler->match && checkStage(conn, handler)) {
+            resp->handler = handler;
+            return handler;
+        }
+    }
+
     ext = resp->extension;
     if (*ext) {
         handler = maGetHandlerByExtension(location, resp->extension);
@@ -12837,16 +12847,6 @@ static MaStage *findHandler(MaConn *conn)
                 }
                 mprFree(path);
             }
-        }
-    }
-
-    /*
-        Failed to match by extension, so perform custom handler matching
-     */
-    for (next = 0; (handler = mprGetNextItem(location->handlers, &next)) != 0; ) {
-        if (handler->match && checkStage(conn, handler)) {
-            resp->handler = handler;
-            return handler;
         }
     }
 
@@ -12909,7 +12909,9 @@ static MaStage *mapToFile(MaConn *conn, MaStage *handler)
     if ((req->dir = maLookupBestDir(req->host, resp->filename)) == 0) {
         maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Missing directory block for %s", resp->filename);
     } else {
-        req->auth = req->dir->auth;
+        if (req->dir->auth) {
+            req->auth = req->dir->auth;
+        }
         if (info->isDir) {
             handler = processDirectory(conn, handler);
         } else if (info->valid) {
@@ -13136,11 +13138,13 @@ static void setPathInfo(MaConn *conn)
             }
             if (last) {
                 offset = alias->prefixLen + (int) (last - start);
-                if (offset <= (int) strlen(req->url)) {
+                if (offset < (int) strlen(req->url)) {
                     pathInfo = &req->url[offset];
                     req->pathInfo = mprStrdup(req, pathInfo);
                     pathInfo[0] = '\0';
                     maSetRequestUri(conn, req->url, NULL);
+                } else {
+                    req->pathInfo = "";
                 }
                 if (req->pathInfo && req->pathInfo[0]) {
                     req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0);
@@ -15235,10 +15239,16 @@ int maSetRequestUri(MaConn *conn, cchar *uri, cchar *query)
         req->parsedUri->query = mprStrdup(req->parsedUri, query);
     }
     req->url = mprValidateUrl(req, mprUrlDecode(req, req->parsedUri->url));
-    req->location = maLookupBestLocation(host, req->url);
-    req->auth = req->location->auth;
     req->alias = maGetAlias(host, req->url);
     resp->filename = maMakeFilename(conn, req->alias, req->url, 1);
+    req->dir = maLookupBestDir(req->host, resp->filename);
+    if (req->dir->auth) {
+        req->auth = req->dir->auth;
+    }
+    req->location = maLookupBestLocation(host, req->url);
+    if (req->auth == 0) {
+        req->auth = req->location->auth;
+    }
     mprGetPathInfo(conn, resp->filename, &resp->fileInfo);
     resp->extension = maGetExtension(conn);
     if ((resp->mimeType = (char*) maLookupMimeType(host, resp->extension)) == 0) {
@@ -17286,7 +17296,7 @@ bool maMatchFilterByExtension(MaFilter *filter, cchar *ext)
  */
 /************************************************************************/
 
-/*
+ /*
  *  var.c -- Create header and query variables.
  *
  *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
