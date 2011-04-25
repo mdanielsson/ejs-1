@@ -525,7 +525,6 @@ extern "C" {
     typedef unsigned long ulong;
 #endif
 
-    typedef off_t MprOffset;
     typedef intptr_t pint;
 
     #define INT64(x) (x##LL)
@@ -570,7 +569,6 @@ extern "C" {
 
 
 #if VXWORKS
-    typedef off_t MprOffset;
     typedef unsigned int uint;
     typedef unsigned long ulong;
     typedef long long int int64;
