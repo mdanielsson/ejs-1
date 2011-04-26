@@ -3,7 +3,7 @@
     ProjectType="Visual C++"
     Version="8.00"
     Name="ejscgi"
-    ProjectGUID="b3d94f10-298a-4551-920a-90baee875b15"
+    ProjectGUID="c341a64a-3d3c-4fc9-b084-79d0d27f3a45"
     RootNamespace=""
     Keyword="Win32Proj"
     TargetFrameworkVersion="0"
@@ -136,7 +136,7 @@
         <Filter
             Name="Source Files"
             Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-            UniqueIdentifier="{96480934-3954-436b-9ac4-77c666dd189f}"
+            UniqueIdentifier="{bdd41b2c-0691-40cc-b6e1-c8bc40261356}"
             >
             <File
                 RelativePath="..\..\..\src\web\gateways\ejsCgi.c"

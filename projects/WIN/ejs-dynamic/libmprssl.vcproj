@@ -153,3 +153,17 @@
                 >
             </File>
         </Filter>
+        <Filter
+            Name="Source Files"
+            Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
+            UniqueIdentifier="{81128ab5-ab3b-4f29-8d5d-ceb9f70420f3}"
+            >
+            <File
+                RelativePath="..\..\..\src\mpr\mprSsl.c"
+                >
+            </File>
+        </Filter>
+    </Files>
+    <Globals>
+    </Globals>
+</VisualStudioProject>
