@@ -84,7 +84,8 @@ xcuserdata
 *.vcxproj.filters
 projects/WIN/ejs-dynamic/Debug/
 projects/WIN/ejs-dynamic/Release/
-projects/WIN/ejs-dynamic/UpgradeLog.XML
+projects/WIN/ejs-dynamic/UpgradeLog*.XML
 projects/WIN/ejs-dynamic/_UpgradeReport_Files/
 projects/WIN/ejs-dynamic/ejs-dynamic.sdf
 projects/WIN/ejs-dynamic/ejs-dynamic.sln.old
+projects/WIN/ejs-dynamic/ejs-dynamic.suo.old
