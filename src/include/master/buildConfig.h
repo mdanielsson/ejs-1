@@ -5,13 +5,6 @@
     #define BLD_EJS_PRODUCT 1
     #define BLD_PRODUCT "ejs"
     #define BLD_NAME "Embedthis Ejscript"
-    #define BLD_VERSION "1.1.0"
-    #define BLD_NUMBER "1"
-    #define BLD_NUMBER_ONLY "1"
-    #define BLD_MAJOR_VERSION 1
-    #define BLD_MINOR_VERSION 1
-    #define BLD_PATCH_VERSION 0
-    #define BLD_VNUM "1001000"
     #define BLD_TYPE "DEBUG"
     #define BLD_TUNE MPR_TUNE_SIZE
     #define BLD_DEFAULTS "standard"
@@ -161,7 +154,6 @@
     #define 	BLD_WINSDK_BUILTIN 0
     #define 	BLD_WINSDK_WITH "1"
     #define 	BLD_CC_MSCL 1
-    #define 	BLD_CC_CL_VERSION 16
 
     #define 	BLD_FEATURE_AR 1
     #define 	BLD_AR "C:/Program Files/Microsoft Visual Studio 10.0/VC/Bin/lib"
@@ -262,3 +254,10 @@
     #define 	BLD_EJS_WITHLIBS "pcre mprssl libeay32 ssleay32 libmatrixssl mpr"
 
 
+    #define BLD_VERSION "1.1.1"
+    #define BLD_NUMBER "0"
+    #define BLD_NUMBER_ONLY "0"
+    #define BLD_MAJOR_VERSION 1
+    #define BLD_MINOR_VERSION 1
+    #define BLD_PATCH_VERSION 1
+    #define BLD_VNUM "1001001"
