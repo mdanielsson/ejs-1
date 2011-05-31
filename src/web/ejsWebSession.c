@@ -192,7 +192,7 @@ void ejsParseWebSessionCookie(EjsWeb *web)
         }
         control = web->control;
 
-        len = cp - value;
+        len = (int) (cp - value);
         id = mprMemdup(web, value, len + 1);
         id[len] = '\0';
 

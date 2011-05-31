@@ -8,7 +8,7 @@ d = new Date
 assert(0 <= d.day && d.day <= 6)
 assert(0 <= d.dayOfYear && d.dayOfYear <= 366)
 assert(0 <= d.date && d.date <= 31)
-assert(1970 <= d.fullYear && d.fullYear <= 2100)
+assert(1970 <= d.year && d.year <= 2100)
 assert(0 <= d.hours && d.hours <= 23)
 assert(0 <= d.minutes && d.minutes <= 59)
 assert(0 <= d.seconds && d.seconds <= 59)

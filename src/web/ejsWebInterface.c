@@ -207,7 +207,7 @@ int ejsWrite(Ejs *ejs, cchar *fmt, ...)
 
     va_start(args, fmt);
     buf = mprVasprintf(web, -1, fmt, args);
-    rc = web->control->write(web->handle, buf, strlen(buf));
+    rc = web->control->write(web->handle, buf, (int) strlen(buf));
     mprFree(buf);
     va_end(args);
 
