@@ -7088,6 +7088,10 @@ static bool parseHeader(MaConn *conn, MprCmd *cmd)
             } else if (strcmp(key, "content-type") == 0) {
                 maSetResponseMimeType(conn, value);
 
+            } else if (strcmp(key, "content-length") == 0) {
+                maSetEntityLength(conn, (MprOff) mprAtoi(value, 10));
+                resp->chunkSize = 0;
+
             } else {
                 /*
                     Now pass all other headers back to the client
@@ -11063,7 +11067,10 @@ MaLocation *maCreateBareLocation(MprCtx ctx)
     }
     location->errorDocuments = mprCreateHash(location, MA_ERROR_HASH_SIZE);
     location->handlers = mprCreateList(location);
+
     location->extensions = mprCreateHash(location, MA_HANDLER_HASH_SIZE);
+    mprSetHashCaseless(location->extensions);
+
     location->expires = mprCreateHash(location, MA_HANDLER_HASH_SIZE);
     location->inputStages = mprCreateList(location);
     location->outputStages = mprCreateList(location);
@@ -11239,6 +11246,7 @@ int maAddFilter(MaHttp *http, MaLocation *location, cchar *name, cchar *extensio
 
     if (extensions && *extensions) {
         filter->extensions = mprCreateHash(filter, 0);
+        mprSetHashCaseless(filter->extensions);
         extlist = mprStrdup(location, extensions);
         word = mprStrTok(extlist, " \t\r\n", &tok);
         while (word) {
@@ -11333,6 +11341,7 @@ void maResetPipeline(MaLocation *location)
         mprFree(location->extensions);
     }
     location->extensions = mprCreateHash(location, 0);
+    mprSetHashCaseless(location->extensions);
     
     if (mprGetParent(location->handlers) == location) {
         mprFree(location->handlers);
@@ -11869,6 +11878,7 @@ int maOpenMimeTypes(MaHost *host, cchar *path)
 
     if (host->mimeTypes == 0) {
         host->mimeTypes = mprCreateHash(host, MA_MIME_HASH_SIZE);
+        mprSetHashCaseless(host->mimeTypes);
     }
     file = mprOpen(host, path, O_RDONLY | O_TEXT, 0);
     if (file == 0) {
@@ -11910,6 +11920,7 @@ MaMimeType *maAddMimeType(MaHost *host, cchar *ext, cchar *mimeType)
     mime->type = mprStrdup(host, mimeType);
     if (host->mimeTypes == 0) {
         host->mimeTypes = mprCreateHash(host, MA_MIME_HASH_SIZE);
+        mprSetHashCaseless(host->mimeTypes);
     }
     if (*ext == '.') {
         ext++;
@@ -11926,6 +11937,7 @@ int maSetMimeActionProgram(MaHost *host, cchar *mimeType, cchar *actionProgram)
     
     if (host->mimeTypes == 0) {
         host->mimeTypes = mprCreateHash(host, MA_MIME_HASH_SIZE);
+        mprSetHashCaseless(host->mimeTypes);
         maAddStandardMimeTypes(host);
     }
     
