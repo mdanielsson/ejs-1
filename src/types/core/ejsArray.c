@@ -1220,11 +1220,11 @@ static EjsVar *sliceArray(Ejs *ejs, EjsArray *ap, int argc, EjsVar **argv)
 }
 
 
-static int partition(Ejs *ejs, EjsVar **data, int p, int r)
+static int partition(Ejs *ejs, EjsVar **data, int dir, int p, int r)
 {
     EjsVar          *tmp, *x;
     EjsString       *sx, *so;
-    int             i, j;
+    int             i, j, rc;
 
     x = data[r];
     j = p - 1;
@@ -1236,7 +1236,8 @@ static int partition(Ejs *ejs, EjsVar **data, int p, int r)
         if (sx == 0 || so == 0) {
             return 0;
         }
-        if (strcmp(sx->value, so->value) > 0) {
+        rc = strcmp(sx->value, so->value) * dir;
+        if (rc > 0) {
             j = j + 1;
             tmp = data[j];
             data[j] = data[i];
@@ -1249,14 +1250,14 @@ static int partition(Ejs *ejs, EjsVar **data, int p, int r)
 }
 
 
-void quickSort(Ejs *ejs, EjsArray *ap, int p, int r)
+void quickSort(Ejs *ejs, EjsArray *ap, int dir, int p, int r)
 {
     int     q;
 
     if (p < r) {
-        q = partition(ejs, ap->data, p, r);
-        quickSort(ejs, ap, p, q - 1);
-        quickSort(ejs, ap, q + 1, r);
+        q = partition(ejs, ap->data, dir, p, r);
+        quickSort(ejs, ap, dir, p, q - 1);
+        quickSort(ejs, ap, dir, q + 1, r);
     }
 }
 
@@ -1267,10 +1268,13 @@ void quickSort(Ejs *ejs, EjsArray *ap, int p, int r)
  */
 static EjsVar *sortArray(Ejs *ejs, EjsArray *ap, int argc, EjsVar **argv)
 {
+    int     direction;
+
     if (ap->length <= 1) {
         return (EjsVar*) ap;
     }
-    quickSort(ejs, ap, 0, ap->length - 1);
+    direction = (argc >= 2) ? ejsGetInt(argv[1]) : 1;
+    quickSort(ejs, ap, direction, 0, ap->length - 1);
     return (EjsVar*) ap;
 }
 

@@ -289,7 +289,10 @@
     /*
      *  We replace insecure functions with Embedthis replacements
      */
+    #undef      _CRT_SECURE_NO_DEPRECATE
     #define     _CRT_SECURE_NO_DEPRECATE 1
+    #undef      _CRT_SECURE_NO_WARNINGS
+    #define     _CRT_SECURE_NO_WARNINGS 1
 
     /*
      *  Need this to get the the latest winsock APIs

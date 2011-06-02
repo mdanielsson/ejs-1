@@ -875,6 +875,7 @@ static bool waitForState(EjsHttp *hp, int state, int timeout, int throw)
     Ejs         *ejs;
     MprHttp     *http;
     MprTime     mark;
+    MprUri      *old;
     char        *url;
     int         count, transCount;
 
@@ -907,7 +908,14 @@ static bool waitForState(EjsHttp *hp, int state, int timeout, int throw)
         if (http->state >= MPR_HTTP_STATE_CONTENT && mprNeedHttpRetry(http, &url)) {
             if (url) {
                 mprFree(hp->uri);
-                hp->uri = prepUri(http, url);
+                if (*url == '/') {
+                    old = http->request->uri;
+                    url = mprFormatUri(hp, old->scheme, old->host, old->port, url, 0);
+                    hp->uri = prepUri(http, url);
+                    mprFree(url);
+                } else {
+                    hp->uri = prepUri(http, url);
+                }
             }
             count--;
             transCount++;

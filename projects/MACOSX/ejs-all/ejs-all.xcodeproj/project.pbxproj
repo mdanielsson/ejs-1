@@ -2054,7 +2054,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -x\nset -e\n\nexport PATH=${BUILT_PRODUCTS_DIR}:$PATH\nexport DYLD_LIBRARY_PATH=${BUILT_PRODUCTS_DIR}:$DYLD_LIBRARY_PATH\n\ncd $PROJECT_DIR/../../../src/es\n\nFILES=\"web/Cache.es web/Controller.es web/Cookie.es web/Host.es web/Request.es web/Response.es web/Session.es web/UploadFile.es web/View.es web/connectors/HtmlConnector.es web/connectors/GoogleConnector.es\"\nTARGET=$BUILT_PRODUCTS_DIR/ejs.web.mod\n\nejsc --debug --optimize 9 --out $TARGET --search $BUILT_PRODUCTS_DIR $FILES\nejsmod --listing --cslots --search $BUILT_PRODUCTS_DIR $TARGET\ndiff ejs.web.slots.h ../include >/dev/null 2>&1 || cp ejs.web.slots.h ../include\n\nset +x\nexit 0\n";
+			shellScript = "set -x\nset -e\n\nexport PATH=${BUILT_PRODUCTS_DIR}:$PATH\nexport DYLD_LIBRARY_PATH=${BUILT_PRODUCTS_DIR}:$DYLD_LIBRARY_PATH\n\ncd $PROJECT_DIR/../../../src/es\n\nFILES=\"web/Cache.es web/Controller.es web/Cookie.es web/Host.es web/Request.es web/Response.es web/Session.es web/UploadFile.es web/View.es web/connectors/HtmlConnector.es web/connectors/GoogleConnector.es\"\nTARGET=$BUILT_PRODUCTS_DIR/ejs.web.mod\n\nenv | grep DYLD_LIBRARY_PATH\nejsc --debug --optimize 9 --out $TARGET --search $BUILT_PRODUCTS_DIR $FILES\nejsmod --listing --cslots --search $BUILT_PRODUCTS_DIR $TARGET\ndiff ejs.web.slots.h ../include >/dev/null 2>&1 || cp ejs.web.slots.h ../include\n\nset +x\nexit 0\n";
 			showEnvVarsInLog = 0;
 		};
 		C98111350FD58EE70066CD8B /* ShellScript */ = {
@@ -2752,8 +2752,8 @@
 		C97623C20FD06EC4009C78E1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT_PRE_XCODE_3_1)";
-				ARCHS_STANDARD_32_BIT_PRE_XCODE_3_1 = "ppc i386";
+				ARCHS = "$(ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1)";
+				ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1 = x86_64;
 				COPY_PHASE_STRIP = NO;
 				ES = $SRCROOT/../../../src/es;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -2775,8 +2775,8 @@
 		C97623C30FD06EC4009C78E1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT_PRE_XCODE_3_1)";
-				ARCHS_STANDARD_32_BIT_PRE_XCODE_3_1 = "ppc i386";
+				ARCHS = "$(ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1)";
+				ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1 = x86_64;
 				COPY_PHASE_STRIP = YES;
 				ES = $SRCROOT/../../../src/es;
 				OTHER_LDFLAGS = (
@@ -3385,8 +3385,8 @@
 		C999327011ADCED300CDB65F /* Coverage */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT_PRE_XCODE_3_1)";
-				ARCHS_STANDARD_32_BIT_PRE_XCODE_3_1 = "ppc i386";
+				ARCHS = "$(ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1)";
+				ARCHS_STANDARD_64_BIT_PRE_XCODE_3_1 = x86_64;
 				COPY_PHASE_STRIP = NO;
 				ES = $SRCROOT/../../../src/es;
 				GCC_C_LANGUAGE_STANDARD = gnu99;

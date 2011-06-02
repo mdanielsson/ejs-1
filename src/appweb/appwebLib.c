@@ -3,7 +3,7 @@
 /******************************************************************************/
 /* 
  *  This file is an amalgamation of all the individual source code files for
- *  Embedthis Appweb 3.3.1.
+ *  Embedthis Appweb 3.3.2.
  *
  *  Catenating all the source into a single file makes embedding simpler and
  *  the resulting application faster, as many compilers can do whole file
@@ -7044,9 +7044,10 @@ static bool parseHeader(MaConn *conn, MprCmd *cmd)
     } else {
         len = 4;
     }
-
-    endHeaders[len - 1] = '\0';
-    endHeaders += len;
+    if (endHeaders) {
+        endHeaders[len - 1] = '\0';
+        endHeaders += len;
+    }
 
     /*
         Want to be tolerant of CGI programs that omit the status line.
@@ -7058,7 +7059,7 @@ static bool parseHeader(MaConn *conn, MprCmd *cmd)
         }
     }
     
-    if (strchr(mprGetBufStart(buf), ':')) {
+    if (endHeaders && strchr(mprGetBufStart(buf), ':')) {
         mprLog(conn, 4, "CGI: parseHeader: header\n%s", headers);
 
         while (mprGetBufLength(buf) > 0 && buf->start[0] && (buf->start[0] != '\r' && buf->start[0] != '\n')) {
