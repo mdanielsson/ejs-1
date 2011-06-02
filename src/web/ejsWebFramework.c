@@ -33,6 +33,7 @@ static int  compile(EjsWeb *web, cchar *shell, cchar *kind, cchar *name);
 static char *locateShell(EjsWeb *web);
 #endif
 
+static int caselessmatch(cchar *url, cchar *ext);
 static void createCookie(Ejs *ejs, EjsVar *cookies, cchar *name, cchar *value, cchar *domain, cchar *path);
 static int  initInterp(Ejs *ejs, EjsWebControl *control);
 static int  loadApplication(EjsWeb *web);
@@ -217,7 +218,7 @@ static int parseControllerAction(EjsWeb *web)
     cchar   *url;
     char    *cp, *controllerName;
 
-    if (web->flags & EJS_WEB_FLAG_SOLO || strstr(web->url, EJS_WEB_EXT)) {
+    if (web->flags & EJS_WEB_FLAG_SOLO || caselessmatch(web->url, EJS_WEB_EXT)) {
         if (web->flags & EJS_WEB_FLAG_SOLO) {
             ejsName(&web->controllerName, "ejs.web", "_SoloController");
         } else {
@@ -419,7 +420,7 @@ int ejsLoadView(Ejs *ejs)
     mprAssert(ejs);
     web = ejs->handle;
 
-    if (!(web->flags & EJS_WEB_FLAG_SOLO) && !strstr(web->url, EJS_WEB_EXT)) {
+    if (!(web->flags & EJS_WEB_FLAG_SOLO) && !caselessmatch(web->url, EJS_WEB_EXT)) {
         /*
          *  Normal views/...
          */
@@ -430,7 +431,7 @@ int ejsLoadView(Ejs *ejs)
 
     }
     name = mprStrdup(web, &web->url[1]);
-    if ((cp = strrchr(name, '.')) && strcmp(cp, EJS_WEB_EXT) == 0) {
+    if ((cp = strrchr(name, '.')) && mprStrcmpAnyCase(cp, EJS_WEB_EXT) == 0) {
         *cp = '\0';
     }
     rc = loadComponent(web, "", name, EJS_WEB_EXT);
@@ -820,6 +821,24 @@ void ejsDefineWebParam(Ejs *ejs, cchar *key, cchar *svalue)
         ejsName(&qname, "", subkey);
         ejsSetPropertyByName(ejs, where, &qname, value);
     }
+}
+
+
+static int caselessmatch(cchar *url, cchar *ext)
+{
+    cchar   *cp, *ep;
+
+    for (cp = url; *cp; cp++) {
+        for (ep = ext; *ep; ep++) {
+            if (tolower((int) *cp) != tolower((int) *ep)) {
+                break;
+            }
+        }
+        if (*ep) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 #endif /* BLD_FEATURE_EJS_WEB */
