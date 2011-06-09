@@ -528,7 +528,7 @@ static int compile(EjsWeb *web, cchar *shell, cchar *kind, cchar *name)
     mprSetCmdDir(cmd, web->appDir);
 
     dir = mprGetPathDir(web, shell);
-#if WIN
+#if WIN || DEBUG_IDE
     ejsweb = mprJoinPath(web, dir, EJS_EJSWEB EJS_MODULE_EXT);
 #else
     ejsweb = mprJoinPath(web, dir, "../modules/" EJS_EJSWEB EJS_MODULE_EXT);
@@ -834,7 +834,7 @@ static int caselessmatch(cchar *url, cchar *ext)
                 break;
             }
         }
-        if (*ep) {
+        if (*ep == 0) {
             return 1;
         }
     }
