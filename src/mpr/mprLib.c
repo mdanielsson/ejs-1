@@ -22124,7 +22124,7 @@ int mprGetSocketInfo(MprCtx ctx, cchar *host, int port, int *family, int *protoc
                 break;
             }
         } else {
-            if (r->ai_family == AF_INET) {
+            if (r->ai_family == AF_INET || host == 0) {
                 break;
             }
         }
@@ -22299,7 +22299,7 @@ static int ipv6(cchar *ip)
     int     colons;
 
     if (ip == 0 || *ip == 0) {
-        return 0;
+        return 1;
     }
     colons = 0;
     for (cp = (char*) ip; ((*cp != '\0') && (colons < 2)) ; cp++) {
@@ -25092,6 +25092,15 @@ void mprGetWorkerServiceStats(MprWorkerService *ws, MprWorkerStats *stats)
 }
 
 
+void mprSetWorkerStartCallback(MprCtx ctx, MprWorkerProc start)
+{
+    MprWorkerService    *ws;
+
+    ws = mprGetMpr(ctx)->workerService;
+    ws->startWorker = start;
+}
+
+
 /*
  *  Create a new thread for the task
  */
@@ -25143,6 +25152,9 @@ static void workerMain(MprWorker *worker, MprThread *tp)
     mprAssert(worker->state == MPR_WORKER_BUSY);
     mprAssert(!worker->idleCond->triggered);
 
+    if (ws->startWorker) {
+        (*ws->startWorker)(worker->data, worker);
+    }
     mprLock(ws->mutex);
 
     while (!(worker->state & MPR_WORKER_PRUNED)) {
