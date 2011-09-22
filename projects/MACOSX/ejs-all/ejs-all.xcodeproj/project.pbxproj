@@ -71,6 +71,7 @@
 				C98111290FD58DC50066CD8B /* ShellScript */,
 			);
 			dependencies = (
+				C9B0CE9E142B81E200C16B82 /* PBXTargetDependency */,
 			);
 			name = ejs.web.mod;
 			productName = ejs.web.mod;
@@ -552,6 +553,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = C97627C30FD0780E009C78E1;
 			remoteInfo = libec;
+		};
+		C9B0CE9D142B81E200C16B82 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C97623C10FD06EC4009C78E1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C97623DA0FD06EF4009C78E1;
+			remoteInfo = ejsc;
 		};
 		C9EA93F80FD4FB0000870DB0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -2509,6 +2517,11 @@
 			isa = PBXTargetDependency;
 			target = C97627C30FD0780E009C78E1 /* libec */;
 			targetProxy = C99291540FD4E615009DBE78 /* PBXContainerItemProxy */;
+		};
+		C9B0CE9E142B81E200C16B82 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C97623DA0FD06EF4009C78E1 /* ejsc */;
+			targetProxy = C9B0CE9D142B81E200C16B82 /* PBXContainerItemProxy */;
 		};
 		C9EA93F90FD4FB0000870DB0 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
