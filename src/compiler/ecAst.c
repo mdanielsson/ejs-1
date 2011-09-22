@@ -3888,7 +3888,6 @@ int ecLookupScope(EcCompiler *cp, EjsName *name, bool anySpace)
     if (name->space == 0) {
         name->space = "";
     }
-
     lookup = &cp->lookup;
     lookup->ref = 0;
     lookup->trait = 0;
@@ -3899,15 +3898,15 @@ int ecLookupScope(EcCompiler *cp, EjsName *name, bool anySpace)
      *  Look in the scope chain considering each block scope. LookupVar will consider base classes and namespaces.
      */
     for (nth = 0, block = ejs->state->bp; block; block = block->scopeChain) {
-
-        if ((slotNum = ecLookupVar(cp, (EjsVar*) block, name, anySpace)) >= 0) {
-            lookup->nthBlock = nth;
-            break;
+        if (block != cp->compilerBlock) {
+            if ((slotNum = ecLookupVar(cp, (EjsVar*) block, name, anySpace)) >= 0) {
+                lookup->nthBlock = nth;
+                break;
+            }
         }
         nth++;
     }
     lookup->slotNum = slotNum;
-
     return slotNum;
 }
 
@@ -3955,11 +3954,14 @@ int ecLookupVar(EcCompiler *cp, EjsVar *vp, EjsName *name, bool anySpace)
         if ((slotNum = ejsLookupVarWithNamespaces(ejs, vp, name, lookup)) >= 0) {
             break;
         }
-        if (! ejsIsType(vp)) {
+        if (!ejsIsType(vp)) {
+            if (ejsIs(vp, ES_Block) || ejsIs(vp, ES_Function)) {
+                break;
+            }
             vp = (EjsVar*) vp->type;
             continue;
         }
-    
+        mprAssert(vp != ejs->global);
         type = (EjsType*) vp;
         if (type->instanceBlock && type->instanceBlock->obj.numProp > 0) {
             /*

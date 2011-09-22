@@ -573,7 +573,7 @@ static int compileInner(EcCompiler *cp, int argc, char **argv, int flags)
      */
     block = ejsCreateBlock(ejs, 0);
     ejsSetDebugName(block, "Compiler");
-    ejsPushBlock(ejs, block);
+    cp->compilerBlock = ejsPushBlock(ejs, block);
     
     /*
      *  Process the internal representation and generate code
