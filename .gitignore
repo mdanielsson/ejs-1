@@ -91,3 +91,4 @@ projects/WIN/ejs-dynamic/ejs-dynamic.sln.old
 projects/WIN/ejs-dynamic/ejs-dynamic.suo.old
 test/s-*.es
 .DS_Store
+test/*.es
