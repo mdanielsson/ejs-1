@@ -147,7 +147,7 @@ static EjsVar *getSystemRam(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv)
 static EjsVar *printStats(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv)
 {
     ejsPrintAllocReport(ejs);
-    mprPrintAllocReport(ejs, "Memroy Report");
+    mprPrintAllocReport(ejs, "Memory Report");
     return 0;
 }
 
