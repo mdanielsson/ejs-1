@@ -877,7 +877,6 @@ void ejsRemoveSlot(Ejs *ejs, EjsObject *obj, int slotNum, int compact)
     mprAssert(obj);
     mprAssert(slotNum >= 0);
     mprAssert(slotNum >= 0);
-    mprAssert(ejs->flags & EJS_FLAG_COMPILER);
 
     names = obj->names;
 
@@ -1165,10 +1164,8 @@ static void removeHashEntry(EjsObject *obj, EjsName *qname)
                 return;
             }
         }
-        mprAssert(0);
         return;
     }
-
 
     index = ejsComputeHashCode(names, qname);
     slotNum = names->buckets[index];
@@ -1190,7 +1187,6 @@ static void removeHashEntry(EjsObject *obj, EjsName *qname)
         lastSlot = slotNum;
         slotNum = names->entries[slotNum].nextSlot;
     }
-    mprAssert(0);
 }
 
 
