@@ -5099,7 +5099,9 @@ static void formatAuthResponse(MaConn *conn, MaAuth *auth, int code, char *msg, 
 
 void maSetAuthQop(MaAuth *auth, cchar *qop)
 {
-    mprFree(auth->qop);
+    if (mprGetParent(auth->qop) == auth) {
+        mprFree(auth->qop);
+    }
     if (strcmp(qop, "auth") == 0 || strcmp(qop, "auth-int") == 0) {
         auth->qop = mprStrdup(auth, qop);
     } else {
@@ -5110,14 +5112,18 @@ void maSetAuthQop(MaAuth *auth, cchar *qop)
 
 void maSetAuthRealm(MaAuth *auth, cchar *realm)
 {
-    mprFree(auth->requiredRealm);
+    if (mprGetParent(auth->requiredRealm) == auth) {
+        mprFree(auth->requiredRealm);
+    }
     auth->requiredRealm = mprStrdup(auth, realm);
 }
 
 
 void maSetAuthRequiredGroups(MaAuth *auth, cchar *groups)
 {
-    mprFree(auth->requiredGroups);
+    if (mprGetParent(auth->requiredGroups) == auth) {
+        mprFree(auth->requiredGroups);
+    }
     auth->requiredGroups = mprStrdup(auth, groups);
     auth->flags |= MA_AUTH_REQUIRED;
     auth->anyValidUser = 0;
@@ -5126,7 +5132,9 @@ void maSetAuthRequiredGroups(MaAuth *auth, cchar *groups)
 
 void maSetAuthRequiredUsers(MaAuth *auth, cchar *users)
 {
-    mprFree(auth->requiredUsers);
+    if (mprGetParent(auth->requiredUsers) == auth) {
+        mprFree(auth->requiredUsers);
+    }
     auth->requiredUsers = mprStrdup(auth, users);
     auth->flags |= MA_AUTH_REQUIRED;
     auth->anyValidUser = 0;
@@ -8410,6 +8418,28 @@ static cchar *cback(MaConn *conn, int *code, cchar *targetUri)
 
 static void simpleTest(MaQueue *q)
 {
+    MaHttp          *http;
+    MaServer        *server;
+    MaListen        *listen;
+    MaHostAddress   *address;
+
+    http = mprGetMpr(q)->appwebHttpService;
+    server = http->defaultServer;
+    listen = mprGetFirstItem(server->listens);
+    maStopListening(listen);
+
+    if ((address = maLookupHostAddress(server, listen->ipAddr, listen->port)) != 0) {
+        mprRemoveItem(server->hostAddresses, address);
+    }
+    listen->port = 5555;
+    // listen->ipAddr = 5555;
+
+    address = maCreateHostAddress(server, listen->ipAddr, listen->port);
+    mprAddItem(server->hostAddresses, address);
+    maInsertVirtualHost(address, server->defaultHost);
+
+    maStartListening(listen);
+
 #if UNUSED
     maSetRedirectCallback(q->conn, cback);
     maRedirect(q->conn, 302, "/abc/anything");
@@ -9064,7 +9094,7 @@ static int readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size)
     resp = conn->response;
     req = conn->request;
     
-    if (packet->content == 0 && (packet->content = mprCreateBuf(packet, size, size)) == 0) {
+    if (packet->content == 0 && (packet->content = mprCreateBuf(packet, size, -1)) == 0) {
         return MPR_ERR_NO_MEMORY;
     }
     mprLog(q, 7, "readFileData size %Ld, pos %Ld", size, pos);
@@ -12547,8 +12577,11 @@ void maCreatePipeline(MaConn *conn)
             }
         }
     }
-    
     connector = location->connector;
+    if (connector == 0) {
+        mprError(conn, "No connector defined, using net connector");
+        connector = http->netConnector;
+    }
 #if BLD_FEATURE_SEND
     if (resp->handler == http->fileHandler && connector == http->netConnector && req->method == MA_REQ_GET && 
             http->sendConnector && !req->ranges && !host->secure && resp->chunkSize <= 0 && !conn->trace) {
