@@ -144,6 +144,7 @@ static void sessionTimer(EjsWebControl *control, MprEvent *event)
             if (session->obj.var.type == control->sessionType) {
                 if (session && session->expire <= now) {
                     ejsDeleteProperty(master, (EjsVar*) sessions, i);
+                    ejsRemoveSlot(master, sessions, i, 1);
                     deleted++;
                 }
             }
@@ -318,6 +319,16 @@ bool ejsDestroySession(Ejs *ejs)
 }
 
 
+static void destroySession(Ejs *ejs, EjsWebSession *session)
+{
+    mprAssert(session);
+
+    mprFree(session->id);
+    session->id = 0;
+    ejsFreeVar(ejs, (EjsVar*) session, -1);
+}
+
+
 void ejsConfigureWebSessionType(Ejs *ejs)
 {
     EjsType     *type;
@@ -340,6 +351,7 @@ void ejsConfigureWebSessionType(Ejs *ejs)
     type->helpers->getProperty = (EjsGetPropertyHelper) getSessionProperty;
     type->helpers->getPropertyByName = (EjsGetPropertyByNameHelper) getSessionPropertyByName;
     type->helpers->setProperty = (EjsSetPropertyHelper) setSessionProperty;
+    type->helpers->destroyVar = (EjsDestroyVarHelper) destroySession;
 }
 
 #endif /* BLD_FEATURE_EJS_WEB */

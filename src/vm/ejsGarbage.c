@@ -197,12 +197,12 @@ void ejsFreeVar(Ejs *ejs, EjsVar *vp, int id)
     if (id < 0) {
         id = type->id;
     }
+    pool = gc->pools[id];
 
-    if (!vp->noPool && !type->dontPool && 0 <= id && id < gc->numPools) {
+    if (!vp->noPool && !type->dontPool && 0 <= id && id < gc->numPools && pool->count < EJS_MAX_TYPE_POOL) {
         /*
          *  Transfer from the current generation back to the pool. Inline for speed.
          */
-        pool = gc->pools[id];
         pool->type = vp->type; 
         pp = MPR_GET_BLK(pool);
         bp = MPR_GET_BLK(vp);
@@ -275,6 +275,10 @@ void ejsCollectGarbage(Ejs *ejs, int gen)
     gc->collecting = 0;
 #if BLD_DEBUG
     gc->totalSweeps++;
+#if REPORT
+    ejsPrintAllocReport(ejs);
+    mprPrintAllocReport(ejs, "Memory Report");
+#endif
 #endif
 }
 
@@ -307,6 +311,9 @@ static void mark(Ejs *ejs, int generation)
     }
     if (ejs->memoryCallback) {
         ejsMarkVar(ejs, NULL, (EjsVar*) ejs->memoryCallback);
+    }
+    if (ejs->sessions) {
+        ejsMarkVar(ejs, NULL, (EjsVar*) ejs->sessions);
     }
 
     /*

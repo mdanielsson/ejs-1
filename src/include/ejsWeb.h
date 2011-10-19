@@ -171,7 +171,7 @@ typedef struct EjsWebSession
 {
     EjsObject   obj;
     MprTime     expire;                     /* When the session should expire */
-    cchar       *id;                        /* Session ID */
+    char        *id;                        /* Session ID */
     int         timeout;                    /* Session inactivity lifespan */
     int         index;                      /* Index in sesssions[] */
 } EjsWebSession;

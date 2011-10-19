@@ -61,7 +61,7 @@ static EjsVar *createSession(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
 /*
  *  function destroySession(): Void
  */
-static EjsVar *destroySession(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
+static EjsVar *destroyControllerSession(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
 {
     ejsDestroySession(ejs);
     return 0;
@@ -340,7 +340,7 @@ void ejsConfigureWebControllerType(Ejs *ejs)
     }
     ejsBindMethod(ejs, type, ES_ejs_web_Controller_ejs_web_cache, (EjsNativeFunction) cache);
     ejsBindMethod(ejs, type, ES_ejs_web_Controller_ejs_web_createSession, (EjsNativeFunction) createSession);
-    ejsBindMethod(ejs, type, ES_ejs_web_Controller_ejs_web_destroySession, (EjsNativeFunction) destroySession);
+    ejsBindMethod(ejs, type, ES_ejs_web_Controller_ejs_web_destroySession, (EjsNativeFunction) destroyControllerSession);
     ejsBindMethod(ejs, type, ES_ejs_web_Controller_ejs_web_discardOutput, (EjsNativeFunction) discardOutput);
     ejsBindMethod(ejs, type, ES_ejs_web_Controller_ejs_web_sendError, (EjsNativeFunction) sendError);
     ejsBindMethod(ejs, type, ES_ejs_web_Controller_ejs_web_keepAlive, (EjsNativeFunction) keepAlive);

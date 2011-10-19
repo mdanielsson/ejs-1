@@ -116,6 +116,7 @@ extern "C" {
  *  Set cross gen root set size to the work quote * 120%. This ensures we don't often overflow a root set.
  */
 #define EJS_NUM_CROSS_GEN           (EJS_GC_WORK_QUOTA * 12 / 10) 
+#define EJS_MAX_TYPE_POOL           200             /* Number of objects to pool per type */
 
 #define EJS_SQLITE_TIMEOUT          30000           /* Database busy timeout */
 #define EJS_SESSION_TIMEOUT         1800

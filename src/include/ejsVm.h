@@ -169,6 +169,7 @@ typedef struct EjsGen
     uint            totalSweeps;        /* Total sweeps */
 } EjsGen;
 
+
 /*
  *  GC Pool of free objects of a given type. Each type maintains a free pool for faster allocations.
  *  Types in the pool have a weak reference and may be reclaimed.
@@ -344,6 +345,7 @@ typedef struct Ejs {
     uint                exiting: 1;         /**< VM should exit */
 
     struct EjsVar       *exceptionArg;      /**< Exception object for catch block */
+    struct EjsVar       *sessions;          /**< Sessions object in the master interpreter*/
 
     bool                attention;          /**< VM needs attention */
 

@@ -139,7 +139,7 @@ static int initInterp(Ejs *ejs, EjsWebControl *control)
     sessions = ejsGetPropertyByName(ejs, ejs->global, ejsName(&qname, "ejs.web", "sessions"));
 }
 #endif
-    ejsMakePermanent(ejs, sessions);
+    ejs->sessions = sessions;
     control->sessions = (EjsObject*) sessions;
     ejs->dontExit = 1;
     return 0;
