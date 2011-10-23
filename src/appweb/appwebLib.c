@@ -4573,74 +4573,70 @@ typedef struct AuthData
 } AuthData;
 
 
-static void decodeBasicAuth(MaQueue *q);
+static void decodeBasicAuth(MaConn *conn, AuthData *ad);
 static void formatAuthResponse(MaConn *conn, MaAuth *auth, int code, char *msg, char *logMsg);
 static cchar *getPassword(MaConn *conn, cchar *realm, cchar *user);
 static bool validateUserCredentials(MaConn *conn, cchar *realm, char *user, cchar *password, cchar *requiredPass, 
         char **msg);
 #if BLD_FEATURE_AUTH_DIGEST
-static int  decodeDigestDetails(MaQueue *q);
+static int  decodeDigestDetails(MaConn *conn, AuthData *ad);
 #endif
 
 /*
- *  Open the authorization filter AND check if the request has the required authorization.
- *  This runs when the pipeline is created. 
+ *  Match the request for authorization. This implements basic and digest authentication.
  */
-static void openAuth(MaQueue *q)
+static bool matchAuth(MaConn *conn, MaStage *stage, cchar *url)
 {
-    MaConn      *conn;
     MaRequest   *req;
     MaAuth      *auth;
     AuthData    *ad;
     cchar       *requiredPassword;
-    char        *url, *msg;
+    char        *msg;
     int         actualAuthType;
 
-    conn = q->conn;
     req = conn->request;
-    url = req->url;
     auth = req->auth;
 
     if (auth == 0) {
         maFailRequest(conn, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Authorization enabled.");
-        return;
+        return 1;
     }
-    ad = q->queueData = mprAllocObjZeroed(q, AuthData);
-    if (ad == 0) {
-        return;
+    if ((ad = mprAllocObjZeroed(req, AuthData)) == 0) {
+        maFailRequest(conn, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Server Error.");
+        return 1;
     }
     if (auth->type == 0) {
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Authorization required.", 0);
-        return;
+        return 1;
     }
     if (req->authDetails == 0) {
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Missing authorization details.", 0);
-        return;
+        return 1;
     }
     if (mprStrcmpAnyCase(req->authType, "basic") == 0) {
-        decodeBasicAuth(q);
+        decodeBasicAuth(conn, ad);
         actualAuthType = MA_AUTH_BASIC;
 
 #if BLD_FEATURE_AUTH_DIGEST
     } else if (mprStrcmpAnyCase(req->authType, "digest") == 0) {
-        if (decodeDigestDetails(q) < 0) {
+        if (decodeDigestDetails(conn, ad) < 0) {
             maFailRequest(conn, 400, "Bad authorization header");
-            return;
+            return 1;
         }
         actualAuthType = MA_AUTH_DIGEST;
 #endif
     } else {
         actualAuthType = MA_AUTH_UNKNOWN;
     }
-    mprLog(q, 4, "openAuth: type %d, url %s\nDetails %s\n", auth->type, req->url, req->authDetails);
+    mprLog(conn, 4, "openAuth: type %d, url %s\nDetails %s\n", auth->type, req->url, req->authDetails);
 
     if (ad->userName == 0) {
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Missing user name.", 0);
-        return;
+        return 1;
     }
     if (auth->type != actualAuthType) {
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Wrong authentication protocol.", 0);
-        return;
+        return 1;
     }
 
     /*
@@ -4650,7 +4646,7 @@ static void openAuth(MaQueue *q)
     if ((requiredPassword = getPassword(conn, auth->requiredRealm, ad->userName)) == 0) {
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, authentication error.", 
             "User not defined");
-        return;
+        return 1;
     }
 
 #if BLD_FEATURE_AUTH_DIGEST
@@ -4659,7 +4655,7 @@ static void openAuth(MaQueue *q)
         if (strcmp(ad->qop, auth->qop) != 0) {
             formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, 
                 "Access Denied, Quality of protection does not match.", 0);
-            return;
+            return 1;
         }
         mprCalcDigest(req, &requiredDigest, 0, requiredPassword, ad->realm, req->url, ad->nonce, ad->qop, ad->nc, ad->cnonce,
             req->methodName);
@@ -4669,7 +4665,9 @@ static void openAuth(MaQueue *q)
     if (!validateUserCredentials(conn, auth->requiredRealm, ad->userName, ad->password, requiredPassword, &msg)) {
         formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, 
             "Access denied, authentication error", msg);
+        return 1;
     }
+    return 0;
 }
 
 
@@ -4730,17 +4728,12 @@ static cchar *getPassword(MaConn *conn, cchar *realm, cchar *user)
 /*
  *  Decode basic authorization details
  */
-static void decodeBasicAuth(MaQueue *q)
+static void decodeBasicAuth(MaConn *conn, AuthData *ad)
 {
-    MaConn      *conn;
     MaRequest   *req;
-    AuthData    *ad;
     char        decodedDetails[64], *cp;
 
-    conn = q->conn;
     req = conn->request;
-    ad = q->queueData;
-
     mprDecode64(decodedDetails, sizeof(decodedDetails), req->authDetails);
     if ((cp = strchr(decodedDetails, ':')) != 0) {
         *cp++ = '\0';
@@ -4761,19 +4754,14 @@ static void decodeBasicAuth(MaQueue *q)
 /*
  *  Decode the digest authentication details.
  */
-static int decodeDigestDetails(MaQueue *q)
+static int decodeDigestDetails(MaConn *conn, AuthData *ad)
 {
-    MaConn      *conn;
     MaRequest   *req;
-    AuthData    *ad;
     char        *authDetails, *value, *tok, *key, *dp, *sp;
     int         seenComma;
 
-    ad = q->queueData;
-    conn = q->conn;
     req = conn->request;
-
-    key = authDetails = mprStrdup(q, req->authDetails);
+    key = authDetails = mprStrdup(req, req->authDetails);
 
     while (*key) {
         while (*key && isspace((int) *key)) {
@@ -4830,7 +4818,7 @@ static int decodeDigestDetails(MaQueue *q)
 
         case 'c':
             if (mprStrcmpAnyCase(key, "cnonce") == 0) {
-                ad->cnonce = mprStrdup(q, value);
+                ad->cnonce = mprStrdup(req, value);
             }
             break;
 
@@ -4842,30 +4830,30 @@ static int decodeDigestDetails(MaQueue *q)
 
         case 'n':
             if (mprStrcmpAnyCase(key, "nc") == 0) {
-                ad->nc = mprStrdup(q, value);
+                ad->nc = mprStrdup(req, value);
             } else if (mprStrcmpAnyCase(key, "nonce") == 0) {
-                ad->nonce = mprStrdup(q, value);
+                ad->nonce = mprStrdup(req, value);
             }
             break;
 
         case 'o':
             if (mprStrcmpAnyCase(key, "opaque") == 0) {
-                ad->opaque = mprStrdup(q, value);
+                ad->opaque = mprStrdup(req, value);
             }
             break;
 
         case 'q':
             if (mprStrcmpAnyCase(key, "qop") == 0) {
-                ad->qop = mprStrdup(q, value);
+                ad->qop = mprStrdup(req, value);
             }
             break;
 
         case 'r':
             if (mprStrcmpAnyCase(key, "realm") == 0) {
-                ad->realm = mprStrdup(q, value);
+                ad->realm = mprStrdup(req, value);
             } else if (mprStrcmpAnyCase(key, "response") == 0) {
                 /* Store the response digest in the password field */
-                ad->password = mprStrdup(q, value);
+                ad->password = mprStrdup(req, value);
             }
             break;
 
@@ -4876,9 +4864,9 @@ static int decodeDigestDetails(MaQueue *q)
         
         case 'u':
             if (mprStrcmpAnyCase(key, "uri") == 0) {
-                ad->uri = mprStrdup(q, value);
+                ad->uri = mprStrdup(req, value);
             } else if (mprStrcmpAnyCase(key, "username") == 0) {
-                ad->userName = mprStrdup(q, value);
+                ad->userName = mprStrdup(req, value);
             }
             break;
 
@@ -4904,7 +4892,7 @@ static int decodeDigestDetails(MaQueue *q)
         return MPR_ERR_BAD_ARGS;
     }
     if (ad->qop == 0) {
-        ad->qop = mprStrdup(q, "");
+        ad->qop = mprStrdup(req, "");
     }
 
     maSetRequestUser(conn, ad->userName);
@@ -5159,7 +5147,7 @@ MprModule *maAuthFilterInit(MaHttp *http, cchar *path)
         return 0;
     }
     http->authFilter = filter;
-    filter->open = openAuth; 
+    filter->match = matchAuth; 
     filter->parse = parseAuth; 
     return module;
 }
@@ -9529,7 +9517,15 @@ static void runPhp(MaQueue *q)
     zend_first_try {
         php->var_array = 0;
         SG(server_context) = conn;
-        SG(request_info).auth_user = req->user;
+        if (req->user) {
+            SG(request_info).auth_user = estrdup(req->user);
+        }
+        if (req->password) {
+            SG(request_info).auth_password = estrdup(req->password);
+        }
+        if (req->authType && req->authDetails) {
+            SG(request_info).auth_digest = estrdup(mprAsprintf(req, -1, "%s %s", req->authType, req->authDetails));
+        }
         SG(request_info).auth_password = req->password;
         SG(request_info).content_type = req->mimeType;
         SG(request_info).content_length = req->length;
@@ -12577,6 +12573,10 @@ void maCreatePipeline(MaConn *conn)
             }
         }
     }
+    if (conn->requestFailed) {
+        handler = resp->handler = http->passHandler;
+        mprSetItem(resp->outputPipeline, 0, resp->handler);
+    }
     connector = location->connector;
     if (connector == 0) {
         mprError(conn, "No connector defined, using net connector");
@@ -12674,7 +12674,7 @@ void maCreatePipeline(MaConn *conn)
                 }
             }
         }
-    }
+    }    
     /*
         Now that all stages are open, we can set the environment
      */
