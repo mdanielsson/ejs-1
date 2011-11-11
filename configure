@@ -32,7 +32,7 @@ fi
 #
 #   This programs version
 #
-CONFIGURE_VERSION=4.2.1
+CONFIGURE_VERSION=3.2.1
 
 #
 #   Default settings
