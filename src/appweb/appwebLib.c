@@ -9495,7 +9495,6 @@ static void runPhp(MaQueue *q)
     MaConn              *conn;
     MaRequest           *req;
     MaResponse          *resp;
-    MprHash             *hp;
     MaPhp               *php;
     FILE                *fp;
     char                shebang[MPR_MAX_STRING];
@@ -9553,28 +9552,6 @@ static void runPhp(MaQueue *q)
         return;
     } zend_end_try();
 
-    /*
-     *  Define header variables
-     */
-    zend_try {
-        hp = mprGetFirstHash(req->headers);
-        while (hp) {
-            if (hp->data) {
-                php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
-                mprLog(q, 6, "php: header var %s = %s", hp->key, hp->data);
-
-            }
-            hp = mprGetNextHash(req->headers, hp);
-        }
-        hp = mprGetFirstHash(req->formVars);
-        while (hp) {
-            if (hp->data) {
-                php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
-                mprLog(q, 6, "php: form var %s = %s", hp->key, hp->data);
-            }
-            hp = mprGetNextHash(req->formVars, hp);
-        }
-    } zend_end_try();
 
     /*
      *  Execute the script file
@@ -9658,6 +9635,8 @@ static void registerServerVars(zval *track_vars_array TSRMLS_DC)
 {
     MaConn      *conn;
     MaPhp       *php;
+    MaRequest    *req;
+    MprHash      *hp;
 
     conn = (MaConn*) SG(server_context);
     if (conn == 0) {
@@ -9668,9 +9647,34 @@ static void registerServerVars(zval *track_vars_array TSRMLS_DC)
     if (SG(request_info).request_uri) {
         php_register_variable("PHP_SELF", SG(request_info).request_uri,  track_vars_array TSRMLS_CC);
     }
-    php = maGetHandlerQueueData(conn);
-    mprAssert(php);
+    if ((php = maGetHandlerQueueData(conn)) == 0) {
+        return;
+    }
     php->var_array = track_vars_array;
+
+    /*
+        Define header variables
+     */
+    zend_try {
+        req = conn->request;
+        hp = mprGetFirstHash(req->headers);
+        while (hp) {
+            if (hp->data) {
+                php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
+                mprLog(conn, 6, "php: header var %s = %s", hp->key, hp->data);
+
+            }
+            hp = mprGetNextHash(req->headers, hp);
+        }
+        hp = mprGetFirstHash(req->formVars);
+        while (hp) {
+            if (hp->data) {
+                php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
+                mprLog(conn, 6, "php: form var %s = %s", hp->key, hp->data);
+            }
+            hp = mprGetNextHash(req->formVars, hp);
+        }
+    } zend_end_try();
 }
 
 
@@ -9817,7 +9821,9 @@ static int initializePhp(MaHttp *http)
     zend_llist_init(&global_vars, sizeof(char *), 0, 0);
 #endif
 
+#if UNUSED
     SG(options) |= SAPI_OPTION_NO_CHDIR;
+#endif
     zend_alter_ini_entry("register_argc_argv", 19, "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
     zend_alter_ini_entry("html_errors", 12, "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
     zend_alter_ini_entry("implicit_flush", 15, "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
