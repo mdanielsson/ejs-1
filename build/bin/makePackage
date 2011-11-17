@@ -4,10 +4,10 @@
 #
 #   This script creates ....
 #
-#   ${BLD_PRODUCT}-bin-{version}-{build}-{OS}-{ARCH}.{FMT}.tar.gz
-#   ${BLD_PRODUCT}-dev-{version}-{build}.{FMT}.tar.gz
-#   ${BLD_PRODUCT}-doc-{version}-{build}.{FMT}.tar.gz
-#   ${BLD_PRODUCT}-src-{version}-{build}.{FMT}.tar.gz
+#   ${BLD_PRODUCT}-bin-{version}-{build}-{OS}-{ARCH}.{FMT}.tgz
+#   ${BLD_PRODUCT}-dev-{version}-{build}.{FMT}.tgz
+#   ${BLD_PRODUCT}-doc-{version}-{build}.{FMT}.tgz
+#   ${BLD_PRODUCT}-src-{version}-{build}.{FMT}.tgz
 #
 ################################################################################
 #
@@ -193,7 +193,7 @@ createArchives() {
         #
         if [ "$suffix" = "src" ] ; then
 
-            file=`echo ${BLD_PRODUCT}-src-${BLD_VERSION}-${BLD_NUMBER}.tar`
+            file=`echo ${BLD_PRODUCT}-src-${BLD_VERSION}-${BLD_NUMBER}.tgz`
             file="${ROOT_DIR}/$file"
             ${RM} -f "${file}" "${file}.gz"
             [ $BLD_HOST_OS = WIN ] && file=`cygpath "${file}"`
@@ -216,11 +216,10 @@ createArchives() {
             find $dir -type f -print > $fromFiles
             find $dir -type l -print >>$fromFiles
 
-            ${RM} -f ${file} ${file}.gz
+            ${RM} -f ${file}
 
-            echo "tar -cf ${file} --files-from=$fromFiles"
-            tar -cf ${file} --files-from=$fromFiles
-            gzip ${file}
+            echo "tar -czf ${file} --files-from=$fromFiles"
+            tar -czf ${file} --files-from=$fromFiles
 
             echo -e "\n#\n#  Create zip images for the src distribution ... \n#"
 
@@ -233,8 +232,8 @@ createArchives() {
             cd $HOME >/dev/null
 
         else
-            file=`createPackageName $name`.tar
-            ${RM} -f "${ROOT_DIR}/${file}" "${ROOT_DIR}/${file}.gz"
+            file=`createPackageName $name`.tgz
+            ${RM} -f "${ROOT_DIR}/${file}"
 
             createFileList "$listLoc" "${ROOT_DIR}/${dir}"
 
@@ -247,9 +246,8 @@ createArchives() {
             find $dir -type f -print > $fromFiles
             find $dir -type l -print >>$fromFiles
 
-            echo "tar -cf ${file} --files-from=${fromFiles}"
-            tar -cf ${file} --files-from=${fromFiles}
-            gzip ${file}
+            echo "tar -czf ${file} --files-from=${fromFiles}"
+            tar -czf ${file} --files-from=${fromFiles}
 
             if [ "$suffix" = "src" ] ; then
                 echo -en "\n#\n# "
@@ -388,15 +386,13 @@ createEnvelopes() {
             ls -1 COPYRIGHT.TXT README.TXT LICENSE.TXT *.$fmt | grep -v "${BLD_PRODUCT}-src" | zip -q ${env} -@
             ls -1 COPYRIGHT.TXT README.TXT LICENSE.TXT *.$fmt | zip -q "${env}" -@
         else
-            env=${ROOT_DIR}/$name.tar
-            ${RM} -f $env ${env}.gz
+            env=${ROOT_DIR}/$name.tgz
+            ${RM} -f $env ${env}
             files="*.$fmt"
             srcPkg=`echo ${BLD_PRODUCT}-src-${BLD_VERSION}-${BLD_NUMBER}.${fmt}`
             files=`echo $files | sed "s^$srcPkg^^"`
-            echo "tar -cf `basename ${env}` COPYRIGHT.TXT README.TXT LICENSE.TXT install uninstall $files"
-            tar -cf ${env} COPYRIGHT.TXT README.TXT LICENSE.TXT install uninstall $files
-            echo "gzip ${env}"
-            gzip ${env}
+            echo "tar -czf `basename ${env}` COPYRIGHT.TXT README.TXT LICENSE.TXT install uninstall $files"
+            tar -czf ${env} COPYRIGHT.TXT README.TXT LICENSE.TXT install uninstall $files
         fi
         count=`expr $count + 1`
     done
@@ -414,7 +410,7 @@ createEnvelopes() {
 copyImages() {
     local ext file zip
 
-    for ext in dmg deb rpm gz zip ; do
+    for ext in dmg deb rpm tgz zip ; do
         if ls ${ROOT_DIR}/${BLD_PRODUCT}*${ext} >/dev/null 2>&1 ; then
             cp ${ROOT_DIR}/${BLD_PRODUCT}*${ext} ${ABS_BLD_TOP}/releases
         fi
