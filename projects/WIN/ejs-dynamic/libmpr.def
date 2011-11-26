@@ -380,6 +380,7 @@ EXPORTS
   mprSetDomainName
   mprSetDynamicName
   mprSetFormattedHttpHeader
+  mprSetHashCaseless
   mprSetHostName
   mprSetHttpBody
   mprSetHttpCallback
@@ -427,6 +428,7 @@ EXPORTS
   mprSetWaitEvents
   mprSetWinMsgCallback
   mprSetWorkerStackSize
+  mprSetWorkerStartCallback
   mprSignalCond
   mprSignalExit
   mprSignalTestComplete

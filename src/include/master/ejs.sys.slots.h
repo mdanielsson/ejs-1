@@ -79,11 +79,12 @@
  *   Class property slots for the "Cmd" class 
  */
 #define ES_ejs_sys_Cmd__origin                                         6
-#define ES_ejs_sys_Cmd_sh                                              6
-#define ES_ejs_sys_Cmd_run                                             7
-#define ES_ejs_sys_Cmd_daemon                                          8
-#define ES_ejs_sys_Cmd_runx                                            9
-#define ES_ejs_sys_Cmd_NUM_CLASS_PROP                                  10
+#define ES_ejs_sys_Cmd_locate                                          6
+#define ES_ejs_sys_Cmd_sh                                              7
+#define ES_ejs_sys_Cmd_run                                             8
+#define ES_ejs_sys_Cmd_daemon                                          9
+#define ES_ejs_sys_Cmd_runx                                            10
+#define ES_ejs_sys_Cmd_NUM_CLASS_PROP                                  11
 
 /**
  * Instance slots for "Cmd" type 
@@ -94,8 +95,14 @@
  * 
  *    Local slots for methods in type Cmd 
  */
+#define ES_ejs_sys_Cmd_locate_program                                  0
+#define ES_ejs_sys_Cmd_locate_sep                                      1
+#define ES_ejs_sys_Cmd_locate__hoisted_2_dir                           2
+#define ES_ejs_sys_Cmd_locate__hoisted_3_path                          3
+#define ES_ejs_sys_Cmd_locate__hoisted_4_ext                           4
 #define ES_ejs_sys_Cmd_sh_cmdline                                      0
 #define ES_ejs_sys_Cmd_sh_data                                         1
+#define ES_ejs_sys_Cmd_sh_sh                                           2
 #define ES_ejs_sys_Cmd_run_cmdline                                     0
 #define ES_ejs_sys_Cmd_run_data                                        1
 #define ES_ejs_sys_Cmd_daemon_cmdline                                  0
@@ -265,6 +272,6 @@
 #define ES_ejs_sys_Worker_postMessage_ports                            1
 #define ES_ejs_sys_Worker_waitForMessage_timeout                       0
 
-#define _ES_CHECKSUM_ejs_sys 134872
+#define _ES_CHECKSUM_ejs_sys 137927
 
 #endif

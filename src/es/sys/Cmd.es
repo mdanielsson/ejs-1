@@ -16,6 +16,27 @@ module ejs.sys {
 
         use default namespace public
 
+        static function locate(program: Path): Path {
+            let sep = (Config.OS == "WIN") ? ";" : ":"
+            for each (dir in App.getenv("PATH").split(sep)) {
+                let path = Path(dir).join(program)
+                if (path.exists && !path.isDir) {
+                    return path
+                }
+            }
+            if (Config.OS == "WIN" || Config.OS == "CYGWIN") {
+                if (program.extension == "") {
+                    for each (ext in ["exe", "bat", "cmd"]) {
+                        path = locate(program.joinExt(".exe"))
+                        if (path) {
+                            return path;
+                        }
+                    }
+                }
+            }
+            return null
+        }
+
         /**
          *  Run a command using the system command shell and wait for completion. This supports pipelines.
          *  @param cmdline Command or program to execute
@@ -24,7 +45,10 @@ module ejs.sys {
          *      standard error output. 
          */
         static function sh(cmdline: String, data: String = null): String
-            run(("/bin/sh -c \"" + cmdline.replace(/\\/g, "\\\\") + "\"").trim('\n'), data)
+        {
+            let sh = Cmd.locate("sh")
+            return run((sh + " -c \"" + cmdline.replace(/\\/g, "\\\\") + "\"").trim('\n'), data)
+        }
 
         /**
          *  Execute a command/program.
