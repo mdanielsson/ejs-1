@@ -45,6 +45,7 @@ change in the next release.</p>
 <table class='apiIndex' summary='methods'>
    <tr><th>Qualifiers</th><th width='95%'>Method</th></tr>
    <tr class='apiDef'><td class='apiType'>public static </td><td><a href='#daemon'><b>daemon</b></a>(cmdline: <a href='intrinsic-String.html'>String</a>): <a href='intrinsic-Number.html'>Number</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Execute a command and detach.</td></tr>
+   <tr class='apiDef'><td class='apiType'>public static </td><td><a href='#locate'><b>locate</b></a>(program: <a href='ejs.io-Path.html'>Path</a>): <a href='ejs.io-Path.html'>Path</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Locate a command along the system search PATH.</td></tr>
    <tr class='apiDef'><td class='apiType'>public static </td><td><a href='#run'><b>run</b></a>(cmdline: <a href='intrinsic-String.html'>String</a>, data: <a href='intrinsic-String.html'>String</a> = null): <a href='intrinsic-String.html'>String</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Execute a command/program.</td></tr>
    <tr class='apiDef'><td class='apiType'>public static </td><td><a href='#sh'><b>sh</b></a>(cmdline: <a href='intrinsic-String.html'>String</a>, data: <a href='intrinsic-String.html'>String</a> = null): <a href='intrinsic-String.html'>String</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Run a command using the system command shell and wait for completion.</td></tr>
 </table>
@@ -65,6 +66,20 @@ change in the next release.</p>
 <tr class='param'><td class='param'>cmdline: <a href='intrinsic-String.html'>String</a> </td><td>Command or program to execute.</td></tr></table></dd>
 </dl><dl><dt>Returns</dt>
 <dd>The commands process ID.</dd></dl>
+</div>
+</div>
+<hr />
+<a name='locate'></a>
+<div class='api'>
+<div class='apiSig'>static   public  locate(program: <a href='ejs.io-Path.html'>Path</a>): <a href='ejs.io-Path.html'>Path</a>
+</div>
+<div class='apiDetail'>
+<p>Locate a command along the system search PATH.</p>
+<dl><dt>Parameters</dt>
+<dd><table class='parameters' summary ='parameters'>
+<tr class='param'><td class='param'>program: <a href='ejs.io-Path.html'>Path</a> </td><td>Program to search for.</td></tr></table></dd>
+</dl><dl><dt>Returns</dt>
+<dd>The first located occurence of the command on the PATH.</dd></dl>
 </div>
 </div>
 <hr />

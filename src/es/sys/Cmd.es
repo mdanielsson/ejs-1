@@ -16,6 +16,11 @@ module ejs.sys {
 
         use default namespace public
 
+        /**
+            Locate a command along the system search PATH
+            @param program Program to search for
+            @returns The first located occurence of the command on the PATH
+         */
         static function locate(program: Path): Path {
             let sep = (Config.OS == "WIN") ? ";" : ":"
             for each (dir in App.getenv("PATH").split(sep)) {
