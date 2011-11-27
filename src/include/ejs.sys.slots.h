@@ -100,6 +100,7 @@
 #define ES_ejs_sys_Cmd_locate__hoisted_2_dir                           2
 #define ES_ejs_sys_Cmd_locate__hoisted_3_path                          3
 #define ES_ejs_sys_Cmd_locate__hoisted_4_ext                           4
+#define ES_ejs_sys_Cmd_locate__hoisted_5_path                          5
 #define ES_ejs_sys_Cmd_sh_cmdline                                      0
 #define ES_ejs_sys_Cmd_sh_data                                         1
 #define ES_ejs_sys_Cmd_sh_sh                                           2
@@ -273,6 +274,6 @@
 #define ES_ejs_sys_Worker_postMessage_ports                            1
 #define ES_ejs_sys_Worker_waitForMessage_timeout                       0
 
-#define _ES_CHECKSUM_ejs_sys 138148
+#define _ES_CHECKSUM_ejs_sys 138583
 
 #endif

@@ -32,7 +32,7 @@ module ejs.sys {
             if (Config.OS == "WIN" || Config.OS == "CYGWIN") {
                 if (program.extension == "") {
                     for each (ext in ["exe", "bat", "cmd"]) {
-                        path = locate(program.joinExt(".exe"))
+                        let path = locate(program.joinExt(".exe"))
                         if (path) {
                             return path;
                         }
