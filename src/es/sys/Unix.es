@@ -94,8 +94,7 @@ module ejs.sys {
      */
     function kill(pid: Number, signal: Number = 2): Void {
         if (Config.OS == "WIN" || Config.OS == "CYGWIN") {
-            let kill = Cmd.locate("kill")
-            Cmd.run(kill + " -f -" + signal + " " + pid)
+            Cmd.sh("kill -f -" + signal + " " + pid)
         } else {
             Cmd.run("/bin/kill -" + signal + " " + pid)
         }
