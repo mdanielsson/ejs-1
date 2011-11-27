@@ -44,7 +44,7 @@ module ejs.sys {
             @hide
          */
         static function sh(args): String {
-            let sh = locate("sh") 
+            let sh = Cmd.locate("bash") 
             return System.run(sh + " -c \"" + args.replace(/\\/g, "\\\\") + "\"").trim('\n')
         }
 

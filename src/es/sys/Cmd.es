@@ -51,7 +51,7 @@ module ejs.sys {
          */
         static function sh(cmdline: String, data: String = null): String
         {
-            let sh = Cmd.locate("sh")
+            let sh = Cmd.locate("bash")
             return run((sh + " -c \"" + cmdline.replace(/\\/g, "\\\\") + "\"").trim('\n'), data)
         }
 

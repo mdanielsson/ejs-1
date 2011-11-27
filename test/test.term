@@ -6,6 +6,8 @@ pidfile = session["webPidFile"]
 if (pidfile && exists(pidfile)) {
     path = Path(pidfile)
     pid = path.readString()
-    kill(pid, 9)
+    try {
+        kill(pid, 9)
+    } catch {}
     path.remove()
 }
