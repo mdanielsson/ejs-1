@@ -44,7 +44,8 @@ module ejs.sys {
             @hide
          */
         static function sh(args): String {
-            return System.run("/bin/sh -c \"" + args.replace(/\\/g, "\\\\") + "\"").trim('\n')
+            let sh = locate("sh") 
+            return System.run(sh + " -c \"" + args.replace(/\\/g, "\\\\") + "\"").trim('\n')
         }
 
         /**  TEMP deprecated @hide */
