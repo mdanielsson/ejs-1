@@ -13049,7 +13049,7 @@ MprHttpCode MprHttpCodes[] = {
     { 406, "406", "Not Acceptable" },
     { 408, "408", "Request Timeout" },
     { 409, "409", "Conflict" },
-    { 410, "410", "Length Required" },
+    { 410, "410", "Resource not available" },
     { 411, "411", "Length Required" },
     { 413, "413", "Request Entity Too Large" },
     { 414, "414", "Request-URI Too Large" },
