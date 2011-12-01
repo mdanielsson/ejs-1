@@ -100,6 +100,7 @@
 #define ES_ejs_sys_Cmd_locate__hoisted_2_dir                           2
 #define ES_ejs_sys_Cmd_locate__hoisted_3_path                          3
 #define ES_ejs_sys_Cmd_locate__hoisted_4_ext                           4
+#define ES_ejs_sys_Cmd_locate__hoisted_5_path                          5
 #define ES_ejs_sys_Cmd_sh_cmdline                                      0
 #define ES_ejs_sys_Cmd_sh_data                                         1
 #define ES_ejs_sys_Cmd_sh_sh                                           2
@@ -204,13 +205,14 @@
 #define ES_ejs_sys_System__initializer__System_initializer             6
 #define ES_ejs_sys_System_Bufsize                                      7
 #define ES_ejs_sys_System_hostname                                     8
-#define ES_ejs_sys_System_run                                          9
-#define ES_ejs_sys_System_runx                                         10
-#define ES_ejs_sys_System_daemon                                       11
-#define ES_ejs_sys_System_sh                                           12
-#define ES_ejs_sys_System_cmd                                          13
-#define ES_ejs_sys_System_exec                                         14
-#define ES_ejs_sys_System_NUM_CLASS_PROP                               15
+#define ES_ejs_sys_System_kill                                         9
+#define ES_ejs_sys_System_run                                          10
+#define ES_ejs_sys_System_runx                                         11
+#define ES_ejs_sys_System_daemon                                       12
+#define ES_ejs_sys_System_sh                                           13
+#define ES_ejs_sys_System_cmd                                          14
+#define ES_ejs_sys_System_exec                                         15
+#define ES_ejs_sys_System_NUM_CLASS_PROP                               16
 
 /**
  * Instance slots for "System" type 
@@ -221,10 +223,13 @@
  * 
  *    Local slots for methods in type System 
  */
+#define ES_ejs_sys_System_kill_pid                                     0
+#define ES_ejs_sys_System_kill_signal                                  1
 #define ES_ejs_sys_System_run_cmd                                      0
 #define ES_ejs_sys_System_runx_cmd                                     0
 #define ES_ejs_sys_System_daemon_cmd                                   0
 #define ES_ejs_sys_System_sh_args                                      0
+#define ES_ejs_sys_System_sh_sh                                        1
 #define ES_ejs_sys_System_cmd_args                                     0
 #define ES_ejs_sys_System_exec_args                                    0
 
@@ -272,6 +277,6 @@
 #define ES_ejs_sys_Worker_postMessage_ports                            1
 #define ES_ejs_sys_Worker_waitForMessage_timeout                       0
 
-#define _ES_CHECKSUM_ejs_sys 138358
+#define _ES_CHECKSUM_ejs_sys 139985
 
 #endif

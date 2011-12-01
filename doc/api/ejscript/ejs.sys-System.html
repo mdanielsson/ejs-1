@@ -47,6 +47,7 @@
 <h2 class='classSection'>System Methods</h2>
 <table class='apiIndex' summary='methods'>
    <tr><th>Qualifiers</th><th width='95%'>Method</th></tr>
+   <tr class='apiDef'><td class='apiType'>public static </td><td><a href='#kill'><b>kill</b></a>(pid: <a href='intrinsic-Number.html'>Number</a>, signal: <a href='intrinsic-Number.html'>Number</a> = 2): <a href='intrinsic-Boolean.html'>Boolean</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Kill the specified process.</td></tr>
    <tr class='apiDef'><td class='apiType'>public static </td><td><a href='#run'><b>run</b></a>(cmd: <a href='intrinsic-String.html'>String</a>): <a href='intrinsic-String.html'>String</a></tr><tr class='apiBrief'><td>&nbsp;</td><td>Execute a command/program.</td></tr>
 </table>
 
@@ -54,6 +55,23 @@
 
 <hr />
 <h2>Method Detail</h2>
+<a name='kill'></a>
+<div class='api'>
+<div class='apiSig'>static   public  kill(pid: <a href='intrinsic-Number.html'>Number</a>, signal: <a href='intrinsic-Number.html'>Number</a> = 2): <a href='intrinsic-Boolean.html'>Boolean</a>
+</div>
+<div class='apiDetail'>
+<p>Kill the specified process.</p>
+<dl><dt>Parameters</dt>
+<dd><table class='parameters' summary ='parameters'>
+<tr class='param'><td class='param'>pid: <a href='intrinsic-Number.html'>Number</a> </td><td>Process ID of the process to kill.</td></tr><tr class='param'><td class='param'>signal: <a href='intrinsic-Number.html'>Number</a> </td><td>If pid is greater than zero, the signal is sent to the process whoes ID is pid. If pid is zero, the process is tested but no signal is sent. [default: 2]</td></tr></table></dd>
+</dl><dl><dt>Returns</dt>
+<dd>True if successful.</dd></dl>
+<dl><dt>Throws</dt><dd>
+<a href='intrinsic-IOError.html'>IOError</a>: if the pid is invalid or if the requesting process does not have sufficient privilege to send the signal. 
+</dd>
+</dl></div>
+</div>
+<hr />
 <a name='run'></a>
 <div class='api'>
 <div class='apiSig'>static   public  run(cmd: <a href='intrinsic-String.html'>String</a>): <a href='intrinsic-String.html'>String</a>

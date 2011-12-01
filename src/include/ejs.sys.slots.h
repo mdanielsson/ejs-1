@@ -205,13 +205,14 @@
 #define ES_ejs_sys_System__initializer__System_initializer             6
 #define ES_ejs_sys_System_Bufsize                                      7
 #define ES_ejs_sys_System_hostname                                     8
-#define ES_ejs_sys_System_run                                          9
-#define ES_ejs_sys_System_runx                                         10
-#define ES_ejs_sys_System_daemon                                       11
-#define ES_ejs_sys_System_sh                                           12
-#define ES_ejs_sys_System_cmd                                          13
-#define ES_ejs_sys_System_exec                                         14
-#define ES_ejs_sys_System_NUM_CLASS_PROP                               15
+#define ES_ejs_sys_System_kill                                         9
+#define ES_ejs_sys_System_run                                          10
+#define ES_ejs_sys_System_runx                                         11
+#define ES_ejs_sys_System_daemon                                       12
+#define ES_ejs_sys_System_sh                                           13
+#define ES_ejs_sys_System_cmd                                          14
+#define ES_ejs_sys_System_exec                                         15
+#define ES_ejs_sys_System_NUM_CLASS_PROP                               16
 
 /**
  * Instance slots for "System" type 
@@ -222,6 +223,8 @@
  * 
  *    Local slots for methods in type System 
  */
+#define ES_ejs_sys_System_kill_pid                                     0
+#define ES_ejs_sys_System_kill_signal                                  1
 #define ES_ejs_sys_System_run_cmd                                      0
 #define ES_ejs_sys_System_runx_cmd                                     0
 #define ES_ejs_sys_System_daemon_cmd                                   0
@@ -274,6 +277,6 @@
 #define ES_ejs_sys_Worker_postMessage_ports                            1
 #define ES_ejs_sys_Worker_waitForMessage_timeout                       0
 
-#define _ES_CHECKSUM_ejs_sys 138583
+#define _ES_CHECKSUM_ejs_sys 139985
 
 #endif

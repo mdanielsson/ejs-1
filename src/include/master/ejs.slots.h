@@ -215,7 +215,6 @@
 #define ES_isDir_path                                                  0
 #define ES_kill_pid                                                    0
 #define ES_kill_signal                                                 1
-#define ES_kill__hoisted_2_kill                                        2
 #define ES_ls_path                                                     0
 #define ES_ls_enumDirs                                                 1
 #define ES_find_path                                                   0

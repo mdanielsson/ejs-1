@@ -22,6 +22,18 @@ module ejs.sys {
         native static function get hostname(): String
 
         /**
+            Kill the specified process.
+            @param pid Process ID of the process to kill
+            @param signal If pid is greater than zero, the signal is sent to the process whoes ID is pid. If pid is
+                zero, the process is tested but no signal is sent. 
+            @return True if successful
+            @throws IOError if the pid is invalid or if the requesting process does not have sufficient privilege to
+                send the signal.
+            @internal
+         */
+        native static function kill(pid: Number, signal: Number = 2): Boolean
+
+        /**
          *  Execute a command/program.
          *  @param cmd Command or program to execute
          *  @return a text stream connected to the programs standard output.

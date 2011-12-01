@@ -10,6 +10,46 @@
 
 /************************************ Methods *********************************/
 #if BLD_FEATURE_CMD
+/**
+    static function kill(pid: Number, signal: Number = 2): Boolean
+ */
+static EjsVar *sys_kill(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
+{
+    int     rc, pid, signal;
+
+    signal = SIGINT;
+
+    pid = ejsGetInt(argv[0]);
+    if (argc >= 2) {
+        signal = ejsGetInt(argv[1]);
+    }
+    if (pid == 0) {
+        ejsThrowStateError(ejs, "No process to kill");
+        return 0;
+    }
+#if BLD_WIN_LIKE
+{
+    HANDLE	handle;
+	handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
+    if (handle == 0) {
+        ejsThrowIOError(ejs, "Can't find process ID %d", pid);
+        return 0;
+    }
+    rc = TerminateProcess(handle, signal) == 0;
+}
+#elif VXWORKS
+    rc = taskDelete(pid);
+#else
+    rc = kill(pid, signal);
+#endif
+    if (rc < 0) {
+        ejsThrowIOError(ejs, "Can't kill %d with signal %d, errno %d", pid, signal, errno);
+        return (EjsVar*) ejs->falseValue;
+    }
+    return (EjsVar*) ejs->trueValue;
+}
+
+
 #if ES_ejs_sys_System_run
 /*
  *  function run(cmd: String): String
@@ -134,6 +174,9 @@ void ejsConfigureSystemType(Ejs *ejs)
 #if BLD_FEATURE_CMD
     ejsBindMethod(ejs, type, ES_ejs_sys_System_daemon, (EjsNativeFunction) runDaemon);
     ejsBindMethod(ejs, type, ES_ejs_sys_System_exec, (EjsNativeFunction) execCmd);
+#if ES_ejs_sys_System_kill
+    ejsBindMethod(ejs, type, ES_ejs_sys_System_kill, (EjsNativeFunction) sys_kill);
+#endif
     ejsBindMethod(ejs, type, ES_ejs_sys_System_run, (EjsNativeFunction) run);
     ejsBindMethod(ejs, type, ES_ejs_sys_System_runx, (EjsNativeFunction) runx);
 #endif
