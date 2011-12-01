@@ -17,12 +17,7 @@ static EjsVar *sys_kill(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
 {
     int     rc, pid, signal;
 
-    signal = SIGINT;
-
     pid = ejsGetInt(argv[0]);
-    if (argc >= 2) {
-        signal = ejsGetInt(argv[1]);
-    }
     if (pid == 0) {
         ejsThrowStateError(ejs, "No process to kill");
         return 0;
@@ -40,6 +35,10 @@ static EjsVar *sys_kill(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
 #elif VXWORKS
     rc = taskDelete(pid);
 #else
+    signal = SIGINT;
+    if (argc >= 2) {
+        signal = ejsGetInt(argv[1]);
+    }
     rc = kill(pid, signal);
 #endif
     if (rc < 0) {
