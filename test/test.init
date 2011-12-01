@@ -43,10 +43,10 @@ let path = null
 if (exists(PIDFILE)) {
     path = Path(PIDFILE)
     pid = path.readString()
-    path.remove()
     try {
-        kill(pid)
+        System.kill(pid)
     } catch {}
+    path.remove()
 }
 
 if (test.config["http_client"] == 1) {

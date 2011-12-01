@@ -7,7 +7,7 @@ if (pidfile && exists(pidfile)) {
     path = Path(pidfile)
     pid = path.readString()
     try {
-        kill(pid, 9)
+        System.kill(pid, 9)
     } catch {}
     path.remove()
 }
