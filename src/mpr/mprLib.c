@@ -25056,6 +25056,9 @@ static void pruneWorkers(MprWorkerService *ws, MprEvent *timer)
     toTrim = (ws->pruneHighWater - ws->minThreads) / 2;
 
     for (index = 0; toTrim-- > 0 && index < ws->idleThreads->length; index++) {
+        if (ws->numThreads <= ws->minThreads) {
+            break;
+        }
         worker = (MprWorker*) mprGetItem(ws->idleThreads, index);
         /*
          *  Leave floating -- in no queue. The thread will kill itself.
