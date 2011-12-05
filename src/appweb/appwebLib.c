@@ -1252,7 +1252,7 @@ int maParseConfig(MaServer *server, cchar *configFile)
     MprDirEntry     *dp;
     char            buf[MPR_MAX_STRING];
     char            *cp, *tok, *key, *value, *path;
-    int             i, rc, top, next, nextAlias, len;
+    int             i, rc, top, next, nextAlias;
 
     mpr = mprGetMpr(server);
 
@@ -1373,7 +1373,6 @@ int maParseConfig(MaServer *server, cchar *configFile)
                  *  Process wild cards. This is very simple - only "*" is supported.
                  */
                 *cp = '\0';
-                len = (int) strlen(value);
                 cp = mprJoinPath(server, server->serverRoot, value);
                 includes = mprGetPathFiles(server, cp, 0);
                 if (includes == 0) {
@@ -1732,7 +1731,7 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
     char            ipAddrPort[MPR_MAX_IP_ADDR_PORT];
     char            *name, *path, *prefix, *cp, *tok, *ext, *mimeType, *url, *newUrl, *extensions, *codeStr, *hostName;
     char            *items, *include, *exclude, *when, *mimeTypes;
-    int             port, rc, code, processed, num, flags, colonCount, len, mask, level;
+    int             port, rc, code, num, flags, colonCount, len, mask, level;
 
     mprAssert(state);
     mprAssert(key);
@@ -1746,7 +1745,6 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
     mprAssert(host);
     mprAssert(dir);
     auth = state->auth;
-    processed = 0;
     limits = host->limits;
     flags = 0;
 
@@ -3854,13 +3852,10 @@ static void addPacketForNet(MaQueue *q, MaPacket *packet)
 {
     MaResponse  *resp;
     MaConn      *conn;
-    MprIOVec    *iovec;
-    int         index, mask;
+    int         mask;
 
     conn = q->conn;
     resp = conn->response;
-    iovec = q->iovec;
-    index = q->ioIndex;
 
     mprAssert(q->count >= 0);
     mprAssert(q->ioIndex < (MA_MAX_IOVEC - 2));
@@ -3930,10 +3925,7 @@ static void freeNetPackets(MaQueue *q, int64 bytes)
 static void adjustNetVec(MaQueue *q, int written)
 {
     MprIOVec    *iovec;
-    MaResponse  *resp;
     int         len, i, j;
-
-    resp = q->conn->response;
 
     /*
      *  Cleanup the IO vector
@@ -4216,12 +4208,10 @@ static void addPacketForSend(MaQueue *q, MaPacket *packet)
 {
     MaResponse  *resp;
     MaConn      *conn;
-    MprIOVec    *iovec;
     int         mask;
 
     conn = q->conn;
     resp = conn->response;
-    iovec = q->iovec;
     
     mprAssert(q->count >= 0);
     mprAssert(q->ioIndex < (MA_MAX_IOVEC - 2));
@@ -4311,11 +4301,9 @@ static void freeSentPackets(MaQueue *q, int64 bytes)
 static void adjustSendVec(MaQueue *q, int64 written)
 {
     MprIOVec    *iovec;
-    MaResponse  *resp;
     size_t      len;
     int         i, j;
 
-    resp = q->conn->response;
     iovec = q->iovec;
     for (i = 0; i < q->ioIndex; i++) {
         len = iovec[i].len;
@@ -4910,14 +4898,12 @@ static int parseAuth(MaHttp *http, cchar *key, char *value, MaConfigState *state
     MaServer    *server;
     MaHost      *host;
     MaAuth      *auth;
-    MaDir       *dir;
     MaAcl       acl;
     char        *path, *names, *tok, *type, *aclSpec;
 
     server = state->server;
     host = state->host;
     auth = state->auth;
-    dir = state->dir;
 
     if (mprStrcmpAnyCase(key, "AuthGroupFile") == 0) {
         path = maMakePath(host, mprStrTrim(value, "\""));
@@ -5405,10 +5391,6 @@ static void outgoingChunkService(MaQueue *q)
 
 static void setChunkPrefix(MaQueue *q, MaPacket *packet)
 {
-    MaConn      *conn;
-
-    conn = q->conn;
-
     if (packet->prefix) {
         return;
     }
@@ -5528,7 +5510,6 @@ static bool fixRangeLength(MaConn *conn);
 static void outgoingRangeService(MaQueue *q)
 {
     MaPacket    *packet;
-    MaRange     *range;
     MaConn      *conn;
     MaRequest   *req;
     MaResponse  *resp;
@@ -5536,7 +5517,6 @@ static void outgoingRangeService(MaQueue *q)
     conn = q->conn;
     req = conn->request;
     resp = conn->response;
-    range = resp->currentRange;
 
     if (!(q->flags & MA_QUEUE_SERVICED)) {
         if (resp->code != MPR_HTTP_CODE_OK || !fixRangeLength(conn)) {
@@ -5572,13 +5552,11 @@ static void applyRange(MaQueue *q, MaPacket *packet)
 {
     MaRange     *range;
     MaConn      *conn;
-    MaRequest   *req;
     MaResponse  *resp;
     MprOff      endPacket, length, gap, span;
     int         count;
 
     conn = q->conn;
-    req = conn->request;
     resp = conn->response;
     range = resp->currentRange;
 
@@ -5949,7 +5927,6 @@ static void openUpload(MaQueue *q)
  */
 static void closeUpload(MaQueue *q)
 {
-    MaUploadFile    *file;
     MaRequest       *req;
     Upload          *up;
 
@@ -5957,7 +5934,6 @@ static void closeUpload(MaQueue *q)
     up = q->queueData;
     
     if (up->currentFile) {
-        file = up->currentFile;
         mprFree(up->file);
     }
     if (req->location->autoDelete) {
@@ -6280,7 +6256,6 @@ static int processContentData(MaQueue *q)
     MaConn          *conn;
     MaRequest       *req;
     MaUploadFile    *file;
-    MaLimits        *limits;
     MaPacket        *packet;
     MprBuf          *content;
     Upload          *up;
@@ -6291,7 +6266,6 @@ static int processContentData(MaQueue *q)
     req = conn->request;
     up = q->queueData;
     content = q->first->content;
-    limits = conn->host->limits;
     file = up->currentFile;
     packet = 0;
 
@@ -6579,7 +6553,6 @@ static void closeCgi(MaQueue *q)
 static void startCgi(MaQueue *q)
 {
     MaRequest       *req;
-    MaResponse      *resp;
     MaConn          *conn;
     MprCmd          *cmd;
     MprHash         *hp;
@@ -6591,8 +6564,6 @@ static void startCgi(MaQueue *q)
     argc = 0;
     conn = q->conn;
     req = conn->request;
-    resp = conn->response;
-
     if ((req->form || req->flags & MA_REQ_UPLOADING) && conn->state <= MPR_HTTP_STATE_CONTENT) {
         /*
             Delay starting the CGI process if uploading files or a form request. This enables env vars to be defined
@@ -6675,12 +6646,10 @@ static void startCgi(MaQueue *q)
  */
 static void runCgi(MaQueue *q)
 {
-    MaResponse  *resp;
     MaConn      *conn;
     MprCmd      *cmd;
 
     conn = q->conn;
-    resp = conn->response;
     cmd = (MprCmd*) q->queueData;
 
     if (cmd == 0) {
@@ -6722,7 +6691,6 @@ static void runCgi(MaQueue *q)
 static void incomingCgiData(MaQueue *q, MaPacket *packet)
 {
     MaConn      *conn;
-    MaResponse  *resp;
     MaRequest   *req;
     MprCmd      *cmd;
 
@@ -6730,7 +6698,6 @@ static void incomingCgiData(MaQueue *q, MaPacket *packet)
     mprAssert(packet);
     
     conn = q->conn;
-    resp = conn->response;
     req = conn->request;
     cmd = (MprCmd*) q->pair->queueData;
     if (cmd) {
@@ -6979,11 +6946,9 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
  */
 static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd)
 {
-    MaResponse      *resp;
     MprBuf          *buf;
     char            *protocol, *code, *message;
     
-    resp = conn->response;
     buf = mprGetCmdBuf(cmd, MPR_CMD_STDOUT);
     
     protocol = getCgiToken(buf, " ");
@@ -7119,17 +7084,15 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
 {
     MaRequest   *req;
     MaResponse  *resp;
-    char        *fileName, **argv, *program, *cmdScript, status[8], *indexQuery, *cp, *tok;
+    char        *fileName, **argv, status[8], *indexQuery, *cp, *tok;
     cchar       *actionProgram;
     int         argc, argind, len;
 
     req = conn->request;
     resp = conn->response;
-
     fileName = resp->filename;
     mprAssert(fileName);
 
-    program = cmdScript = 0;
     actionProgram = 0;
     argind = 0;
     argc = *argcp;
@@ -7164,7 +7127,7 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
 
 #if BLD_WIN_LIKE || VXWORKS
 {
-    char    *bangScript, *cmdBuf;
+    char    *bangScript, *cmdBuf, *program, *cmdScript;
 
     /*
         On windows we attempt to find an executable matching the fileName.
@@ -7178,7 +7141,7 @@ static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
             Cmd/Batch script (.bat | .cmd)
             Convert the command to the form where there are 4 elements in argv
             that cmd.exe can interpret.
-         *
+
                 argv[0] = cmd.exe
                 argv[1] = /Q
                 argv[2] = /C
@@ -7437,7 +7400,7 @@ static int parseCgi(MaHttp *http, cchar *key, char *value, MaConfigState *state)
     MaServer    *server;
     MaHost      *host;
     MaAlias     *alias;
-    MaDir       *dir, *parent;
+    MaDir       *parent;
     char        *program, *mimeType, *prefix, *path;
 
     host = state->host;
@@ -7461,10 +7424,9 @@ static int parseCgi(MaHttp *http, cchar *key, char *value, MaConfigState *state)
          */
         path = maMakePath(host, path);
 
-        dir = maLookupDir(host, path);
         if (maLookupDir(host, path) == 0) {
             parent = mprGetFirstItem(host->dirs);
-            dir = maCreateDir(host, path, parent);
+            maCreateDir(host, path, parent);
         }
         alias = maCreateAlias(host, prefix, path, 0);
         mprLog(server, 4, "ScriptAlias \"%s\" for \"%s\"", prefix, path);
@@ -7746,13 +7708,11 @@ static void parseQuery(MaConn *conn)
 
 static void sortList(MaConn *conn, MprList *list)
 {
-    MaRequest       *req;
     MaResponse      *resp;
     MprDirEntry     *tmp, **items;
     Dir             *dir;
     int             count, i, j, rc;
 
-    req = conn->request;
     resp = conn->response;
     dir = resp->handler->stageData;
     
@@ -7829,7 +7789,7 @@ static void outputHeader(MaQueue *q, cchar *path, int nameSize)
 {
     Dir     *dir;
     char    *parent, *parentSuffix;
-    int     order, reverseOrder, fancy, isRootDir, sep;
+    int     reverseOrder, fancy, isRootDir, sep;
 
     dir = q->stage->stageData;
     
@@ -7843,10 +7803,8 @@ static void outputHeader(MaQueue *q, cchar *path, int nameSize)
     maWrite(q, "<h1>Index of %s</h1>\r\n", path);
 
     if (dir->sortOrder > 0) {
-        order = 'A';
         reverseOrder = 'D';
     } else {
-        order = 'D';
         reverseOrder = 'A';
     }
 
@@ -8016,13 +7974,11 @@ static void outputLine(MaQueue *q, MprDirEntry *ep, cchar *path, int nameSize)
 
 static void outputFooter(MaQueue *q)
 {
-    MaRequest   *req;
     MaConn      *conn;
     MprSocket   *sock;
     Dir         *dir;
     
     conn = q->conn;
-    req = conn->request;
     dir = q->stage->stageData;
     
     if (dir->fancyIndexing == 2) {
@@ -8113,7 +8069,7 @@ static int parseDir(MaHttp *http, cchar *key, char *value, MaConfigState *state)
     MaStage     *handler;
     Dir         *dir;
     
-    char    *name, *extensions, *option, *nextTok, *junk;
+    char    *extensions, *option, *nextTok, *junk;
 
     handler = maLookupStage(http, "dirHandler");
     dir = handler->stageData;
@@ -8122,7 +8078,7 @@ static int parseDir(MaHttp *http, cchar *key, char *value, MaConfigState *state)
     if (mprStrcmpAnyCase(key, "AddIcon") == 0) {
         /*  AddIcon file ext ext ext */
         /*  Not yet supported */
-        name = mprStrTok(value, " \t", &extensions);
+        mprStrTok(value, " \t", &extensions);
         parseWords(dir->extList, extensions);
         return 1;
 
@@ -9074,12 +9030,10 @@ static int readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size)
 {
     MaConn      *conn;
     MaResponse  *resp;
-    MaRequest   *req;
     int         nbytes;
 
     conn = q->conn;
     resp = conn->response;
-    req = conn->request;
     
     if (packet->content == 0 && (packet->content = mprCreateBuf(packet, size, -1)) == 0) {
         return MPR_ERR_NO_MEMORY;
@@ -9153,12 +9107,10 @@ static void handlePutRequest(MaQueue *q)
  */
 static void handleDeleteRequest(MaQueue *q)
 {
-    MaConn          *conn;
-    MaRequest       *req;
-    char            *path;
+    MaConn      *conn;
+    char        *path;
 
     conn = q->conn;
-    req = conn->request;
     path = conn->response->filename;
 
     if (!conn->response->fileInfo.isReg) {
@@ -9459,7 +9411,6 @@ static void openPhp(MaQueue *q)
     MaRequest       *req;
     MaResponse      *resp;
     MaConn          *conn;
-    MaAlias         *alias;
 
     conn = q->conn;
     if (!q->stage->stageData) {
@@ -9470,7 +9421,6 @@ static void openPhp(MaQueue *q)
     }
     resp = conn->response;
     req = conn->request;
-    alias = req->alias;
 
     switch (req->method) {
     case MA_REQ_GET:
@@ -9713,12 +9663,10 @@ static int writeHeader(sapi_header_struct *sapiHeader, sapi_headers_struct *sapi
 {
     MaConn      *conn;
     MaResponse  *resp;
-    bool        allowMultiple;
     char        *key, *value;
 
     conn = (MaConn*) SG(server_context);
     resp = conn->response;
-    allowMultiple = 1;
 
     key = mprStrdup(resp, sapiHeader->header);
     if ((value = strchr(key, ':')) == 0) {
@@ -9748,9 +9696,12 @@ static int writeHeader(sapi_header_struct *sapiHeader, sapi_headers_struct *sapi
             return 0;
     }
 #else
+{
+    bool        allowMultiple;
     allowMultiple = !sapiHeader->replace;
     maSetHeader(conn, allowMultiple, key, value);
     return SAPI_HEADER_ADD;
+}
 #endif
 }
 
@@ -10448,7 +10399,7 @@ MaDir *maLookupDir(MaHost *host, cchar *pathArg)
 {
     MaDir       *dir;
     char        *path, *tmpPath;
-    int         next, len;
+    int         next;
 
     if (!mprIsAbsPath(host, pathArg)) {
         path = tmpPath = mprGetAbsPath(host, pathArg);
@@ -10456,8 +10407,6 @@ MaDir *maLookupDir(MaHost *host, cchar *pathArg)
         path = (char*) pathArg;
         tmpPath = 0;
     }
-    len = (int) strlen(path);
-
     for (next = 0; (dir = mprGetNextItem(host->dirs, &next)) != 0; ) {
         if (dir->path != 0) {
             if (mprSamePath(host, dir->path, path)) {
@@ -10480,9 +10429,7 @@ MaDir *maLookupDir(MaHost *host, cchar *pathArg)
 MaDir *maLookupBestDir(MaHost *host, cchar *path)
 {
     MaDir   *dir;
-    int     next, len, dlen;
-
-    len = (int) strlen(path);
+    int     next, dlen;
 
     for (next = 0; (dir = mprGetNextItem(host->dirs, &next)) != 0; ) {
         dlen = dir->pathLen;
@@ -12212,15 +12159,13 @@ char *maGetDateString(MprCtx ctx, MprPath *sbuf)
 static int parseSsl(MaHttp *http, cchar *key, char *value, MaConfigState *state)
 {
     MaLocation  *location;
-    MaServer    *server;
     MaHost      *host;
     char        *path, prefix[MPR_MAX_FNAME];
-    char        *tok, *word, *enable, *provider;
+    char        *tok, *word;
     int         protoMask, mask;
     static int  hasBeenWarned = 0;
 
     host = state->host;
-    server = state->server;
     location = state->location;
 
     mprStrcpy(prefix, sizeof(prefix), key);
@@ -12243,8 +12188,8 @@ static int parseSsl(MaHttp *http, cchar *key, char *value, MaConfigState *state)
     }
 
     if (mprStrcmpAnyCase(key, "SSLEngine") == 0) {
-        enable = mprStrTok(value, " \t", &tok);
-        provider = mprStrTok(0, " \t", &tok);
+        mprStrTok(value, " \t", &tok);
+        mprStrTok(0, " \t", &tok);
         if (mprStrcmpAnyCase(value, "on") == 0) {
             maSecureHost(host, location->ssl);
         }
@@ -13005,12 +12950,10 @@ static bool matchFilter(MaConn *conn, MaFilter *filter)
 {
     MaRequest       *req;
     MaResponse      *resp;
-    MaLocation      *location;
     MaStage         *stage;
 
     req = conn->request;
     resp = conn->response;
-    location = req->location;
     stage = filter->stage;
 
     if (stage->match) {
@@ -13706,13 +13649,10 @@ void maPutBack(MaQueue *q, MaPacket *packet)
  */
 bool maWillNextQueueAccept(MaQueue *q, MaPacket *packet)
 {
-    MaConn      *conn;
     MaQueue     *next;
     int64       size;
 
-    conn = q->conn;
     next = q->nextQ;
-
     size = maGetPacketLength(packet);
     if (size <= next->packetSize && (size + next->count) <= next->max) {
         return 1;
@@ -14570,7 +14510,6 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
 {
     MaHostAddress   *address;
     MaRequest       *req;
-    MaResponse      *resp;
     MaHost          *host, *hp;
     MaLimits        *limits;
     MprBuf          *content;
@@ -14579,7 +14518,6 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
     int             count, keepAlive;
 
     req = conn->request;
-    resp = conn->response;
     host = req->host;
     content = packet->content;
     conn->request->headerPacket = packet;
@@ -14837,11 +14775,11 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
         case 'X':
             if (strcmp(key, "X_APPWEB_CHUNK_SIZE") == 0) {
                 mprStrUpper(value);
-                resp->chunkSize = atoi(value);
-                if (resp->chunkSize <= 0) {
-                    resp->chunkSize = 0;
-                } else if (resp->chunkSize > conn->http->limits.maxChunkSize) {
-                    resp->chunkSize = conn->http->limits.maxChunkSize;
+                conn->response->chunkSize = atoi(value);
+                if (conn->response->chunkSize <= 0) {
+                    conn->response->chunkSize = 0;
+                } else if (conn->response->chunkSize > conn->http->limits.maxChunkSize) {
+                    conn->response->chunkSize = conn->http->limits.maxChunkSize;
                 }
             }
             break;
@@ -15043,15 +14981,12 @@ static bool processContent(MaConn *conn, MaPacket *packet)
 bool maProcessCompletion(MaConn *conn)
 {
     MaRequest   *req;
-    MaResponse  *resp;
     MaPacket    *packet;
     bool        more;
 
     mprAssert(conn->state == MPR_HTTP_STATE_COMPLETE);
 
     req = conn->request;
-    resp = conn->response;
-
     maLogRequest(conn);
 
 #if BLD_DEBUG
@@ -15624,10 +15559,6 @@ void maSetRequestGroup(MaConn *conn, cchar *group)
 
 cchar *maGetQueryString(MaConn *conn)
 {
-    MaRequest   *req;
-
-    req = conn->request;
-
     return conn->request->parsedUri->query;
 }
 
@@ -17223,10 +17154,7 @@ static void incomingData(MaQueue *q, MaPacket *packet)
  */
 void maDefaultOutgoingServiceStage(MaQueue *q)
 {
-    MaConn      *conn;
     MaPacket    *packet;
-
-    conn = q->conn;
 
     for (packet = maGet(q); packet; packet = maGet(q)) {
         if (!maWillNextQueueAccept(q, packet)) {
