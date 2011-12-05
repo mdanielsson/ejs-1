@@ -756,15 +756,12 @@ static EjsVar *setUri(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
  */
 static EjsVar *httpWait(Ejs *ejs, EjsHttp *hp, int argc, EjsVar **argv)
 {
-    MprTime     mark;
-    int         timeout;
+    int     timeout;
 
     timeout = (argc == 1) ? ejsGetInt(argv[0]) : MPR_TIMEOUT_HTTP;
     if (timeout < 0) {
         timeout = MAXINT;
     }
-    mark = mprGetTime(ejs);
-
     if (!hp->requestStarted && startRequest(ejs, hp, NULL, 0, NULL) < 0) {
         return 0;
     }

@@ -386,14 +386,12 @@ static EjsVar *concatString(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
 {
     EjsArray    *args;
     EjsString   *result;
-    int         i, count;
+    int         i;
 
     mprAssert(argc == 1 && ejsIsArray(argv[0]));
     args = (EjsArray*) argv[0];
-
     result = ejsDupString(ejs, sp);
 
-    count = ejsGetPropertyCount(ejs, (EjsVar*) args);
     for (i = 0; i < args->length; i++) {
         if (ejsStrcat(ejs, result, ejsGetProperty(ejs, (EjsVar*) args, i)) < 0) {
             ejsThrowMemoryError(ejs);
@@ -1631,13 +1629,10 @@ static EjsVar *trimString(Ejs *ejs, EjsString *sp, int argc,  EjsVar **argv)
  */
 static int catString(Ejs *ejs, EjsString *dest, char *str, int len)
 {
-    EjsString   *castSrc;
     char        *oldBuf, *buf;
     int         oldLen, newLen;
 
     mprAssert(dest);
-
-    castSrc = 0;
 
     oldBuf = dest->value;
     oldLen = dest->length;

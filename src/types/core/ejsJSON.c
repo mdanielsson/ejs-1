@@ -358,14 +358,10 @@ EjsVar *ejsSerialize(Ejs *ejs, EjsVar *vp, int maxDepth, bool showAll, bool show
  */
 static EjsVar *serialize(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
 {
-    EjsVar          *vp;
-    int             flags, maxDepth;
-    bool            showBase, showAll;
+    int     maxDepth;
+    bool    showBase, showAll;
 
-    flags = 0;
     maxDepth = MAXINT;
-
-    vp = argv[0];
 
     if (argc >= 2) {
         maxDepth = ejsGetInt(argv[1]);

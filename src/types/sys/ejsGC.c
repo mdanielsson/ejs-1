@@ -35,9 +35,6 @@ static EjsVar *setEnable(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv)
  */
 static EjsVar *runGC(Ejs *ejs, EjsVar *thisObj, int argc, EjsVar **argv)
 {
-    int     deep;
-
-    deep = ((argc == 1) && ejsIsBoolean(argv[1]));
     ejsCollectGarbage(ejs, EJS_GEN_NEW);
     return 0;
 }

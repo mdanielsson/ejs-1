@@ -111,10 +111,6 @@ void ejsCreateIteratorType(Ejs *ejs)
 
 void ejsConfigureIteratorType(Ejs *ejs)
 {
-    EjsType     *type;
-
-    type = ejs->iteratorType;
-
     /*
      *  Define the "next" method
      */

@@ -45,7 +45,6 @@ static EjsVar *workerConstructor(Ejs *ejs, EjsWorker *worker, int argc, EjsVar *
     EjsVar          *options, *value;
     EjsName         qname;
     EjsWorker       *self;
-    EjsNamespace    *ns;
     cchar           *search, *name;
 
     worker->ejs = ejs;
@@ -94,7 +93,7 @@ static EjsVar *workerConstructor(Ejs *ejs, EjsWorker *worker, int argc, EjsVar *
     /*
      *  Workers have a dedicated namespace to enable viewing of the worker globals (self, onmessage, postMessage...)
      */
-    ns = ejsDefineReservedNamespace(wejs, wejs->globalBlock, 0, EJS_WORKER_NAMESPACE);
+    ejsDefineReservedNamespace(wejs, wejs->globalBlock, 0, EJS_WORKER_NAMESPACE);
 
     /*
      *  Make the inside worker permanent so we don't need to worry about whether worker->pair->ejs is valid
@@ -226,9 +225,7 @@ static int reapJoins(Ejs *ejs, EjsVar *workers)
 {
     EjsWorker   *worker;
     EjsArray    *set;
-    int         i, joined, completed;
-
-    joined = 0;
+    int         i, completed;
 
     lock(ejs);
     if (workers == 0 || workers == ejs->nullValue) {
@@ -320,14 +317,12 @@ static EjsVar *workerJoin(Ejs *ejs, EjsWorker *unused, int argc, EjsVar **argv)
 static void loadFile(EjsWorker *worker, cchar *path)
 {
     Ejs         *ejs;
-    EjsVar      *result;
     cchar       *cp;
 
     mprAssert(worker->inside);
     mprAssert(worker->pair && worker->pair->ejs);
 
     ejs = worker->ejs;
-    result = 0;
 
     if ((cp = strrchr(path, '.')) != NULL && strcmp(cp, EJS_MODULE_EXT) != 0) {
         if (ejs->service->loadScriptFile == 0) {

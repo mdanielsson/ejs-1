@@ -76,7 +76,7 @@ EjsObject *ejsCreateObject(Ejs *ejs, EjsType *type, int numExtraSlots)
     EjsObject   *obj;
     EjsBlock    *instanceBlock;
     EjsType     *tp;
-    int         numSlots, roundSlots, size, hasNativeType;
+    int         numSlots, roundSlots, hasNativeType;
 
     mprAssert(type);
     mprAssert(numExtraSlots >= 0);
@@ -116,9 +116,10 @@ EjsObject *ejsCreateObject(Ejs *ejs, EjsType *type, int numExtraSlots)
             obj->slots = (EjsVar**) &(((char*) obj)[type->instanceSize]);
             obj->capacity = roundSlots;
         }
-
+#if UNUSED
     } else {
         size = type->instanceSize - (int) sizeof(EjsObject);
+#endif
     }
     obj->var.type = type;
     obj->var.isObject = 1;
@@ -545,13 +546,10 @@ int ejsLookupSingleProperty(Ejs *ejs, EjsObject *obj, EjsName *qname)
  */
 void ejsMarkObject(Ejs *ejs, EjsVar *parent, EjsObject *obj)
 {
-    EjsType     *type;
     EjsVar      *vp;
     int         i;
 
     mprAssert(ejsIsObject(obj) || ejsIsBlock(obj) || ejsIsFunction(obj) || ejsIsArray(obj) || ejsIsXML(obj));
-
-    type = obj->var.type;
 
     for (i = 0; i < obj->numProp; i++) {
         vp = obj->slots[i];
@@ -1117,19 +1115,16 @@ static int makeHash(EjsObject *obj)
 
 void ejsResetHash(Ejs *ejs, EjsObject *obj)
 {
-    EjsHashEntry    *entries;
     EjsNames        *names;
     EjsHashEntry    *he;
     int             i;
 
     names = obj->names;
-    entries = names->entries;
 
     /*
      *  Clear out hash linkage
      */
     memset(names->buckets, -1, names->sizeBuckets * sizeof(int));
-    entries = names->entries;
     for (i = 0; i < names->sizeEntries; i++) {
         he = &names->entries[i];
         he->nextSlot = -1;
@@ -1465,17 +1460,14 @@ static EjsVar *objectToJson(Ejs *ejs, EjsVar *vp, int argc, EjsVar **argv)
     EjsObject   *obj;
     EjsString   *sv;
     char        key[16], *cp;
-    int         c, isArray, i, count, slotNum, numInherited, maxDepth, flags, showAll, showBase;
+    int         c, isArray, i, count, slotNum, numInherited, maxDepth, flags;
 
     count = ejsGetPropertyCount(ejs, (EjsVar*) vp);
     if (count == 0 && vp->type != ejs->objectType && vp->type != ejs->arrayType) {
         return (EjsVar*) ejsToString(ejs, vp);
     }
-
     maxDepth = 99;
     flags = 0;
-    showAll = 0;
-    showBase = 0;
 
     isArray = ejsIsArray(vp);
     obj = (EjsObject*) vp;

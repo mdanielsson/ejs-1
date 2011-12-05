@@ -317,7 +317,7 @@ static EjsVar *invokeXmlOperator(Ejs *ejs, EjsXML *lhs, int opcode,  EjsXML *rhs
  */
 static int setXmlPropertyAttributeByName(Ejs *ejs, EjsXML *xml, EjsName *qname, EjsVar *value)
 {
-    EjsXML      *elt, *attribute, *rp, *xvalue, *lastElt;
+    EjsXML      *elt, *attribute, *xvalue, *lastElt;
     EjsString   *sv;
     EjsName     qn;
     char        *str;
@@ -351,7 +351,6 @@ static int setXmlPropertyAttributeByName(Ejs *ejs, EjsXML *xml, EjsName *qname, 
             mprAssert(qname->name[0] == '@');
             if (strcmp(elt->qname.name, &qname->name[1]) == 0) {
                 if (last >= 0) {
-                    rp = mprGetItem(xml->attributes, last);
                     mprRemoveItemAtPos(xml->attributes, last);
                 }
                 last = index;

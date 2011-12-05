@@ -165,7 +165,6 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
     EjsEx           *ex;
     EjsFrame        *newFrame;
     char            *str;
-    uchar           *mark;
     int             i, offset, count, opcode;
 
 #if BLD_UNIX_LIKE || (VXWORKS && !BLD_CC_DIAB)
@@ -628,7 +627,9 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
          *      Stack after         [value]
          */
         CASE (EJS_OP_GET_SCOPED_NAME):
+#if DYNAMIC_BINDING
             mark = FRAME->pc - 1;
+#endif
             qname = GET_NAME();
             vp = ejsGetVarByName(ejs, NULL, &qname, &lookup);
             if (unlikely(vp == 0)) {
@@ -679,7 +680,9 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
          *      Stack after         [value]
          */
         CASE (EJS_OP_GET_SCOPED_NAME_EXPR):
+#if DYNAMIC_BINDING
             mark = FRAME->pc - 1;
+#endif
             qname.name = ejsToString(ejs, pop(ejs))->value;
             v1 = pop(ejs);
             if (ejsIsNamespace(v1)) {
@@ -2839,7 +2842,7 @@ static inline EjsEx *inHandler(Ejs *ejs, int kind)
 static inline uint findEndException(Ejs *ejs)
 {
     EjsFrame    *fp;
-    EjsEx       *best, *ex;
+    EjsEx       *ex;
     EjsCode     *code;
     uint        offset, pc;
     int         i;
@@ -2850,7 +2853,7 @@ static inline uint findEndException(Ejs *ejs)
     pc = (uint) (fp->pc - code->byteCode - 1);
     offset = 0;
 
-    for (best = 0, i = 0; i < code->numHandlers; i++) {
+    for (i = 0; i < code->numHandlers; i++) {
         ex = code->handlers[i];
         /*
          *  Comparison must include try and all catch handlers, incase there are multiple catch handlers
@@ -2947,12 +2950,10 @@ static void createExceptionBlock(Ejs *ejs, EjsEx *ex, int flags)
     EjsBlock        *block;
     EjsFrame        *fp;
     EjsState        *state;
-    EjsCode         *code;
     int             i, count;
 
     state = ejs->state;
     fp = state->fp;
-    code = &state->fp->function.body.code;
     mprAssert(ex);
 
     if (flags & EJS_EX_ITERATION) {
