@@ -148,13 +148,10 @@ void emListingLoadCallback(Ejs *ejs, int kind, ...)
  */
 static void lstClose(EjsMod *mp, MprList *modules)
 {
-    Ejs         *ejs;
     EjsModule   *module;
     Lst         *lst;
     bool        headerOutput;
     int         next, nextModule, count;
-
-    ejs = mp->ejs;
 
     for (nextModule = 0; (module = (EjsModule*) mprGetNextItem(modules, &nextModule)) != 0; ) {
 
@@ -243,10 +240,7 @@ static int lstOpen(EjsMod *mp, char *moduleFilename, EjsModuleHdr *hdr)
 
 static void lstBlock(EjsMod *mp, EjsModule *module, EjsVar *owner, int slotNum, cchar *name, int numSlots)
 {
-    Ejs         *ejs;
     cchar       *blockName;
-
-    ejs = mp->ejs;
 
     mprFprintf(mp->file, "\n");
     blockName = getBlockName(mp, owner, slotNum);
@@ -398,13 +392,11 @@ static void lstFunction(EjsMod *mp, EjsModule *module, EjsVar *block, int slotNu
 
 void lstException(EjsMod *mp, EjsModule *module, EjsFunction *fun)
 {
-    Ejs             *ejs;
     EjsEx           *ex;
     EjsCode         *code;
     cchar           *exKind;
     int             i;
 
-    ejs = mp->ejs;
     code = &fun->body.code;
 
     if (code->numHandlers <= 0) {
@@ -785,13 +777,12 @@ static void lstSlotAssignments(EjsMod *mp, EjsModule *module, EjsVar *parent, in
     EjsFunction     *fun;
     EjsBlock        *block, *instanceBlock;
     EjsName         qname;
-    int             i, numProp, numInherited, count;
+    int             i, numInherited, count;
 
     mprAssert(obj);
     mprAssert(module);
 
     ejs = mp->ejs;
-    numProp = 0;
 
     if (obj->visited) {
         return;

@@ -147,11 +147,10 @@ static void generateImages(EjsMod *mp)
     DocFile     *df;
     MprFile     *file;
     char        *path;
-    int         rc;
 
     for (df = docFiles; df->path; df++) {
         path = mprJoinPath(mp, mp->docDir, df->path);
-        rc = mprMakeDir(mp, mprGetPathDir(mp, path), 0775, 1);
+        mprMakeDir(mp, mprGetPathDir(mp, path), 0775, 1);
         file = mprOpen(mp, path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
         if (file == 0) {
             mprError(mp, "Can't create %s", path);
@@ -345,10 +344,7 @@ static void generateNamespaceList(EjsMod *mp)
 
 static void generateNamespace(EjsMod *mp, cchar *namespace)
 {
-    Ejs         *ejs;
     char        *path;
-
-    ejs = mp->ejs;
 
     path = mprStrcat(mp, -1, namespace, ".html", NULL);
     mp->file = createFile(mp, path);
@@ -380,10 +376,7 @@ static void generateNamespace(EjsMod *mp, cchar *namespace)
 
 static void generateNamespaceClassTable(EjsMod *mp, cchar *namespace)
 {
-    Ejs         *ejs;
     int         count;
-
-    ejs = mp->ejs;
 
     out(mp, "<a name='Classes'></a>\n");
 
@@ -411,7 +404,6 @@ static void generateNamespaceClassTable(EjsMod *mp, cchar *namespace)
 static int generateNamespaceClassTableEntries(EjsMod *mp, cchar *namespace)
 {
     Ejs             *ejs;
-    EjsTrait        *trait;
     EjsName         qname;
     EjsDoc          *doc;
     ClassRec        *crec;
@@ -425,7 +417,6 @@ static int generateNamespaceClassTableEntries(EjsMod *mp, cchar *namespace)
 
     for (next = 0; (crec = (ClassRec*) mprGetNextItem(classes, &next)) != 0; ) {
         qname = crec->qname;
-        trait = crec->trait;
         fmtName = fmtType(crec->qname);
         out(mp, "   <tr><td><a href='%s' target='content'>%s</a></td>", getFilename(fmtName), qname.name);
         doc = getDoc(ejs, crec->block ? crec->block : ejs->globalBlock, crec->slotNum);
@@ -523,14 +514,11 @@ static MprList *buildClassList(EjsMod *mp, cchar *namespace)
 
 static void generateClassList(EjsMod *mp, cchar *namespace)
 {
-    Ejs         *ejs;
     MprList     *classes;
     ClassRec    *crec;
     cchar       *className, *fmtName;
     char        *path, script[MPR_MAX_STRING], *cp;
     int         next;
-
-    ejs = mp->ejs;
 
     path = mprStrcat(mp, -1, namespace, "-classes.html", NULL);
     mp->file = createFile(mp, path);
@@ -876,13 +864,11 @@ static void prepDocStrings(EjsMod *mp, EjsBlock *block, EjsName *qname, EjsTrait
 
 static void generateClassPageHeader(EjsMod *mp, EjsBlock *block, EjsTrait *trait, EjsDoc *doc)
 {
-    Ejs         *ejs;
     EjsType     *t, *type;
     EjsName     qname;
     cchar       *see, *module;
     int         next, count, isGlobal;
 
-    ejs = mp->ejs;
     isGlobal = 0;
 
     if (ejsIsType(block)) {
@@ -1153,11 +1139,10 @@ static int generateClassPropertyTableEntries(EjsMod *mp, EjsBlock *block)
     EjsType         *type;
     EjsTrait        *trait;
     EjsName         qname;
-    EjsVar          *vp;
     EjsDoc          *doc;
     MprList         *properties;
     PropRec         *prec;
-    int             slotNum, count, next;
+    int             count, next;
 
     ejs = mp->ejs;
     count = 0;
@@ -1168,9 +1153,7 @@ static int generateClassPropertyTableEntries(EjsMod *mp, EjsBlock *block)
      *  Loop over all the (non-inherited) properties
      */
     for (next = 0; (prec = (PropRec*) mprGetNextItem(properties, &next)) != 0; ) {
-        vp = prec->vp;
         trait = prec->trait;
-        slotNum = prec->slotNum;
         qname = prec->qname;
 
         if (strncmp(qname.space, "internal", 8) == 0 || strcmp(qname.space, "private") == 0) {
@@ -1294,13 +1277,12 @@ static MprList *buildMethodList(EjsMod *mp, EjsBlock *block)
     EjsDoc          *doc;
     FunRec          *fp;
     MprList         *methods;
-    int             slotNum, count;
+    int             slotNum;
 
     ejs = mp->ejs;
 
     methods = mprCreateList(mp);
 
-    count = 0;
     for (slotNum = 0; slotNum < block->obj.numProp; slotNum++) {
         vp = ejsGetProperty(ejs, (EjsVar*) block, slotNum);
         trait = ejsGetTrait((EjsBlock*) block, slotNum);
@@ -1448,12 +1430,9 @@ static int generateClassMethodTable(EjsMod *mp, EjsBlock *block)
 
 static void generateBlockMethods(EjsMod *mp, EjsBlock *block)
 {
-    Ejs         *ejs;
     FunRec      *fp;
     MprList     *methods;
     int         next;
-
-    ejs = mp->ejs;
 
     out(mp, "<h2>Method Detail</h2>\n");
 

@@ -467,7 +467,7 @@ static int genType(EjsMod *bp, MprFile *file, EjsModule *mp, EjsType *type, int 
 {
     Ejs             *ejs;
     EjsVar          *vp;
-    EjsTrait        *trait, *lp;
+    EjsTrait        *trait;
     EjsType         *nt;
     EjsBlock        *instanceBlock;
     EjsFunction     *fun;
@@ -571,12 +571,16 @@ static int genType(EjsMod *bp, MprFile *file, EjsModule *mp, EjsType *type, int 
          *  Output the arg names and local variable names.
          */
         for (i = 0; i < (int) fun->numArgs; i++) {
+#if UNUSED
             lp = ejsGetPropertyTrait(ejs, vp, i);
+#endif
             lqname = ejsGetPropertyName(ejs, vp, i);
             defineSlot(bp, file, mp, type, &qname, &lqname, i, java);
         }
         for (; i < fun->block.obj.numProp; i++) {
+#if UNUSED
             lp = ejsGetPropertyTrait(ejs, vp, i);
+#endif
             lqname = ejsGetPropertyName(ejs, vp, i);
             defineSlot(bp, file, mp, type, &qname, &lqname, i, java);
         }
