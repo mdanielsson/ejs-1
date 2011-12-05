@@ -55,7 +55,6 @@ int ecCreateModuleHeader(EcCompiler *cp)
  */
 int ecCreateModuleSection(EcCompiler *cp)
 {
-    Ejs         *ejs;
     EjsConst    *constants;
     EjsModule   *mp;
     EcState     *state;
@@ -68,7 +67,6 @@ int ecCreateModuleSection(EcCompiler *cp)
 
     mprLog(cp, 5, "Create module section %s", mp->name);
 
-    ejs = cp->ejs;
     constants = mp->constants;
 
     rc = 0;
@@ -116,14 +114,11 @@ int ecCreateModuleSection(EcCompiler *cp)
 
 static int createDependencySection(EcCompiler *cp)
 {
-    Ejs         *ejs;
     EjsModule   *module, *mp;
     int         rc, i, count, version;
 
     mp = cp->state->currentModule;
     mprAssert(mp);
-
-    ejs = cp->ejs;
 
     /*
      *  If merging, don't need references to dependent modules as they are aggregated onto the output
@@ -295,7 +290,7 @@ static int createClassSection(EcCompiler *cp, EjsVar *block, int slotNum, EjsVar
     EjsBlock        *instanceBlock;
     EjsTrait        *trait;
     EjsFunction     *fun;
-    EjsName         qname, pname;
+    EjsName         qname;
     int             next, i, rc, attributes, interfaceCount, instanceTraits;
 
     ejs = cp->ejs;
@@ -371,8 +366,9 @@ static int createClassSection(EcCompiler *cp, EjsVar *block, int slotNum, EjsVar
      *  Loop over type traits
      */
     for (i = 0; i < type->block.numTraits; i++) {
-
+#if UNUSED
         pname = ejsGetPropertyName(ejs, (EjsVar*) type, i);
+#endif
         trait = ejsGetPropertyTrait(ejs, (EjsVar*) type, i);
         if (trait == 0) {
             continue;
@@ -402,7 +398,9 @@ static int createClassSection(EcCompiler *cp, EjsVar *block, int slotNum, EjsVar
     instanceBlock = type->instanceBlock;
     if (instanceBlock) {
         for (slotNum = instanceBlock->numInherited; slotNum < instanceBlock->numTraits; slotNum++) {
+#if UNUSED
             pname = ejsGetPropertyName(ejs, (EjsVar*) instanceBlock, slotNum);
+#endif
             if (createSection(cp, (EjsVar*) instanceBlock, slotNum) < 0) {
                 return rc;
             }
@@ -523,17 +521,12 @@ static int createFunctionSection(EcCompiler *cp, EjsVar *block, int slotNum, Ejs
  */
 static int createExceptionSection(EcCompiler *cp, EjsFunction *fun)
 {
-    Ejs         *ejs;
     EjsEx       *ex;
-    EjsModule   *mp;
     int         rc, i;
 
     mprAssert(fun);
 
     rc = 0;
-    mp = cp->state->currentModule;
-    ejs = cp->ejs;
-
     rc += ecEncodeByte(cp, EJS_SECT_EXCEPTION);
 
     for (i = 0; i < fun->body.code.numHandlers; i++) {
@@ -546,7 +539,6 @@ static int createExceptionSection(EcCompiler *cp, EjsFunction *fun)
         rc += ecEncodeNumber(cp, ex->numBlocks);
         rc += ecEncodeNumber(cp, ex->numStack);
         rc += ecEncodeGlobal(cp, (EjsVar*) ex->catchType, ex->catchType ? &ex->catchType->qname : 0);
-        // mp->checksum += sum(NULL, ex->tryStart + ex->tryEnd);
     }
     return rc;
 }
@@ -555,13 +547,10 @@ static int createExceptionSection(EcCompiler *cp, EjsFunction *fun)
 static int createBlockSection(EcCompiler *cp, EjsVar *parent, int slotNum, EjsBlock *block)
 {
     Ejs             *ejs;
-    EjsModule       *mp;
     EjsName         qname;
     int             i, rc;
 
     ejs = cp->ejs;
-    mp = cp->state->currentModule;
-
     if (ecEncodeByte(cp, EJS_SECT_BLOCK) < 0) {
         return MPR_ERR_CANT_WRITE;
     }

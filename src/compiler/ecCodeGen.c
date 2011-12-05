@@ -137,7 +137,7 @@ int ecCodeGen(EcCompiler *cp, int argc, EcNode **nodes)
 {
     EjsModule   *mp;
     EcNode      *np;
-    int         i, version, next;
+    int         i, next;
 
     if (ecEnterState(cp) < 0) {
         return EJS_ERR;
@@ -156,10 +156,9 @@ int ecCodeGen(EcCompiler *cp, int argc, EcNode **nodes)
      *  Open once if merging into a single output file
      */
     if (cp->outputFile) {
-        for (version = next = 0; (mp = mprGetNextItem(cp->modules, &next)) != 0; ) {
+        for (next = 0; (mp = mprGetNextItem(cp->modules, &next)) != 0; ) {
             mprAssert(!mp->loaded);
             if (next <= 1 || mp->globalProperties || mp->hasInitializer || strcmp(mp->name, EJS_DEFAULT_MODULE) != 0) {
-                version = mp->version;
                 break;
             }
         }
@@ -245,13 +244,10 @@ static void genArrayLiteral(EcCompiler *cp, EcNode *np)
 static void genAssignOp(EcCompiler *cp, EcNode *np)
 {
     EcState     *state;
-    int         rc, next;
 
     ENTER(cp);
 
     state = cp->state;
-    rc = 0;
-    next = 0;
 
     mprAssert(np->kind == N_ASSIGN_OP);
     mprAssert(np->left);
@@ -360,7 +356,6 @@ static void genBreak(EcCompiler *cp, EcNode *np)
 
 static void genBlock(EcCompiler *cp, EcNode *np)
 {
-    Ejs             *ejs;
     EjsNamespace    *namespace;
     EcState         *state;
     EjsBlock        *block;
@@ -371,7 +366,6 @@ static void genBlock(EcCompiler *cp, EcNode *np)
     ENTER(cp);
 
     state = cp->state;
-    ejs = cp->ejs;
     block = (EjsBlock*) np->blockRef;
     
     if (block && np->createBlockObject) {
@@ -671,14 +665,12 @@ static void genBaseClassPropertyName(EcCompiler *cp, int slotNum, int nthBase)
  */
 static void genThisBaseClassPropertyName(EcCompiler *cp, EjsType *type, int slotNum)
 {
-    Ejs         *ejs;
     EcState     *state;
     int         code, nthBase;
 
     mprAssert(slotNum >= 0);
     mprAssert(type && ejsIsType(type));
 
-    ejs = cp->ejs;
     state = cp->state;
 
     /*
@@ -734,13 +726,11 @@ static void genClassName(EcCompiler *cp, EjsType *type)
  */
 static void genPropertyViaThis(EcCompiler *cp, int slotNum)
 {
-    Ejs             *ejs;
     EcState         *state;
     int             code;
 
     mprAssert(slotNum >= 0);
 
-    ejs = cp->ejs;
     state = cp->state;
 
     /*
@@ -1322,16 +1312,14 @@ static void genDirectives(EcCompiler *cp, EcNode *np, bool saveResult)
 {
     EcState     *lastDirectiveState;
     EcNode      *child;
-    int         next, lastKind, mark;
+    int         next, mark;
 
     ENTER(cp);
 
     lastDirectiveState = cp->directiveState;
-    lastKind = -1;
     next = 0;
     mark = getStackCount(cp);
     while ((child = getNextNode(cp, np, &next)) && !cp->error) {
-        lastKind = child->kind;
         cp->directiveState = cp->state;
         processNode(cp, child);
         if (!saveResult) {
@@ -2393,15 +2381,9 @@ static void genName(EcCompiler *cp, EcNode *np)
 
 static void genNew(EcCompiler *cp, EcNode *np)
 {
-    EcState     *state;
-    int         argc;
-
     ENTER(cp);
 
     mprAssert(np->kind == N_NEW);
-
-    state = cp->state;
-    argc = 0;
 
     /*
      *  Process the type reference to instantiate
@@ -2493,13 +2475,10 @@ static void genPostfixOp(EcCompiler *cp, EcNode *np)
 
 static void genProgram(EcCompiler *cp, EcNode *np)
 {
-    Ejs         *ejs;
     EcNode      *child;
     int         next;
 
     ENTER(cp);
-
-    ejs = cp->ejs;
 
     next = 0;
     while ((child = getNextNode(cp, np, &next)) && !cp->error) {
@@ -3228,13 +3207,9 @@ static void genModule(EcCompiler *cp, EcNode *np)
 static void genUseModule(EcCompiler *cp, EcNode *np)
 {
     EcNode      *child;
-    Ejs         *ejs;
     int         next;
 
     ENTER(cp);
-
-    ejs = cp->ejs;
-
     mprAssert(np->kind == N_USE_MODULE);
 
     next = 0;
@@ -3269,13 +3244,9 @@ static void genUseNamespace(EcCompiler *cp, EcNode *np)
 
 static void genVar(EcCompiler *cp, EcNode *np)
 {
-    EcState     *state;
-
     ENTER(cp);
 
     mprAssert(np->kind == N_QNAME);
-
-    state = cp->state;
 
     /*
      *  Add string constants
@@ -3299,14 +3270,13 @@ static void genVarDefinition(EcCompiler *cp, EcNode *np)
 {
     EcState     *state;
     EcNode      *child, *var;
-    int         next, varKind;
+    int         next;
 
     ENTER(cp);
 
     mprAssert(np->kind == N_VAR_DEFINITION);
 
     state = cp->state;
-    varKind = np->def.varKind;
 
     for (next = 0; (child = getNextNode(cp, np, &next)) != 0; ) {
 
@@ -3550,7 +3520,6 @@ static int flushModule(MprFile *file, EcCodeGen *code)
  */
 static void createInitializer(EcCompiler *cp, EjsModule *mp)
 {
-    Ejs             *ejs;
     EjsFunction     *fun;
     EcState         *state;
     EcCodeGen       *code;
@@ -3558,7 +3527,6 @@ static void createInitializer(EcCompiler *cp, EjsModule *mp)
 
     ENTER(cp);
 
-    ejs = cp->ejs;
     state = cp->state;
     mprAssert(state);
 
@@ -3956,14 +3924,12 @@ static void processNode(EcCompiler *cp, EcNode *np)
  */
 static void processModule(EcCompiler *cp, EjsModule *mp)
 {
-    Ejs         *ejs;
     EcState     *state;
     EcCodeGen   *code;
     char        *path;
 
     ENTER(cp);
 
-    ejs = cp->ejs;
     state = cp->state;
     state->currentModule = mp;
 

@@ -3874,7 +3874,7 @@ static EcNode *parseLetExpression(EcCompiler *cp)
     if (getToken(cp) != T_RPAREN) {
         return LEAVE(cp, expected(cp, ")"));
     }
-    return 0;
+    return np;
 }
 
 
@@ -4966,11 +4966,9 @@ static EcNode *parseDoStatement(EcCompiler *cp)
  */
 static EcNode *parseWhileStatement(EcCompiler *cp)
 {
-    EcNode      *np, *initializer;
+    EcNode      *np;
 
     ENTER(cp);
-
-    initializer = 0;
 
     if (getToken(cp) != T_WHILE) {
         return LEAVE(cp, parseError(cp, "Expecting \"while\""));
@@ -7914,8 +7912,6 @@ static EcNode *parseModuleDefinition(EcCompiler *cp)
 static EcNode *parseModuleName(EcCompiler *cp)
 {
     EcNode      *np, *idp;
-    Ejs *ejs;
-    EjsVar      *lastPackage;
     char        *name;
 
     ENTER(cp);
@@ -7925,9 +7921,6 @@ static EcNode *parseModuleName(EcCompiler *cp)
         return LEAVE(cp, np);
     }
     name = mprStrdup(np, np->qname.name);
-
-    ejs = cp->ejs;
-    lastPackage = 0;
 
     while (np && getToken(cp) == T_DOT) {
         /*
@@ -8211,11 +8204,8 @@ static EcNode *parsePragmaItem(EcCompiler *cp)
 {
     EcNode      *np, *ns, *lang;
     EcState     *upper;
-    int         attributes;
 
     ENTER(cp);
-
-    attributes = 0;
 
     np = createNode(cp, N_PRAGMA);
     np->pragma.mode = cp->fileState->mode;
@@ -8588,9 +8578,6 @@ void ecReportError(EcCompiler *cp, cchar *severity, cchar *filename, int lineNum
 {
     cchar   *appName;
     char    *highlightPtr, *errorMsg;
-    int     errCode;
-
-    errCode = 0;
 
     appName = mprGetAppName(cp);
     if (filename == 0 || *filename == '\0') {
@@ -9131,7 +9118,6 @@ static EcNode *insertNode(EcNode *np, EcNode *child, int pos)
  */
 static EcNode *removeNode(EcNode *np, EcNode *child)
 {
-    EcCompiler      *cp;
     MprList         *list;
     int             index;
 
@@ -9139,8 +9125,6 @@ static EcNode *removeNode(EcNode *np, EcNode *child)
         return 0;
     }
     list = np->children;
-
-    cp = np->cp;
 
     index = mprRemoveItem(list, child);
     mprAssert(index >= 0);

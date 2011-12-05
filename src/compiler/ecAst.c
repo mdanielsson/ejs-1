@@ -95,14 +95,11 @@ static EjsNamespace *ejsLookupNamespace(Ejs *ejs, cchar *namespace);
  */
 static int astProcess(EcCompiler *cp, EcNode *np)
 {
-    Ejs     *ejs;
     int     phase;
 
     if (ecEnterState(cp) < 0) {
         return EJS_ERR;
     }
-
-    ejs = cp->ejs;
     cp->blockState = cp->state;
 
     /*
@@ -130,15 +127,12 @@ static int astProcess(EcCompiler *cp, EcNode *np)
 
 int ecAstProcess(EcCompiler *cp, int argc, EcNode **nodes)
 {
-    Ejs         *ejs;
     EcNode      *np;
     int         phase, i;
 
     if (ecEnterState(cp) < 0) {
         return EJS_ERR;
     }
-
-    ejs = cp->ejs;
     cp->blockState = cp->state;
 
     /*
@@ -198,13 +192,10 @@ static void astAssignOp(EcCompiler *cp, EcNode *np)
 {
     EcState     *state;
     EjsFunction *fun;
-    int         rc, next;
 
     ENTER(cp);
 
     state = cp->state;
-    rc = 0;
-    next = 0;
 
     mprAssert(np->kind == N_ASSIGN_OP);
     mprAssert(np->left);
@@ -288,7 +279,6 @@ static void bindBlock(EcCompiler *cp, EcNode *np)
 {
     Ejs         *ejs;
     EjsBlock    *block;
-    int         rc;
     
     mprAssert(cp->phase == EC_PHASE_BIND);
     mprAssert(np->kind == N_BLOCK || np->kind == N_MODULE);
@@ -297,7 +287,7 @@ static void bindBlock(EcCompiler *cp, EcNode *np)
     block = np->blockRef;
     mprAssert(block);
 
-    rc = resolveName(cp, np, 0, &np->qname);
+    resolveName(cp, np, 0, &np->qname);
 
     if (np->blockCreated) {
         if (! np->createBlockObject) {
@@ -559,11 +549,9 @@ static void validateClass(EcCompiler *cp, EcNode *np)
     EjsName     qname;
     EjsFunction *fun;
     EjsVar      *vp;
-    EcState     *state;
     int         next, i, count;
 
     ejs = cp->ejs;
-    state = cp->state;
     type = np->klass.ref;
 
     baseType = type->baseType;
@@ -759,14 +747,12 @@ static void astClass(EcCompiler *cp, EcNode *np)
 static void astDirectives(EcCompiler *cp, EcNode *np)
 {
     EcNode      *child;
-    Ejs         *ejs;
     int         next;
 
     mprAssert(np->kind == N_DIRECTIVES);
 
     ENTER(cp);
 
-    ejs = cp->ejs;
     cp->state->blockNestCount++;
     next = 0;
     while ((child = getNextAstNode(cp, np, &next))) {
@@ -912,7 +898,7 @@ static EjsFunction *defineFunction(EcCompiler *cp, EcNode *np)
     EcNode          *parameters;
     EjsFunction     *fun;
     EjsVar          *block;
-    int             numArgs, numLocals, numExceptions;
+    int             numArgs, numExceptions;
     int             slotNum, attributes;
 
     mprAssert(np->kind == N_FUNCTION);
@@ -943,7 +929,7 @@ static EjsFunction *defineFunction(EcCompiler *cp, EcNode *np)
 
     parameters = np->function.parameters;
     numArgs = (parameters) ? mprGetListCount(parameters->children) : 0;
-    numLocals = numExceptions = 0;
+    numExceptions = 0;
 
     /*
      *  Create a function object. Don't have code yet so we create without it. Can't resolve the return type yet, so we 
@@ -1582,7 +1568,7 @@ static void astBindName(EcCompiler *cp, EcNode *np)
     Ejs             *ejs;
     EjsLookup       *lookup;
     EjsType         *type;
-    EjsFunction     *fun, *currentFunction;
+    EjsFunction     *fun;
     EjsBlock        *block;
     EcNode          *left;
     EcState         *state;
@@ -1785,7 +1771,6 @@ static void astBindName(EcCompiler *cp, EcNode *np)
     /*
      *  If accessing unbound variables, then the function will require full scope if a closure is ever required.
      */
-    currentFunction = state->currentFunction;
     if (lookup->slotNum < 0) {
         if (cp->phase == EC_PHASE_BIND && cp->warnLevel > 5) {
             astWarn(cp, np, "Using unbound variable reference for \"%s\"", np->qname.name);
@@ -1867,15 +1852,12 @@ static void astField(EcCompiler *cp, EcNode *np)
 
 static void astPragmas(EcCompiler *cp, EcNode *np)
 {
-    Ejs         *ejs;
     EcNode      *child;
     int         next;
 
     mprAssert(np->kind == N_PRAGMAS);
 
     ENTER(cp);
-
-    ejs = cp->ejs;
 
     next = 0;
     while ((child = getNextAstNode(cp, np, &next))) {
@@ -1919,17 +1901,14 @@ static void astPostfixOp(EcCompiler *cp, EcNode *np)
 
 static void astProgram(EcCompiler *cp, EcNode *np)
 {
-    Ejs             *ejs;
     EcState         *state;
     EcNode          *child;
     int             next;
 
     ENTER(cp);
 
-    ejs = cp->ejs;
     state = cp->state;
     state->namespace = np->qname.name;
-
     next = 0;
     while ((child = getNextAstNode(cp, np, &next)) != 0) {
         processAstNode(cp, child);
@@ -2410,15 +2389,12 @@ static void astRequire(EcCompiler *cp, EcNode *np)
 
 static void astWith(EcCompiler *cp, EcNode *np)
 {
-    Ejs         *ejs;
     EjsLookup   *lookup;
     bool        pushed;
 
     ENTER(cp);
 
-    ejs = cp->ejs;
     pushed = 0;
-
     processAstNode(cp, np->with.object);
 
     if (cp->phase >= EC_PHASE_BIND) {
@@ -2473,9 +2449,6 @@ static EjsVar *getBlockForDefinition(EcCompiler *cp, EcNode *np, EjsVar *block, 
 
 static bool typeIsCompatible(EcCompiler *cp, EjsType *first, EjsType *second)
 {
-    Ejs     *ejs;
-
-    ejs = cp->ejs;
     if (first == 0 || second == 0) {
         return 1;
     }
@@ -2491,18 +2464,15 @@ static bool typeIsCompatible(EcCompiler *cp, EjsType *first, EjsType *second)
  */
 static void defineVar(EcCompiler *cp, EcNode *np, int varKind, EjsVar *value)
 {
-    Ejs             *ejs;
-    EjsFunction     *method;
-    EjsVar          *obj;
-    EcState         *state;
-    int             slotNum, attributes;
+    Ejs         *ejs;
+    EjsVar      *obj;
+    EcState     *state;
+    int         slotNum, attributes;
 
     ejs = cp->ejs;
     mprAssert(cp->phase == EC_PHASE_DEFINE);
 
     state = cp->state;
-
-    method = state->currentFunction;
     attributes = np->attributes;
 
     /*
@@ -2636,7 +2606,6 @@ static bool hoistBlockVar(EcCompiler *cp, EcNode *np)
 static void bindVariableDefinition(EcCompiler *cp, EcNode *np)
 {
     Ejs             *ejs;
-    EjsFunction     *fun;
     EjsVar          *block;
     EjsTrait        *trait;
     EcState         *state;
@@ -2648,7 +2617,6 @@ static void bindVariableDefinition(EcCompiler *cp, EcNode *np)
 
     ejs = cp->ejs;
     state = cp->state;
-    fun = state->currentFunction;
     block = (np->name.letScope) ? state->optimizedLetBlock : state->varBlock;
     
     if (!state->inFunction) {
@@ -2778,7 +2746,7 @@ static void astVarDefinition(EcCompiler *cp, EcNode *np, int *codeRequired, int 
     Ejs         *ejs;
     EcNode      *child, *var, *right;
     EcState     *state;
-    int         next, varKind, slotNum;
+    int         next, slotNum;
 
     mprAssert(np->kind == N_VAR_DEFINITION);
 
@@ -2787,8 +2755,6 @@ static void astVarDefinition(EcCompiler *cp, EcNode *np, int *codeRequired, int 
     ejs = cp->ejs;
     state = cp->state;
     mprAssert(state);
-
-    varKind = np->def.varKind;
 
     next = 0;
     while ((child = getNextAstNode(cp, np, &next))) {
@@ -2999,7 +2965,6 @@ static EcNode *getNextAstNode(EcCompiler *cp, EcNode *np, int *next)
 static void processAstNode(EcCompiler *cp, EcNode *np)
 {
     EcState     *state;
-    EjsType     *type;
     int         codeRequired, instanceCode;
 
     ENTER(cp);
@@ -3066,7 +3031,6 @@ static void processAstNode(EcCompiler *cp, EcNode *np)
 
     case N_CLASS:
         astClass(cp, np);
-        type = np->klass.ref;
         codeRequired++;
         break;
 
@@ -3299,7 +3263,7 @@ static void fixupBlockSlots(EcCompiler *cp, EjsType *type)
     EcNode          *np, *child;
     EjsName         qname;
     EjsTrait        *trait;
-    int             rc, slotNum, attributes, next;
+    int             slotNum, attributes, next;
 
     if (type->block.obj.var.visited || !type->needFixup) {
         return;
@@ -3311,7 +3275,6 @@ static void fixupBlockSlots(EcCompiler *cp, EjsType *type)
 
     ENTER(cp);
 
-    rc = 0;
     ejs = cp->ejs;
     type->block.obj.var.visited = 1;
     np = (EcNode*) type->typeData;
@@ -3670,12 +3633,9 @@ static EjsVar *getProperty(EcCompiler *cp, EjsVar *vp, EjsName *name)
  */
 static void addGlobalProperty(EcCompiler *cp, EcNode *np, EjsName *qname)
 {
-    Ejs             *ejs;
     EjsModule       *up;
     EjsName         *prop, *p;
     int             next;
-
-    ejs = cp->ejs;
 
     up = cp->state->currentModule;
     mprAssert(up);
