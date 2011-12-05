@@ -570,14 +570,12 @@ static int cloneMaster(Ejs *ejs, Ejs *master)
  */
 static void allocNotifier(Ejs *ejs, uint size, uint total, bool granted)
 {
-    MprAlloc    *alloc;
     EjsVar      *argv[2], *thisObj;
 	va_list     dummy = VA_NULL;
     char        msg[MPR_MAX_STRING];
 
     if (!ejs->exception) {
         ejs->attention = 1;
-        alloc = mprGetAllocStats(ejs);
         if (granted) {
             if (ejs->memoryCallback) {
                 argv[0] = (EjsVar*) ejsCreateNumber(ejs, size);

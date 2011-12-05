@@ -236,7 +236,6 @@ static EjsVar *copyPath(Ejs *ejs, EjsPath *fp, int argc, EjsVar **argv)
     MprFile     *from, *to;
     char        *buf, *toPath;
     uint        bytes;
-    int         rc;
 
     mprAssert(argc == 1);
     if ((toPath = getPath(ejs, argv[0])) == 0) {
@@ -264,11 +263,9 @@ static EjsVar *copyPath(Ejs *ejs, EjsPath *fp, int argc, EjsVar **argv)
         return 0;
     }
 
-    rc = 0;
     while ((bytes = mprRead(from, buf, MPR_BUFSIZE)) > 0) {
         if (mprWrite(to, buf, bytes) != bytes) {
             ejsThrowIOError(ejs, "Write error to %s", toPath);
-            rc = 0;
             break;
         }
     }

@@ -84,9 +84,8 @@ static void openEjs(MaQueue *q)
     EjsWeb          *web;
     EjsWebControl   *control;
     MprCtx          ctx;
-    cchar           *ext;
     MaAlias         *alias;
-    char            *url, *baseDir, *cp, *baseUrl, *searchPath, *appUrl;
+    char            *url, *baseDir, *cp, *baseUrl, *searchPath;
     int             flags;
 
     /*
@@ -97,7 +96,6 @@ static void openEjs(MaQueue *q)
     resp = conn->response;
     control = conn->http->ejsHandler->stageData;
     loc = req->location;    
-    ext = resp->extension;
     alias = req->alias;
     url = req->url;
     baseUrl = 0;
@@ -135,7 +133,6 @@ static void openEjs(MaQueue *q)
         }
         baseUrl = alias->prefix;
     }
-    appUrl = (flags & EJS_WEB_FLAG_APP) ? baseUrl : 0;
 
     if (loc->flags & MA_LOC_BROWSER) {
         flags |= EJS_WEB_FLAG_BROWSER_ERRORS;
@@ -187,11 +184,9 @@ static void openEjs(MaQueue *q)
 static void incomingEjsData(MaQueue *q, MaPacket *packet)
 {
     MaConn      *conn;
-    MaResponse  *resp;
     MaRequest   *req;
 
     conn = q->conn;
-    resp = conn->response;
     req = conn->request;
 
     if (maGetPacketLength(packet) == 0) {
@@ -535,14 +530,12 @@ static EjsVar *getHostVar(void *handle, int field)
 static EjsVar *getResponseVar(void *handle, int field)
 {
     Ejs         *ejs;
-    EjsWeb      *web;
     MaConn      *conn;
     MaResponse  *resp;
 
     conn = handle;
     resp = conn->response;
     ejs = ((EjsWeb*) maGetHandlerQueueData(conn))->ejs;
-    web = ejs->handle;
 
     switch (field) {
     case ES_ejs_web_Response_code:
@@ -628,15 +621,11 @@ static void setMimeType(void *handle, cchar *mimeType)
 static int setResponseVar(void *handle, int field, EjsVar *value)
 {
     Ejs         *ejs;
-    EjsWeb      *web;
     EjsNumber   *code;
     MaConn      *conn;
-    MaResponse  *resp;
 
     conn = handle;
-    resp = conn->response;
     ejs = ((EjsWeb*) maGetHandlerQueueData(conn))->ejs;
-    web = ejs->handle;
 
     switch (field) {
     case ES_ejs_web_Response_code:
@@ -700,11 +689,9 @@ static int parseEjs(MaHttp *http, cchar *key, char *value, MaConfigState *state)
 {
     MaLocation      *location;
     MaServer        *server;
-    MaHost          *host;
     char            *prefix, *path;
     int             flags;
     
-    host = state->host;
     server = state->server;
     location = state->location;
     

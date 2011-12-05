@@ -1102,7 +1102,6 @@ static int loadScriptModule(Ejs *ejs, MprFile *file, cchar *path, int flags)
 static int fixupTypes(Ejs *ejs, MprList *list)
 {
     EjsTypeFixup    *fixup;
-    EjsModule       *mp;
     EjsType         *type, *targetType;
     EjsBlock        *instanceBlock;
     EjsTrait        *trait;
@@ -1111,7 +1110,6 @@ static int fixupTypes(Ejs *ejs, MprList *list)
     int             next;
 
     for (next = 0; (fixup = (EjsTypeFixup*) mprGetNextItem(list, &next)) != 0; ) {
-        mp = 0;
         type = 0;
         if (fixup->typeSlotNum >= 0) {
             type = (EjsType*) ejsGetProperty(ejs, ejs->global, fixup->typeSlotNum);

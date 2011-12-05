@@ -104,7 +104,7 @@ static int              dummy;                      /* Mock up a dummy request *
 
 MAIN(ejsCgiMain, int argc, char **argv)
 {
-    cchar   *searchPath, *argp;
+    cchar   *argp;
     int     nextArg, err;
 
     /*
@@ -142,12 +142,14 @@ MAIN(ejsCgiMain, int argc, char **argv)
                 ejsStartLogging(mpr, argv[++nextArg]);
             }
 
+#if FUTURE
         } else if (strcmp(argp, "--searchpath") == 0) {
             if (nextArg >= argc) {
                 err++;
             } else {
                 searchPath = argv[++nextArg];
             }
+#endif
 
         } else if (strcmp(argp, "--version") == 0 || strcmp(argp, "-V") == 0) {
             mprPrintfError(mpr, "%s %s\n"
@@ -922,11 +924,9 @@ static void flushOutput(MprBuf *buf)
  */
 static void decodeFormData(cchar *data)
 {
-    char    *value, *key, *buf, *decodedKey, *decodedValue;
-    int     buflen;
+    char    *value, *key, *buf;
 
     buf = mprStrdup(mpr, data);
-    buflen = (int) strlen(buf);
 
     /*
      *  Crack the input into name/value pairs 
@@ -934,9 +934,9 @@ static void decodeFormData(cchar *data)
     for (key = strtok(buf, "&"); key; key = strtok(0, "&")) {
         if ((value = strchr(key, '=')) != 0) {
             *value++ = '\0';
-            decodedValue = mprUrlDecode(mpr, value);
+            mprUrlDecode(mpr, value);
         }
-        decodedKey = mprUrlDecode(mpr, key);
+        mprUrlDecode(mpr, key);
         mprAddHash(formVars, key, value);
     }
 }

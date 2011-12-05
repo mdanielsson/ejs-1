@@ -631,7 +631,7 @@ static int build(EjsWeb *web, cchar *kind, cchar *name, cchar *module, cchar *so
 EjsVar *ejsCreateCookies(Ejs *ejs)
 {
     EjsWeb      *web;
-    cchar       *domain, *path, *version, *cookieName, *cookieValue;
+    cchar       *domain, *path, *cookieName, *cookieValue;
     char        *cookieString, *value, *tok, *key, *dp, *sp;
     int         seenSemi;
 
@@ -713,9 +713,11 @@ EjsVar *ejsCreateCookies(Ejs *ejs)
                 break;
 
             case 'v':
+#if UNUSED
                 if (mprStrcmpAnyCase(key, "version") == 0) {
                     version = value;
                 }
+#endif
                 break;
             default:
                 break;
