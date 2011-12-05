@@ -8640,10 +8640,7 @@ static void resetCmd(MprCmd *cmd)
 
 void mprDisconnectCmd(MprCmd *cmd)
 {
-    MprCmdFile      *files;
-    int             i;
-
-    files = cmd->files;
+    int     i;
 
     lock(cmd);
     for (i = 0; i < MPR_CMD_MAX_PIPE; i++) {
@@ -8962,10 +8959,7 @@ int mprStartCmd(MprCmd *cmd, int argc, char **argv, char **envp, int flags)
 
 int mprMakeCmdIO(MprCmd *cmd)
 {
-    MprCmdFile  *files;
     int         rc;
-
-    files = cmd->files;
 
     rc = 0;
     if (cmd->flags & MPR_CMD_IN) {
@@ -9780,7 +9774,8 @@ static int startProcess(MprCmd *cmd)
             }
         }
     }
-    return 0;
+    rc = 0;
+    return rc;
 }
 
 
@@ -10562,7 +10557,7 @@ void mprEncode64(char *buffer, int bufsize, cchar *s)
 {
     uint    shiftbuf;
     char    *bp;
-    int     x, i, j, shift;
+    int     i, j, shift;
 
     bp = buffer;
     *bp = '\0';
@@ -10573,7 +10568,6 @@ void mprEncode64(char *buffer, int bufsize, cchar *s)
         }
         shift = 18;
         for (i = ++j; i < 4 && bp < &buffer[bufsize] ; i++) {
-            x = (shiftbuf >> shift) & 0x3f;
             *bp++ = encodeMap[(shiftbuf >> shift) & 0x3f];
             shift -= 6;
         }
@@ -10988,14 +10982,11 @@ static int getPathInfo(MprDiskFileSystem *fileSystem, cchar *path, MprPath *info
 
 static MprFile *openFile(MprCtx ctx, MprFileSystem *fileSystem, cchar *path, int omode, int perms)
 {
-    MprDiskFileSystem   *dfs;
     MprFile             *file;
     
     mprAssert(path);
 
-    dfs = (MprDiskFileSystem*) fileSystem;
     file = mprAllocObjWithDestructorZeroed(ctx, MprFile, closeFile);
-    
     file->fd = open(path, omode, perms);
     if (file->fd < 0) {
         mprFree(file);
@@ -12161,15 +12152,12 @@ static int fillBuf(MprFile *file)
 char *mprGets(MprFile *file, char *buf, uint size)
 {
     MprBuf          *bp;
-    MprFileSystem   *fs;
     int             count, c;
 
     mprAssert(file);
     if (file == 0) {
         return 0;
     }
-
-    fs = file->fileSystem;
     if (file->buf == 0) {
         file->buf = mprCreateBuf(file, MPR_BUFSIZE, MPR_MAX_STRING);
     }
@@ -13401,7 +13389,6 @@ static MprHttpResponse *createResponse(MprHttp *http)
 bool mprNeedHttpRetry(MprHttp *http, char **url)
 {
     MprHttpResponse     *resp;
-    MprHttpRequest      *req;
 
     mprAssert(http->response);
     mprAssert(http->state > MPR_HTTP_STATE_WAIT);
@@ -13410,7 +13397,6 @@ bool mprNeedHttpRetry(MprHttp *http, char **url)
      *  For sync mode requests (no callback), handle authorization and redirections inline
      */
     resp = http->response;
-    req = http->request;
     *url = 0;
 
     if (http->state < MPR_HTTP_STATE_WAIT) {
@@ -13439,13 +13425,12 @@ bool mprNeedHttpRetry(MprHttp *http, char **url)
 int mprStartHttpRequest(MprHttp *http, cchar *method, cchar *requestUrl)
 {
     MprHttpRequest      *req;
-    MprHttpResponse     *resp;
     MprUri              *url;
     MprBuf              *outBuf;
     MprHashTable        *headers;
     MprHash             *header;
     char                *host;
-    int                 len, written, port, rc;
+    int                 len, written, port;
 
     mprAssert(http);
     mprAssert(method && *method);
@@ -13453,9 +13438,7 @@ int mprStartHttpRequest(MprHttp *http, cchar *method, cchar *requestUrl)
 
     mprLog(http, 4, "Http: request: %s %s", method, requestUrl);
 
-    rc = 0;
     req = http->request;
-    resp = http->response;
     conditionalReset(http);
 
     /*
@@ -13940,11 +13923,9 @@ static int httpReadEvent(MprHttp *http)
 static void processResponse(MprHttp *http, MprBuf *buf, int nbytes)
 {
     MprHttpResponse     *resp;
-    MprHttpRequest      *req;
     int                 len;
 
     resp = http->response;
-    req = http->request;
 
     while (1) {
         switch(http->state) {
@@ -14097,7 +14078,8 @@ static bool parseHeaders(MprHttp *http, MprBuf *buf)
                 if (resp->contentLength < 0) {
                     resp->contentLength = 0;
                 }
-                if (mprStrcmpAnyCase(resp->http->request->method, "HEAD") == 0 || (resp->flags & MPR_HTTP_RESP_CHUNKED)) {
+                if (mprStrcmpAnyCase(resp->http->request->method, "HEAD") == 0 || 
+                        (resp->flags & MPR_HTTP_RESP_CHUNKED)) {
                     resp->contentLength = 0;
                     resp->contentRemaining = 0;
                 } else {
@@ -17207,10 +17189,8 @@ char *mprGetAbsPath(MprCtx ctx, cchar *pathArg)
  */
 char *mprGetCurrentPath(MprCtx ctx)
 {
-    MprFileSystem   *fs;
     char            dir[MPR_MAX_PATH];
 
-    fs = mprLookupFileSystem(ctx, dir);
     if (getcwd(dir, sizeof(dir)) == 0) {
         return mprGetAbsPath(ctx, "/");
     }
@@ -17218,10 +17198,12 @@ char *mprGetCurrentPath(MprCtx ctx)
 #if VXWORKS
 {
     char    sep[2];
+    MprFileSystem   *fs;
 
     /*
      *  Vx will sometimes just return a drive with no path.
      */
+    fs = mprLookupFileSystem(ctx, dir);
     if (firstSep(fs, dir) == NULL) {
         sep[0] = defaultSep(fs);
         sep[1] = '\0';
@@ -17229,7 +17211,11 @@ char *mprGetCurrentPath(MprCtx ctx)
     }
 }
 #elif BLD_WIN_LIKE
+{
+    MprFileSystem   *fs;
+    fs = mprLookupFileSystem(ctx, dir);
     mprMapSeparators(ctx, dir, fs->separators[0]);
+}
 #endif
     return mprStrdup(ctx, dir);
 }
@@ -17507,10 +17493,8 @@ char *mprGetPathParent(MprCtx ctx, cchar *path)
 
 char *mprGetPortablePath(MprCtx ctx, cchar *path)
 {
-    MprFileSystem   *fs;
-    char            *result, *cp;
+    char    *result, *cp;
 
-    fs = mprLookupFileSystem(ctx, path);
     result = mprGetTransformedPath(ctx, path, 0);
     for (cp = result; *cp; cp++) {
         if (*cp == '\\') {
@@ -17527,11 +17511,10 @@ char *mprGetPortablePath(MprCtx ctx, cchar *path)
 char *mprGetRelPath(MprCtx ctx, cchar *pathArg)
 {
     MprFileSystem   *fs;
-    char            home[MPR_MAX_FNAME], *hp, *cp, *result, *tmp, *path, *mark;
-    int             homeSegments, len, i, commonSegments, sep;
+    char            home[MPR_MAX_FNAME], *hp, *cp, *result, *tmp, *path;
+    int             homeSegments, i, commonSegments, sep;
 
     fs = mprLookupFileSystem(ctx, pathArg);
-    
     if (pathArg == 0 || *pathArg == '\0') {
         return mprStrdup(ctx, ".");
     }
@@ -17562,7 +17545,6 @@ char *mprGetRelPath(MprCtx ctx, cchar *pathArg)
         strcpy(home, ".");
     }
     home[sizeof(home) - 2] = '\0';
-    len = (int) strlen(home);
 
     /*
      *  Count segments in home working directory. Ignore trailing separators.
@@ -17577,11 +17559,10 @@ char *mprGetRelPath(MprCtx ctx, cchar *pathArg)
      *  Find portion of path that matches the home directory, if any. Start at -1 because matching root doesn't count.
      */
     commonSegments = -1;
-    for (hp = home, mark = cp = path; *hp && *cp; hp++, cp++) {
+    for (hp = home, cp = path; *hp && *cp; hp++, cp++) {
         if (isSep(fs, *hp)) {
             if (isSep(fs, *cp)) {
                 commonSegments++;
-                mark = cp + 1;
             }
         } else if (fs->caseSensitive) {
             if (tolower((int) *hp) != tolower((int) *cp)) {
@@ -17600,7 +17581,6 @@ char *mprGetRelPath(MprCtx ctx, cchar *pathArg)
      */
     if ((isSep(fs, *hp) || *hp == '\0') && (isSep(fs, *cp) || *cp == '\0')) {
         commonSegments++;
-        mark = cp;
     }
     
     if (isSep(fs, *cp)) {
@@ -17723,7 +17703,6 @@ int mprMakeDir(MprCtx ctx, cchar *path, int perms, bool makeMissing)
 {
     MprFileSystem   *fs;
     char            *parent;
-    int             rc;
 
     fs = mprLookupFileSystem(ctx, path);
 
@@ -17735,7 +17714,7 @@ int mprMakeDir(MprCtx ctx, cchar *path, int perms, bool makeMissing)
     }
     if (makeMissing && !isRoot(fs, path)) {
         parent = mprGetPathParent(ctx, path);
-        rc = mprMakeDir(ctx, parent, perms, makeMissing);
+        mprMakeDir(ctx, parent, perms, makeMissing);
         mprFree(parent);
         return fs->makeDir(fs, path, perms);
     }
@@ -17757,20 +17736,22 @@ int mprMakeLink(MprCtx ctx, cchar *path, cchar *target, bool hard)
 
 char *mprGetTempPath(MprCtx ctx, cchar *tempDir)
 {
-    MprFileSystem   *fs;
     MprFile         *file;
     char            *dir, *path;
     int             i, now;
     static int      tempSeed = 0;
 
-    fs = mprLookupFileSystem(ctx, tempDir ? tempDir : (cchar*) "/");
 
     if (tempDir == 0) {
 #if WINCE
         dir = mprStrdup(ctx, "/Temp");
 #elif BLD_WIN_LIKE
+{
+        MprFileSystem   *fs;
         dir = mprStrdup(ctx, getenv("TEMP"));
+        fs = mprLookupFileSystem(ctx, tempDir ? tempDir : (cchar*) "/");
         mprMapSeparators(ctx, dir, defaultSep(fs));
+}
 #elif VXWORKS
         dir = mprStrdup(ctx, ".");
 #else
@@ -18270,13 +18251,9 @@ char *mprSearchPath(MprCtx ctx, cchar *file, int flags, cchar *search, ...)
 {
     va_list     args;
     char        *path, *tok, *dir, *result, *nextDir;
-    int         access;
 
     va_start(args, search);
-    access = (flags & MPR_SEARCH_EXE) ? X_OK : R_OK;
-
     for (nextDir = (char*) search; nextDir; nextDir = va_arg(args, char*)) {
-
         if (strchr(nextDir, MPR_SEARCH_SEP_CHAR)) {
             tok = NULL;
             nextDir = mprStrdup(ctx, nextDir);
@@ -18318,10 +18295,7 @@ char *mprSearchPath(MprCtx ctx, cchar *file, int flags, cchar *search, ...)
  */
 char *mprGetTransformedPath(MprCtx ctx, cchar *path, int flags)
 {
-    MprFileSystem       *fs;
-    char                *result;
-
-    fs = mprLookupFileSystem(ctx, path);
+    char    *result;
 
 #if BLD_WIN_LIKE && FUTURE
     if (flags & MPR_PATH_CYGWIN) {
@@ -21126,7 +21100,7 @@ static int connectSocket(MprSocket *sp, cchar *host, int port, int initialFlags)
 {
     struct sockaddr     *addr;
     socklen_t           addrlen;
-    int                 broadcast, datagram, family, protocol, rc, err;
+    int                 broadcast, datagram, family, protocol, rc;
 
     lock(sp);
 
@@ -21150,7 +21124,6 @@ static int connectSocket(MprSocket *sp, cchar *host, int port, int initialFlags)
     datagram = sp->flags & MPR_SOCKET_DATAGRAM;
 
     if (mprGetSocketInfo(sp, host, port, &family, &protocol, &addr, &addrlen) < 0) {
-        err = mprGetSocketError(sp);
         closesocket(sp->fd);
         sp->fd = -1;
         unlock(sp);
@@ -21161,7 +21134,6 @@ static int connectSocket(MprSocket *sp, cchar *host, int port, int initialFlags)
      */
     sp->fd = (int) socket(family, datagram ? SOCK_DGRAM: SOCK_STREAM, protocol);
     if (sp->fd < 0) {
-        err = mprGetSocketError(sp);
         unlock(sp);
         return MPR_ERR_CANT_OPEN;
     }
@@ -21176,7 +21148,6 @@ static int connectSocket(MprSocket *sp, cchar *host, int port, int initialFlags)
     if (broadcast) {
         int flag = 1;
         if (setsockopt(sp->fd, SOL_SOCKET, SO_BROADCAST, (char *) &flag, sizeof(flag)) < 0) {
-            err = mprGetSocketError(sp);
             closesocket(sp->fd);
             sp->fd = -1;
             unlock(sp);
@@ -21189,7 +21160,6 @@ static int connectSocket(MprSocket *sp, cchar *host, int port, int initialFlags)
         do {
             rc = connect(sp->fd, addr, addrlen);
         } while (rc == -1 && errno == EINTR);
-        err = errno;
         if (rc < 0) {
             /* MAC/BSD returns EADDRINUSE */
             if (errno == EINPROGRESS || errno == EALREADY || errno == EADDRINUSE) {
@@ -21206,7 +21176,6 @@ static int connectSocket(MprSocket *sp, cchar *host, int port, int initialFlags)
                 }
             } 
             if (errno != EISCONN) {
-                err = mprGetSocketError(sp);
                 closesocket(sp->fd);
                 sp->fd = -1;
                 unlock(sp);
@@ -21301,13 +21270,10 @@ void mprCloseSocket(MprSocket *sp, bool gracefully)
 static void closeSocket(MprSocket *sp, bool gracefully)
 {
     MprSocketService    *ss;
-    MprWaitService      *waitService;
     MprTime             timesUp;
     char                buf[16];
 
-    waitService = mprGetMpr(sp)->waitService;
     ss = mprGetMpr(sp)->socketService;
-
     lock(sp);
 
     if (sp->flags & MPR_SOCKET_CLOSED) {
@@ -21933,7 +21899,7 @@ int mprGetSocketFlags(MprSocket *sp)
  */
 int mprSetSocketBlockingMode(MprSocket *sp, bool on)
 {
-    int     flag, oldMode;
+    int     oldMode;
 
     lock(sp);
     oldMode = sp->flags & MPR_SOCKET_BLOCK;
@@ -21942,15 +21908,17 @@ int mprSetSocketBlockingMode(MprSocket *sp, bool on)
     if (on) {
         sp->flags |= MPR_SOCKET_BLOCK;
     }
-
-    flag = (sp->flags & MPR_SOCKET_BLOCK) ? 0 : 1;
-
 #if BLD_WIN_LIKE
+{
+    int flag = (sp->flags & MPR_SOCKET_BLOCK) ? 0 : 1;
     ioctlsocket(sp->fd, FIONBIO, (ulong*) &flag);
+}
 #elif VXWORKS
+{
+    int flag = (sp->flags & MPR_SOCKET_BLOCK) ? 0 : 1;
     ioctl(sp->fd, FIONBIO, (int) &flag);
+}
 #else
-    flag = 0;
     if (on) {
         fcntl(sp->fd, F_SETFL, fcntl(sp->fd, F_GETFL) & ~O_NONBLOCK);
     } else {
@@ -23302,13 +23270,12 @@ int mprParseTestArgs(MprTestService *sp, int argc, char *argv[])
 {
     Mpr         *mpr;
     cchar       *programName;
-    char        *argp, *logSpec;
+    char        *argp;
     int         err, i, depth, nextArg, outputVersion;
 
     i = 0;
     err = 0;
     outputVersion = 0;
-    logSpec = "stderr:1";
 
     mpr = mprGetMpr(sp);
     programName = mprGetPathBase(mpr, argv[0]);
@@ -24827,9 +24794,8 @@ int mprStartWorkerService(MprWorkerService *ws)
 bool mprStopWorkerService(MprWorkerService *ws, int timeout)
 {
     MprWorker     *worker;
-    int           rc, next;
+    int           next;
 
-    rc = 0;
     mprLock(ws->mutex);
 
     if (ws->pruneTimer) {
@@ -25170,7 +25136,6 @@ static int workerDestructor(MprWorker *worker)
 static void workerMain(MprWorker *worker, MprThread *tp)
 {
     MprWorkerService    *ws;
-    int                 rc;
 
     ws = mprGetMpr(worker)->workerService;
     mprAssert(worker->state == MPR_WORKER_BUSY);
@@ -25203,7 +25168,7 @@ static void workerMain(MprWorker *worker, MprThread *tp)
         /*
          *  Sleep till there is more work to do
          */
-        rc = mprWaitForCond(worker->idleCond, -1);
+        mprWaitForCond(worker->idleCond, -1);
 
         mprLock(ws->mutex);
         mprAssert(worker->state == MPR_WORKER_BUSY || worker->state == MPR_WORKER_PRUNED);
@@ -25677,18 +25642,18 @@ MprTime mprMakeTime(MprCtx ctx, struct tm *tp)
 {
     MprTime     when, alternate;
     struct tm   t;
-    int         offset, year, rc;
+    int         offset, year;
 
     when = makeTime(ctx, tp);
     year = tp->tm_year;
     if (MIN_YEAR <= year && year <= MAX_YEAR) {
-        rc = localTime(ctx, &t, when);
+        localTime(ctx, &t, when);
         offset = getTimeZoneOffsetFromTm(ctx, &t);
     } else {
         t = *tp;
         t.tm_year = 110;
         alternate = makeTime(ctx, &t);
-        rc = localTime(ctx, &t, alternate);
+        localTime(ctx, &t, alternate);
         offset = getTimeZoneOffsetFromTm(ctx, &t);
     }
     return when - offset;
@@ -28968,12 +28933,9 @@ static void waitCleanup(MprWaitHandler *wp, MprWorker *worker)
  */
 static void waitCallback(MprWaitHandler *wp, MprWorker *worker)
 {
-    MprWaitService      *ws;
-
     mprAssert(wp->disableMask == 0);
     mprAssert(wp->inUse == 1);
 
-    ws = wp->waitService;
     if (wp->flags & MPR_WAIT_DESTROYING) {
         wp->inUse = 0;
         return;
@@ -29011,11 +28973,8 @@ void mprWakeWaitService(MprCtx ctx)
  */
 void mprInvokeWaitCallback(MprWaitHandler *wp)
 {
-    MprWaitService      *ws;
-
     /* Entry with the the service locked */
 
-    ws = wp->waitService;
     if (wp->flags & MPR_WAIT_DESTROYING) {
         return;
     }
@@ -30996,12 +30955,11 @@ exit:
  */
 static MprXmlToken getToken(MprXml *xp, int state)
 {
-    MprBuf      *tokBuf, *inBuf;
+    MprBuf      *tokBuf;
     char        *cp;
     int         c, rc;
 
     tokBuf = xp->tokBuf;
-    inBuf = xp->inBuf;
 
     mprAssert(state >= 0);
 

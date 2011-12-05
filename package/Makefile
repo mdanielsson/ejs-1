@@ -19,13 +19,17 @@ else
 	PRIV		:= priv
 endif
 
-install install-%: prep
+install: install-binary
+   
+install-%: prep
 	packs=$* ; [ "$$packs" = "" ] && packs="binary dev" ; \
 	[ "$$packs" = "binary dev" ] && BROWSER=--browser ; \
 	priv OPTIONS=$(OPTIONS) QUIET=$(QUIET) TRACE=$(TRACE) \
 		$(BLD_TOP)/build/bin/makeInstall $$BROWSER --root=$(ROOT_DIR) --install $$packs post
 
-uninstall uninstall-%: prep
+uninstall: uninstall-binary
+
+uninstall-%: prep
 	packs=$* ; [ "$$packs" = "" ] && packs="binary dev" ; \
 	priv OPTIONS=$(OPTIONS) QUIET=$(QUIET) TRACE=$(TRACE) \
 		$(BLD_TOP)/build/bin/makeInstall --root=$(ROOT_DIR) --remove $$packs post

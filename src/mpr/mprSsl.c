@@ -8533,10 +8533,7 @@ static MprSocketProvider *createMatrixSslProvider(MprCtx ctx)
 
 static int configureMss(MprSsl *ssl)
 {
-    MprSocketService    *ss;
     char                *password;
-
-    ss = mprGetMpr(ssl)->socketService;
 
     mprSetDestructor(ssl, (MprDestructor) matrixSslDestructor);
 

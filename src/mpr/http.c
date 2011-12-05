@@ -559,18 +559,13 @@ static int doRequest(MprHttp *http, cchar *url, MprList *fields, MprList *files)
 {
     MprHttpResponse *resp;
     MprKeyValue     *header;
-    MprFile         *file;
-    MprTime         mark;
-    cchar           *msg;
     char            buf[MPR_HTTP_BUFSIZE], seqBuf[16], *responseHeaders, *redirect;
     int64           contentLen;
-    int             code, elapsed, next, count, bytes, transCount;
+    int             code, next, count, bytes, transCount;
 
-    file = 0;
     mprAssert(url && *url);
 
     mprLog(http, MPR_DEBUG, "fetch: %s %s", method, url);
-    mark = mprGetTime(mpr);
 
     /*
      *  Send the request
@@ -651,9 +646,7 @@ static int doRequest(MprHttp *http, cchar *url, MprList *fields, MprList *files)
      */
     code = mprGetHttpCode(http);
     contentLen = mprGetHttpContentLength(http);
-    msg = mprGetHttpCodeString(http, code);
 
-    elapsed = (int) (mprGetTime(mpr) - mark);
     mprLog(http, 6, "Response code %d, content len %d", code, contentLen);
 
     if (http->response) {
@@ -697,7 +690,7 @@ static int setContentLength(MprHttp *http, MprList *fields, MprList *files)
     MprPath     info;
     char        *path, *pair;
     int64       len;
-    int         next, count;
+    int         next;
 
     len = 0;
     if (upload) {
@@ -714,7 +707,6 @@ static int setContentLength(MprHttp *http, MprList *fields, MprList *files)
             len += info.size;
         }
         if (fields) {
-            count = mprGetListCount(fields);
             for (next = 0; (pair = mprGetNextItem(fields, &next)) != 0; ) {
                 len += strlen(pair);
             }
@@ -818,11 +810,11 @@ static void finishThread(MprThread *tp)
 
 static void waitForUser(MprCtx ctx)
 {
-    int     value, junk;
+    int     value;
 
     lock();
     mprPrintf(ctx, "Pause: ");
-    junk = (int) read(0, (char*) &value, 1);
+    if (read(0, (char*) &value, 1) != 1) {}
     unlock();
 }
 
@@ -881,7 +873,7 @@ static char *resolveUrl(MprHttp *http, cchar *url)
 static void showOutput(MprHttp *http, cchar *buf, int count)
 {
     MprHttpResponse     *resp;
-    int                 i, c, junk;
+    int                 i, c;
     
     resp = http->response;
 
@@ -892,7 +884,7 @@ static void showOutput(MprHttp *http, cchar *buf, int count)
         return;
     }
     if (!printable) {
-        junk = (int) write(1, (char*) buf, count);
+        if (write(1, (char*) buf, count) != count) {}
         return;
     }
 
@@ -903,7 +895,7 @@ static void showOutput(MprHttp *http, cchar *buf, int count)
         }
     }
     if (!isBinary) {
-        junk = (int) write(1, (char*) buf, count);
+        if (write(1, (char*) buf, count) != count) {}
         return;
     }
     for (i = 0; i < count; i++) {
