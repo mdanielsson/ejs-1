@@ -130,7 +130,6 @@ static int initInterp(Ejs *ejs, EjsWebControl *control)
     }
 #endif
 #endif
-    control->sessionTimeout = EJS_SESSION_TIMEOUT;
 #if ES_ejs_web_sessions
     sessions = ejsGetProperty(ejs, ejs->global, ES_ejs_web_sessions);
 #else
@@ -321,9 +320,8 @@ static int createController(EjsWeb *web)
     if ((web->cookie = (char*) ejsGetHeader(ejs, "HTTP_COOKIE")) != 0) {
         ejsParseWebSessionCookie(web);
     }
-
     if (web->flags & EJS_WEB_FLAG_SESSION && web->session == 0) {
-        web->session = ejsCreateSession(ejs, 0, 0);
+        web->session = ejsCreateSession(ejs, web->sessionTimeout, 0);
     }
 
     /*

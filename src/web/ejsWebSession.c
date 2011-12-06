@@ -231,7 +231,10 @@ EjsWebSession *ejsCreateSession(Ejs *ejs, int timeout, bool secure)
     control = web->control;
 
     if (timeout <= 0) {
-        timeout = control->sessionTimeout;
+        timeout = web->sessionTimeout;
+    }
+    if (timeout <= 0) {
+        timeout = EJS_SESSION_TIMEOUT;
     }
 
 #if ES_ejs_web_Session

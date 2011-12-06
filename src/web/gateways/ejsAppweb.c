@@ -173,6 +173,9 @@ static void openEjs(MaQueue *q)
         maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Can't create Ejs web object for %s", url);
         return;
     }
+    if ((web->sessionTimeout = loc->sessionTimeout) <= 0) {
+        web->sessionTimeout = EJS_SESSION_TIMEOUT;
+    }
     resp->handlerData = web;
 }
 

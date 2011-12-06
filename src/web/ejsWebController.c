@@ -36,11 +36,11 @@ static EjsVar *createSession(Ejs *ejs, EjsVar *unused, int argc, EjsVar **argv)
 
     mprAssert(argc == 0 || argc == 1);
 
-    timeout = (argc == 1) ? ejsGetInt(argv[0]): 0;
     web = ejsGetHandle(ejs);
     if (web->session) {
         return (EjsVar*) web->session;
     }
+    timeout = (argc == 1) ? ejsGetInt(argv[0]): web->sessionTimeout;
     session = (EjsVar*) ejsCreateSession(ejs, timeout, 0);
 
     /*
