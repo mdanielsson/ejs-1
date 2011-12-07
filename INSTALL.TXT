@@ -7,7 +7,7 @@ You can the full documentation in this source tree at:
 
 or online at:
 
-    http://www.ejscript.org/products/ejs/doc/product/index.html
+    http://ejscript.org/products/ejs/doc/product/index.html
 
 To build:
     ./configure
