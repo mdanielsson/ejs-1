@@ -21,7 +21,7 @@ module test.api.c {
             let command = "ejs " + flags
 
             for each (f in find("../scripts", "*.es")) {
-                testCmd(valgrind + command + f)
+                testCmd(valgrind + command + f.portable)
             }
         }
     } else {
