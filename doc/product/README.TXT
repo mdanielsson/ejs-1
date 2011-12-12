@@ -1,5 +1,4 @@
 Embedthis Ejscript README
--------------------------
 
 Welcome to the Embedthis Ejscript distribution. Ejscript is a powerful server-side JavaScript framework for web applications. It includes an enhanced implementation of the JavaScript language and fully supports ECMAScript Edition 3 and adds enhancments for classes, modules and an extensive system library and powerful web framework.
 
@@ -13,7 +12,6 @@ This software is copyrighted and distributed under license. Please read the LICE
 
 
 Table of Contents
------------------
 
 * System Requirements
 * Installation Package Formats
@@ -28,7 +26,6 @@ Table of Contents
 * License and Copyright Information
 
 System Requirements
--------------------
 
 Operating System Support
 
@@ -54,7 +51,6 @@ To rebuild Ejscript from source code, you will need at least:
 
 
 Installation Package Formats
-----------------------------
 
 The Ejscript binary installation is published in several formats:
 
@@ -76,7 +72,6 @@ See below for operating system specific installation information.
 
 
 Development Environment Platform Support
-----------------------------------------
 
 If you wish to embed Ejscript in your application or build Ejscript from source code, you will need to use a C compiler and associated development tools.  Several development environments are supported.  You may choose any of the following:
 
@@ -89,7 +84,6 @@ If you wish to embed Ejscript in your application or build Ejscript from source 
 
 
 Installating the Tar Self-Install Image
----------------------------------------
 
 This the procedure for the self-install Tar format image:
 
@@ -105,7 +99,6 @@ This the procedure for the self-install Tar format image:
 
 
 Removing Ejscript
------------------
 
 This is the procedure to remove Ejscript on all systems except Windows.
 
@@ -118,7 +111,6 @@ This is the procedure to remove Ejscript on all systems except Windows.
 
 
 Apple Mac OS X Release Details
--------------------------------
 
 To install the native MAC OS X DMG image:
 
@@ -133,7 +125,6 @@ To install the native MAC OS X DMG image:
 
 
 Linux Release Details
----------------------
 
 The installation images all include an "install" script that will intelligently invoke the appropriate native software package manager such as "rpm" or dpkg as required.
 
@@ -153,7 +144,6 @@ To install a Linux image:
 
 
 Windows Release Details
------------------------
 
 To install the Windows Installer image:
 
@@ -167,7 +157,6 @@ To install the Windows Installer image:
 
 
 Removing Ejscript on Windows
-----------------------------
 
 If you installed the Ejscript Windows Installer image, follow these steps to 
 remove Ejscript. If you installed the Tar self-install image, you will need 
@@ -181,7 +170,6 @@ to remove Ejscript manually.
 
 
 Running Ejscript
-----------------
 
 The Ejscript product installation includes a simple command line interpreter that can be invoked by typing:
 
@@ -194,26 +182,22 @@ ejs>
 Ejscript commands can be entered and results will be echoed to the console.  See the user documentation for further details.
 
 Running Ejscript on Windows
----------------------------
 
 On windows, the installation creates a Programs shortcut for the "ejs" Ejscript command shell.  Clicking on it will run "ejs" in a command window.  To run "ejs" from a command window manually, you may need to add the Ejscript installation bin directory to your path. This is usually the C:/Program Files/Embedthis Ejscript/bin directory. You can do this by running the System applet from the Control Panel and selecting the Advanced tab and then the Environment Variables button at the bottom of the page. Add this directory to the setting for the PATH use variable.
 
 
 Building from the Source Code
------------------------------
 
 If you wish to rebuild the Ejscript product from the distributed source code, please download the source code distribution from the Embedthis web site. Then read "Building from Source" in the Ejscript product documentation for an explanation of the necessary steps to successfully rebuild the product.
 
 
 License and Copyright Information
----------------------------------
 
 This software is supplied under license. Both a GNU and commercial license are available. Please read LICENSE.TXT for details. This documentation and the software described in this document may be used and copied only in accordance with the terms of the accompanying license agreement. Product and technical information in this document is subject to change without notice and does not represent a commitment on the part of Embedthis Software LLC.
 
 Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
 
 Embedthis is a trademark of Embedthis Software LLC. Embedthis, Appweb and Ejscript are trademarks of Embedthis Software. All other brand or product names are the trademarks or registered trademarks of their respective holders.
-
 
 Embedthis Software, LLC.
 4616 25th Ave NE, #733
