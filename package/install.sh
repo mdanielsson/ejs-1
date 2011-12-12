@@ -84,9 +84,9 @@ sleuthPackageFormat() {
 
     name=`createPackageName ${BLD_PRODUCT}-bin`
     FMT=
-    for f in deb rpm tar.gz ; do
+    for f in deb rpm tgz ; do
         if [ -f ${name}.${f} ] ; then
-            FMT=${f%.gz}
+            FMT=${f%}
             break
         fi
     done
@@ -208,8 +208,8 @@ installFiles() {
                 echo -e "dpkg -i $NAME"
                 dpkg -i $HOME/$NAME >/dev/null
             else
-                echo tar xfz "$HOME/${NAME}.gz" --strip-components 1 -P -C /
-                tar xfz "$HOME/${NAME}.gz" --strip-components 1 -P -C /
+                echo tar xfz "$HOME/${NAME}" --strip-components 1 -P -C /
+                tar xfz "$HOME/${NAME}" --strip-components 1 -P -C /
             fi
         fi
     done
@@ -304,6 +304,8 @@ setup $*
 askUser
 legacyPrep
 installFiles $FMT
-startBrowser
+#
+#   Don't start browser
+# startBrowser
 
 echo -e "\n$BLD_NAME installation successful.\n"
