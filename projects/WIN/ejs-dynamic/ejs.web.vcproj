@@ -3,7 +3,7 @@
     ProjectType="Visual C++"
     Version="8.00"
     Name="ejs.web"
-    ProjectGUID="20983e75-317f-426b-9e71-2d4445947dc8"
+    ProjectGUID="8ffbf4ed-9ac0-414b-ba30-fbd99d23a394"
     RootNamespace=""
     Keyword="Win32Proj"
     TargetFrameworkVersion="0"
@@ -138,7 +138,7 @@
         <Filter
             Name="Header Files"
             Filter="h;hpp;hxx;hm;inl;inc;xsd"
-            UniqueIdentifier="{9b7c7973-66af-44d9-8973-c2cecc974484}"
+            UniqueIdentifier="{d22aab10-5766-4b1c-902c-bcde700aeb0b}"
             >
             <File
                 RelativePath="..\..\..\buildConfig.h"
@@ -252,7 +252,7 @@
         <Filter
             Name="Source Files"
             Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-            UniqueIdentifier="{16405f61-e6f4-406d-a53e-cfeede7b0110}"
+            UniqueIdentifier="{fe3f351f-d82d-4cf9-9144-c648eedb350f}"
             >
             <File
                 RelativePath="..\..\..\src\web\ejsWebCache.c"

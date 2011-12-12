@@ -3,7 +3,7 @@
     ProjectType="Visual C++"
     Version="8.00"
     Name="ejssql"
-    ProjectGUID="00a9bdb1-ab00-486c-8365-e48c0f065590"
+    ProjectGUID="23d09699-29af-4ba8-930c-1d312d09a207"
     RootNamespace=""
     Keyword="Win32Proj"
     TargetFrameworkVersion="0"
@@ -136,7 +136,7 @@
         <Filter
             Name="Source Files"
             Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-            UniqueIdentifier="{af3c4aae-f42e-45a9-b2bc-6c12724e7efe}"
+            UniqueIdentifier="{4a539922-2e8f-4877-b538-5aaa0e0fd04f}"
             >
             <File
                 RelativePath="..\..\..\src\db\sqlite\ejssql.c"

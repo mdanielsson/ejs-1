@@ -3,7 +3,7 @@
     ProjectType="Visual C++"
     Version="8.00"
     Name="ejsweb"
-    ProjectGUID="2e9e05c1-f0bf-41a7-ab59-3893ecd3ef9b"
+    ProjectGUID="acfdda03-b437-43dd-a3bd-b8f10bf8e5e0"
     RootNamespace=""
     Keyword="Win32Proj"
     TargetFrameworkVersion="0"
@@ -136,7 +136,7 @@
         <Filter
             Name="Source Files"
             Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-            UniqueIdentifier="{82e04f55-a646-4be7-a6c7-2913ddee63ed}"
+            UniqueIdentifier="{11073dff-fd6f-4ea7-9e33-53b879696ecc}"
             >
             <File
                 RelativePath="..\..\..\src\cmd\ejsweb.c"

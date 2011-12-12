@@ -3,7 +3,7 @@
     ProjectType="Visual C++"
     Version="8.00"
     Name="libmprssl"
-    ProjectGUID="938b5386-5e49-44a9-8bd9-66affc1398f8"
+    ProjectGUID="e0a99baa-03fa-420c-9658-fbf96508b268"
     RootNamespace=""
     Keyword="Win32Proj"
     TargetFrameworkVersion="0"
@@ -53,7 +53,7 @@
                 CompileAs="0"
                 StringPooling="true"
                 MinimalRebuild="true"
-                AdditionalIncludeDirectories="../../..;../../../src/include"
+                AdditionalIncludeDirectories="C:/cygwin/home/mob/packages/openssl/openssl-1.0.0d/inc32;C:/cygwin/home/mob/packages/matrixssl/matrixssl-1-8-8-open;../../..;../../../src/include"
                 PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;;_REENTRANT;_MT"
                 Optimization="1"
                 FavorSizeOrSpeed="1"
@@ -112,7 +112,7 @@
                 CompileAs="0"
                 StringPooling="true"
                 MinimalRebuild="true"
-                AdditionalIncludeDirectories="../../..;../../../src/include"
+                AdditionalIncludeDirectories="C:/cygwin/home/mob/packages/openssl/openssl-1.0.0d/inc32;C:/cygwin/home/mob/packages/matrixssl/matrixssl-1-8-8-open;../../..;../../../src/include"
                 PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;;_REENTRANT;_MT"
                 Optimization="0"
                 FavorSizeOrSpeed="1"
@@ -138,7 +138,7 @@
         <Filter
             Name="Header Files"
             Filter="h;hpp;hxx;hm;inl;inc;xsd"
-            UniqueIdentifier="{834ad24d-116b-4ab0-9483-5cf1c524aca0}"
+            UniqueIdentifier="{66feb528-8212-47dc-bc2f-5a6e712a9921}"
             >
             <File
                 RelativePath="..\..\..\buildConfig.h"
@@ -156,7 +156,7 @@
         <Filter
             Name="Source Files"
             Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-            UniqueIdentifier="{81128ab5-ab3b-4f29-8d5d-ceb9f70420f3}"
+            UniqueIdentifier="{bb619bed-4fe3-4050-a21b-ea1b708a6d63}"
             >
             <File
                 RelativePath="..\..\..\src\mpr\mprSsl.c"
