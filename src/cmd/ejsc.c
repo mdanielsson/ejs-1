@@ -30,7 +30,7 @@ static int preloadModules(EcCompiler *cp, MprList *modules);
     MprList         *useModules;
     char            *argp, *searchPath, *outputFile, *certFile, *name, *tok, *modules, *spec;
     int             nextArg, err, ejsFlags, ecFlags, bind, debug, doc, empty, merge;
-    int             warnLevel, noout, parseOnly, tabWidth, optimizeLevel, compilerMode, strip, lang;
+    int             warnLevel, noout, parseOnly, tabWidth, optimizeLevel, compilerMode, lang;
 
     /*
      *  Create the Embedthis Portable Runtime (MPR) and setup a memory failure handler
@@ -154,9 +154,6 @@ static int preloadModules(EcCompiler *cp, MprList *modules);
                 certFile = argv[++nextArg];
             }
 
-        } else if (strcmp(argp, "--strip") == 0) {
-            strip = 1;
-
         } else if (strcmp(argp, "--tabWidth") == 0) {
             if (nextArg >= argc) {
                 err++;
@@ -235,7 +232,6 @@ static int preloadModules(EcCompiler *cp, MprList *modules);
             "  --strict             # Default compilation mode to strict\n"
 #if FUTURE
             "  --sign certFile      # Sign the module file (not implemented) \n"
-            "  --strip              # Strip all symbolic names (Can't import)\n"
             "  --tabwidth           # Tab width for '^' error reporting\n"
 #endif
             "  --use 'module, ...'  # List of modules to pre-load\n"

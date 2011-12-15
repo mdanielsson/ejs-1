@@ -36,7 +36,7 @@ static void setupSignals();
     MprList         *useModules, *files;
     cchar           *cmd, *className, *methodName;
     char            *argp, *searchPath, *modules, *name, *tok, *extraFiles, *spec;
-    int             nextArg, err, ecFlags, stats, run, merge, bind, noout, debug, optimizeLevel, warnLevel;
+    int             nextArg, err, ecFlags, run, merge, bind, noout, debug, optimizeLevel, warnLevel;
     int             compilerMode, lang;
 
     /*
@@ -56,7 +56,6 @@ static void setupSignals();
     cmd = 0;
     methodName = 0;
     searchPath = 0;
-    stats = 0;
     run = 1;
     merge = 0;
     bind = 1;
@@ -163,9 +162,6 @@ static void setupSignals();
         } else if (strcmp(argp, "--standard") == 0) {
             compilerMode = PRAGMA_MODE_STANDARD;
 
-        } else if (strcmp(argp, "--stats") == 0) {
-            stats = 1;
-
         } else if (strcmp(argp, "--strict") == 0) {
             compilerMode = PRAGMA_MODE_STRICT;
 
@@ -222,7 +218,6 @@ static void setupSignals();
             "  --optimize level         # Set the optimization level (0-9 default is 9)\n"
             "  --search ejsPath         # Module search path\n"
             "  --standard               # Default compilation mode to standard (default)\n"
-            "  --stats                  # Print stats on exit\n"
             "  --strict                 # Default compilation mode to strict\n"
             "  --use 'module, ...'      # List of modules to pre-load\n"
             "  --version                # Emit the compiler version information\n"
@@ -281,13 +276,6 @@ static void setupSignals();
             err++;
         }
     }
-
-#if BLD_DEBUG
-    if (stats) {
-        mprSetLogLevel(ejs, 1);
-        ejsPrintAllocReport(ejs);
-    }
-#endif
 #if VXWORKS
     mprFree(cp);
     mprFree(ejs);

@@ -661,11 +661,9 @@ void ejsPrintAllocReport(Ejs *ejs)
     EjsType         *type;
     EjsGC           *gc;
     EjsPool         *pool;
-    MprAlloc        *ap;
-    int             i, maxSlot, typeMemory, count, peakCount, freeCount, peakFreeCount, reuseCount;
+    int             i, typeMemory, count, peakCount, freeCount, peakFreeCount, reuseCount;
 
     gc = &ejs->gc;
-    ap = mprGetAllocStats(ejs);
     
     /*
      *  EJS stats
@@ -682,9 +680,7 @@ void ejsPrintAllocReport(Ejs *ejs)
     mprLog(ejs, 0, "------------------------");
     mprLog(ejs, 0, "Name                TypeSize  ObjectSize  ObjectCount  PeakCount  FreeList  PeakFreeList   ReuseCount");
     
-    maxSlot = ejsGetPropertyCount(ejs, ejs->global);
     typeMemory = 0;
-
     count = peakCount = freeCount = peakFreeCount = reuseCount = 0;
     for (i = 0; i < gc->numPools; i++) {
         pool = gc->pools[i];
