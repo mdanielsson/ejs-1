@@ -4012,7 +4012,9 @@ typedef struct MprEvent {
 typedef struct MprDispatcher {
     MprEvent        eventQ;             /* Event queue */
     MprEvent        timerQ;             /* Queue of future events */
+#if UNUSED
     MprEvent        taskQ;              /* Task queue */
+#endif
     MprTime         lastEventDue;       /* When the last event is due */
     MprTime         lastRan;            /* When last checked queues */
     MprTime         now;                /* Current notion of time */
