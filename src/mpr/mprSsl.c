@@ -9627,6 +9627,12 @@ static int configureOss(MprSsl *ssl)
      *  Enable all buggy client work-arounds 
      */
     SSL_CTX_set_options(context, SSL_OP_ALL);
+#ifdef SSL_OP_NO_TICKET
+    SSL_CTX_set_options(context, SSL_OP_NO_TICKET);
+#endif
+#ifdef SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
+    SSL_CTX_set_options(context, SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+#endif
     SSL_CTX_set_mode(context, SSL_MODE_ENABLE_PARTIAL_WRITE | SSL_MODE_AUTO_RETRY);
 
     /*
