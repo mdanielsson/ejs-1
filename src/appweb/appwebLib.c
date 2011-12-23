@@ -775,14 +775,15 @@ int maReadGroupFile(MaServer *server, MaAuth *auth, char *path)
 
     while (mprGets(file, buf, sizeof(buf))) {
         enabled = mprStrTok(buf, " :\t", &tok);
-
+        if (!enabled) {
+            continue;
+        }
         for (cp = enabled; isspace((int) *cp); cp++) {
             ;
         }
         if (*cp == '\0' || *cp == '#') {
             continue;
         }
-
         aclSpec = mprStrTok(0, " :\t", &tok);
         group = mprStrTok(0, " :\t", &tok);
         users = mprStrTok(0, "\r\n", &tok);
@@ -813,14 +814,15 @@ int maReadUserFile(MaServer *server, MaAuth *auth, char *path)
 
     while (mprGets(file, buf, sizeof(buf))) {
         enabled = mprStrTok(buf, " :\t", &tok);
-
+        if (!enabled) {
+            continue;
+        }
         for (cp = enabled; isspace((int) *cp); cp++) {
             ;
         }
         if (*cp == '\0' || *cp == '#') {
             continue;
         }
-
         user = mprStrTok(0, ":", &tok);
         realm = mprStrTok(0, ":", &tok);
         password = mprStrTok(0, " \t\r\n", &tok);
