@@ -654,7 +654,7 @@ static void generateTerms(EjsMod *mp)
         "<div class=\"terms\">\n"
         "   <p class=\"terms\">\n"
         "       <a href=\"http://www.embedthis.com/\">"
-        "       Embedthis Software LLC, 2003-2011. All rights reserved. "
+        "       Embedthis Software LLC, 2003-2012. All rights reserved. "
         "Embedthis is a trademark of Embedthis Software LLC.</a>\n"
         "   </p>\n"
         "</div>");
@@ -2602,8 +2602,8 @@ static EjsDoc *getDuplicateDoc(Ejs *ejs, cchar *duplicate)
 /*
  *  @copy   default
  *
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
  *
  *  This software is distributed under commercial and open source licenses.
  *  You may use the GPL open source license described below or you may acquire

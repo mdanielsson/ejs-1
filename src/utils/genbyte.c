@@ -114,8 +114,8 @@ static void footer(MprFile *file)
 #endif\n\
 \n\
 /*\n\
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.\n\
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.\n\
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.\n\
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.\n\
  *\n\
  *  This software is distributed under commercial and open source licenses.\n\
  *  You may use the GPL open source license described below or you may acquire\n\

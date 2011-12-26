@@ -1,7 +1,7 @@
 #
 #	Makefile for the Ejscript source code.
 #
-#	Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+#	Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
 #
 #	Building strategy is:
 #	1. Build the core types (PRE_DIRS)

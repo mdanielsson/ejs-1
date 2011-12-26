@@ -809,7 +809,7 @@ extern int gettimeofday(struct timeval *tv, struct timezone *tz);
     #define EAGAIN          11
 
     /*
-     *  VS 2011 defines these
+     *  VS 2012 defines these
      */
     #ifndef EWOULDBLOCK
     #define EWOULDBLOCK     EAGAIN
@@ -1077,8 +1077,8 @@ typedef MprOff MprOffset;
 /*
  *  @copy   default
  *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
  *  
  *  This software is distributed under commercial and open source licenses.
  *  You may use the GPL open source license described below or you may acquire 
@@ -1337,8 +1337,8 @@ extern "C" {
 /*
  *  @copy   default
  *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
  *  
  *  This software is distributed under commercial and open source licenses.
  *  You may use the GPL open source license described below or you may acquire 
@@ -7674,8 +7674,8 @@ extern void freedtoa(char* ptr);
 /*
  *  @copy   default
  *
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
  *
  *  This software is distributed under commercial and open source licenses.
  *  You may use the GPL open source license described below or you may acquire
@@ -7866,8 +7866,8 @@ typedef struct MprTestFailure {
 /*
  *  @copy   default
  *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
  *  
  *  This software is distributed under commercial and open source licenses.
  *  You may use the GPL open source license described below or you may acquire 
@@ -8408,8 +8408,8 @@ extern int mprCreateMatrixSslModule(MprCtx ctx, bool lazy);
 /*
  *  @copy   default
  *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
  *  
  *  This software is distributed under commercial and open source licenses.
  *  You may use the GPL open source license described below or you may acquire 
@@ -9318,8 +9318,8 @@ void mprMatrixSslModuleDummy() {}
 /*
  *  @copy   default
  *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
  *  
  *  This software is distributed under commercial and open source licenses.
  *  You may use the GPL open source license described below or you may acquire 
@@ -10398,8 +10398,8 @@ void __mprOpenSslModuleDummy() {}
 /*
  *  @copy   default
  *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
  *  
  *  This software is distributed under commercial and open source licenses.
  *  You may use the GPL open source license described below or you may acquire 
@@ -10676,8 +10676,8 @@ void mprVerifySslClients(MprSsl *ssl, bool on)
 /*
  *  @copy   default
  *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
  *  
  *  This software is distributed under commercial and open source licenses.
  *  You may use the GPL open source license described below or you may acquire 

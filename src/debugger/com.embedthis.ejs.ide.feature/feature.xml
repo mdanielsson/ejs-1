@@ -2,7 +2,7 @@
 <feature
       id="com.embedthis.ejs.ide.feature"
       label="Ejscript IDE Feature"
-      version="0.8.0.20110709"
+      version="0.8.0.20120709"
       provider-name="Embedthis Software LLC">
 
    <description url="http://www.example.com/description">
@@ -13,8 +13,8 @@
       /*
  * @copy default
  * 
- * Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- * Copyright (c) Michael O&apos;Brien, 1993-2011. All Rights Reserved.
+ * Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+ * Copyright (c) Michael O&apos;Brien, 1993-2012. All Rights Reserved.
  * 
  * This software is distributed under commercial and open source licenses.
  * You may use the GPL open source license described below or you may acquire 
@@ -362,7 +362,7 @@ POSSIBILITY OF SUCH DAMAGES.
          id="com.embedthis.ejs.ide"
          download-size="783"
          install-size="783"
-         version="0.8.0.20110709"
+         version="0.8.0.20120709"
          unpack="false"/>
 
 </feature>
