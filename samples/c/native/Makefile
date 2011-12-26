@@ -1,7 +1,7 @@
 #
 #	Makefile to build the composite sample
 #
-#	Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+#	Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
 #
 
 EXPORT_OBJECTS	:= 0

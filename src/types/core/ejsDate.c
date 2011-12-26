@@ -45,7 +45,7 @@ static EjsVar *castDate(Ejs *ejs, EjsDate *dp, EjsType *type)
 
     case ES_String:
         /*
-            Format:  Tue Jul 15 2011 10:53:23 GMT-0700 (PDT)
+            Format:  Tue Jul 15 2012 10:53:23 GMT-0700 (PDT)
          */
         mprDecodeLocalTime(ejs, &tm, dp->value);
         return (EjsVar*) ejsCreateStringAndFree(ejs, mprFormatTime(ejs, "%a %b %d %Y %T GMT%z (%Z)", &tm));
@@ -1136,8 +1136,8 @@ void ejsConfigureDateType(Ejs *ejs)
 /*
     @copy   default
 
-    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
-    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+    Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
+    Copyright (c) Michael O'Brien, 1993-2012. All Rights Reserved.
 
     This software is distributed under commercial and open source licenses.
     You may use the GPL open source license described below or you may acquire
