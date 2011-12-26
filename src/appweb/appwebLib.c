@@ -16,112 +16,85 @@
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/link.c"
+ *  Start of file "../src/http/alias.c"
  */
 /************************************************************************/
 
 /*
- *  link.c -- Link in static modules and initialize.
+ *  alias.c -- Alias service for aliasing URLs to file storage.
  *
- *  Copyright (c) All Rights Reserved. See details at the end of the file.
+ *  This module supports the alias directives and mapping URLs to physical locations. 
+ *
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
 
 
-#if BLD_FEATURE_STATIC || (!BLD_APPWEB_PRODUCT && BLD_APPWEB_BUILTIN)
+/*
+ *  Create an alias for a URI prefix. During processing, a request URI prefix is substituted to the target which
+ *  may be either a physical path or a URI if a non-zero redirect code is supplied.
+ */
 
-static MprModule *staticModules[64];        /* List of static modules */
-static int maxStaticModules;                /* Max static modules */
-
-
-void maLoadStaticModules(MaHttp *http)
+MaAlias *maCreateAlias(MprCtx ctx, cchar *prefix, cchar *target, int code)
 {
-    int     index = 0;
+    MaAlias     *ap;
 
-    staticModules[index] = 0;
+    mprAssert(ctx);
+    mprAssert(prefix);
 
-#if BLD_FEATURE_AUTH
-    staticModules[index++] = maAuthFilterInit(http, NULL);
-#endif
-#if BLD_FEATURE_CGI
-    staticModules[index++] = maCgiHandlerInit(http, NULL);
-#endif
-#if BLD_FEATURE_CHUNK
-    staticModules[index++] = maChunkFilterInit(http, NULL);
-#endif
-#if BLD_FEATURE_DIR
-    staticModules[index++] = maDirHandlerInit(http, NULL);
-#endif
-#if BLD_FEATURE_EJS
-    staticModules[index++] = maEjsHandlerInit(http, NULL);
-#endif
-#if BLD_FEATURE_FILE
-    staticModules[index++] = maFileHandlerInit(http, NULL);
-#endif
-#if BLD_FEATURE_EGI
-    staticModules[index++] = maEgiHandlerInit(http, NULL);
-#endif
-#if BLD_FEATURE_SSL
-    staticModules[index++] = maSslModuleInit(http, NULL);
-#endif
-#if BLD_FEATURE_PHP
-    staticModules[index++] = maPhpHandlerInit(http, NULL);
-#endif
-#if BLD_FEATURE_RANGE
-    staticModules[index++] = maRangeFilterInit(http, NULL);
-#endif
-#if BLD_FEATURE_UPLOAD
-    staticModules[index++] = maUploadFilterInit(http, NULL);
-#endif
-#ifdef BLD_STATIC_MODULE
-    staticModules[index++] = BLD_STATIC_MODULE(http, NULL);
-#endif
-    maxStaticModules = index;
-}
-
-
-void maUnloadStaticModules(MaHttp *http)
-{
-    int     i;
-
-    for (i = 0; i < maxStaticModules; i++) {
-        mprUnloadModule(staticModules[i]);
+    ap = mprAllocObjZeroed(ctx, MaAlias);
+    if (ap == 0) {
+        return 0;
     }
+
+    ap->prefix = mprStrdup(ctx, prefix);
+    ap->prefixLen = (int) strlen(prefix);
+
+    /*
+     *  Always strip trailing "/". Note this is a URL and not a path.
+     */
+    if (ap->prefixLen > 0 && ap->prefix[ap->prefixLen - 1] == '/') {
+        ap->prefix[--ap->prefixLen] = '\0';
+    }
+
+    if (code) {
+        ap->redirectCode = code;
+        ap->uri = mprStrdup(ctx, target);
+    } else {
+        mprAssert(target && *target);
+        ap->filename = mprGetAbsPath(ctx, target);
+    }
+    return ap;
 }
 
-#else
-void maLoadStaticModules(MaHttp *http) {}
-void maUnloadStaticModules(MaHttp *http) {}
-
-#endif /* BLD_FEATURE_STATIC */
 
 /*
  *  @copy   default
- *
+ *  
  *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
  *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *
+ *  
  *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire
- *  a commercial license from Embedthis Software. You agree to be fully bound
- *  by the terms of either license. Consult the LICENSE.TXT distributed with
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
  *  this software for full details.
- *
- *  This software is open source; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by the
- *  Free Software Foundation; either version 2 of the License, or (at your
- *  option) any later version. See the GNU General Public License for more
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
  *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *
- *  This program is distributed WITHOUT ANY WARRANTY; without even the
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- *  This GPL license does NOT permit incorporating this software into
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
  *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses
- *  for this software and support services are available from Embedthis
- *  Software at http://www.embedthis.com
- *
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
  *  Local variables:
     tab-width: 4
     c-basic-offset: 4
@@ -132,7 +105,7 @@ void maUnloadStaticModules(MaHttp *http) {}
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/link.c"
+ *  End of file "../src/http/alias.c"
  */
 /************************************************************************/
 
@@ -140,883 +113,116 @@ void maUnloadStaticModules(MaHttp *http) {}
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/pipeline.c"
+ *  Start of file "../src/http/auth.c"
  */
 /************************************************************************/
 
 /*
- *  pipeline.c -- HTTP pipeline request processing.
+ *  auth.c - Generic authorization code
  *
  *  Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 
 
+#if BLD_FEATURE_AUTH
 
-static MaStage *checkStage(MaConn *conn, MaStage *stage);
-static MaStage *findHandler(MaConn *conn);
-static MaStage *mapToFile(MaConn *conn, MaStage *handler);
-static bool matchFilter(MaConn *conn, MaFilter *filter);
-static bool rewriteRequest(MaConn *conn);
-static void openQ(MaQueue *q);
-static MaStage *processDirectory(MaConn *conn, MaStage *handler);
-static void setEnv(MaConn *conn);
-static void setPathInfo(MaConn *conn);
-static void startQ(MaQueue *q);
-
-/*
-    Find the matching handler for a request. If any errors occur, the pass handler is used to pass errors onto the 
-    net/sendfile connectors to send to the client. This routine may rewrite the request URI and may redirect the request.
- */
-void maMatchHandler(MaConn *conn)
+MaAuth *maCreateAuth(MprCtx ctx, MaAuth *parent)
 {
-    MaRequest       *req;
-    MaResponse      *resp;
-    MaStage         *handler;
+    MaAuth      *auth;
 
-    req = conn->request;
-    resp = conn->response;
-    handler = 0;
+    auth = mprAllocObjZeroed(ctx, MaAuth);
 
-    mprAssert(req->url);
-    mprAssert(req->alias);
-    mprAssert(resp->filename);
-    mprAssert(resp->fileInfo.checked);
-
-    /*
-        Get the best (innermost) location block and see if a handler is explicitly set for that location block.
-     */
-    while (!handler && !conn->requestFailed && req->rewrites++ < MA_MAX_REWRITE) {
-        /*
-            Give stages a cance to rewrite the request, then match the location handler. If that doesn't match, 
-            try to match by extension and/or handler match() routines. This may invoke processDirectory which 
-            may redirect and thus require reprocessing -- hence the loop.
-         */
-        if (!rewriteRequest(conn)) {
-            if ((handler = checkStage(conn, req->location->handler)) == 0) {
-                handler = findHandler(conn);
-            }
-            handler = mapToFile(conn, handler);
-        }
-    }
-    if (handler == 0) {
-        handler = conn->http->passHandler;
-        if (!conn->requestFailed) {
-            if (req->rewrites >= MA_MAX_REWRITE) {
-                maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Too many request rewrites");
-            } else if (!(req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE))) {
-                maFailRequest(conn, MPR_HTTP_CODE_BAD_METHOD, "Requested method %s not supported for URL: %s", 
-                    req->methodName, req->url);
-            }
-        }
-
-    } else if (req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE)) {
-        if ((req->flags & MA_REQ_OPTIONS) != !(handler->flags & MA_STAGE_OPTIONS)) {
-            handler = conn->http->passHandler;
-
-        } else if ((req->flags & MA_REQ_TRACE) != !(handler->flags & MA_STAGE_TRACE)) {
-            handler = conn->http->passHandler;
-        }
-    }
-    resp->handler = handler;
-    mprLog(resp, 3, "Select handler: \"%s\" for \"%s\"", handler->name, req->url);
-}
-
-
-static bool rewriteRequest(MaConn *conn)
-{
-    MaResponse      *resp;
-    MaRequest       *req;
-    MaStage         *handler;
-    MprHash         *he;
-    int             next;
-
-    req = conn->request;
-    resp = conn->response;
-    mprAssert(resp->filename);
-    mprAssert(resp->fileInfo.checked);
-    mprAssert(req->alias);
-
-    if (req->alias->redirectCode) {
-        maRedirect(conn, req->alias->redirectCode, req->alias->uri);
-        return 1;
-    }
-    for (next = 0; (handler = mprGetNextItem(req->location->handlers, &next)) != 0; ) {
-        if (handler->modify && handler->modify(conn, handler)) {
-            return 1;
-        }
-    }
-    for (he = 0; (he = mprGetNextHash(req->location->extensions, he)) != 0; ) {
-        handler = (MaStage*) he->data;
-        if (handler->modify && handler->modify(conn, handler)) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-
-/*
- *  Create stages for the request pipeline.
- */
-void maCreatePipeline(MaConn *conn)
-{
-    MaHttp          *http;
-    MaResponse      *resp;
-    MaRequest       *req;
-    MaStage         *handler;
-    MaLocation      *location;
-    MaStage         *stage, *connector;
-    MaFilter        *filter;
-    MaQueue         *q, *qhead, *rq, *rqhead;
-    int             next;
-
-    req = conn->request;
-    resp = conn->response;
-    location = req->location;
-    handler = resp->handler;
-    http = conn->http;
-
-    mprAssert(req);
-    mprAssert(location);
-    mprAssert(location->outputStages);
-
-    /*
-     *  Create the output pipeline for this request. Handler first, then filters, connector last.
-     */
-    resp->outputPipeline = mprCreateList(resp);
-
-    /*
-     *  Add the handler and filters. If the request has failed, switch to the pass handler which will just 
-     *  pass data along.
-     */
-    if (conn->requestFailed) {
-        handler = resp->handler = http->passHandler;
-        mprAddItem(resp->outputPipeline, resp->handler);
-
-    } else {
-        mprAddItem(resp->outputPipeline, resp->handler);
-        for (next = 0; (filter = mprGetNextItem(location->outputStages, &next)) != 0; ) {
-            if (filter->stage == http->authFilter) {
-                if (req->auth->type == 0) {
-                    continue;
-                }
-            }
-            if (filter->stage == http->rangeFilter && req->ranges == 0) {
-                continue;
-            }
-            if ((filter->stage->flags & MA_STAGE_ALL & req->method) == 0) {
-                continue;
-            }
-            if (matchFilter(conn, filter)) {
-                mprAddItem(resp->outputPipeline, filter->stage);
-            }
-        }
-    }
-    if (conn->requestFailed) {
-        handler = resp->handler = http->passHandler;
-        mprSetItem(resp->outputPipeline, 0, resp->handler);
-    }
-    connector = location->connector;
-    if (connector == 0) {
-        mprError(conn, "No connector defined, using net connector");
-        connector = http->netConnector;
-    }
-#if BLD_FEATURE_SEND
-    if (resp->handler == http->fileHandler && connector == http->netConnector && req->method == MA_REQ_GET && 
-            http->sendConnector && !req->ranges && !req->host->secure && resp->chunkSize <= 0 && !conn->trace) {
-        /*
-            Switch (transparently) to the send connector if serving whole static file content via the net connector
-            and not tracing.
-        */
-        connector = http->sendConnector;
-    }
+    if (parent) {
+        auth->allow = parent->allow;
+        auth->anyValidUser = parent->anyValidUser;
+        auth->type = parent->type;
+        auth->deny = parent->deny;
+        auth->method = parent->method;
+        auth->flags = parent->flags;
+        auth->order = parent->order;
+        auth->qop = parent->qop;
+        auth->requiredRealm = parent->requiredRealm;
+        auth->requiredUsers = parent->requiredUsers;
+        auth->requiredGroups = parent->requiredGroups;
+#if BLD_FEATURE_AUTH_FILE
+        auth->userFile = parent->userFile;
+        auth->groupFile = parent->groupFile;
+        auth->users = parent->users;
+        auth->groups = parent->groups;
 #endif
-    resp->connector = connector;
-    if ((connector->flags & MA_STAGE_ALL & req->method) == 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_BAD_REQUEST, "Connector \"%s\" does not support the \"%s\" method \"%s\"", 
-            connector->name, req->methodName);
-    }
-    mprAddItem(resp->outputPipeline, connector);
 
-    /*
-     *  Create the outgoing queue heads and open the queues
-     */
-    q = &resp->queue[MA_QUEUE_SEND];
-    for (next = 0; (stage = mprGetNextItem(resp->outputPipeline, &next)) != 0; ) {
-        q = maCreateQueue(conn, stage, MA_QUEUE_SEND, q);
-    }
-
-    /*
-     *  Create the receive pipeline for this request. Connector first, handler last. Must be created even if the request
-     *  has failed so input chunking can be processed to keep the connection alive.
-     */
-    if (req->remainingContent > 0 || (req->method == MA_REQ_PUT || req->method == MA_REQ_POST)) {
-        req->inputPipeline = mprCreateList(resp);
-
-        mprAddItem(req->inputPipeline, connector);
-        for (next = 0; (filter = mprGetNextItem(location->inputStages, &next)) != 0; ) {
-            if (filter->stage == http->authFilter || !matchFilter(conn, filter)) {
-                continue;
-            }
-            if (filter->stage == http->chunkFilter && !(req->flags & MA_REQ_CHUNKED)) {
-                continue;
-            }
-            if ((filter->stage->flags & MA_STAGE_ALL & req->method) == 0) {
-                continue;
-            }
-            mprAddItem(req->inputPipeline, filter->stage);
-        }
-        mprAddItem(req->inputPipeline, handler);
-
-        /*
-         *  Create the incoming queue heads and open the queues.
-         */
-        q = &resp->queue[MA_QUEUE_RECEIVE];
-        for (next = 0; (stage = mprGetNextItem(req->inputPipeline, &next)) != 0; ) {
-            q = maCreateQueue(conn, stage, MA_QUEUE_RECEIVE, q);
-        }
-    }
-
-    /*
-     *  Pair up the send and receive queues. NOTE: can't use a stage multiple times.
-     */
-    qhead = &resp->queue[MA_QUEUE_SEND];
-    rqhead = &resp->queue[MA_QUEUE_RECEIVE];
-    for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
-        for (rq = rqhead->nextQ; rq != rqhead; rq = rq->nextQ) {
-            if (q->stage == rq->stage) {
-                q->pair = rq;
-                rq->pair = q;
-            }
-        }
-    }
-
-    /*
-     *  Open the queues (keep going on errors). Open in reverse order to open the handler last.
-     *  This ensures the authFilter runs before the handler.
-     */
-    qhead = &resp->queue[MA_QUEUE_SEND];
-    for (q = qhead->prevQ; q != qhead; q = q->prevQ) {
-        if (q->open && !(q->flags & MA_QUEUE_OPEN)) {
-            q->flags |= MA_QUEUE_OPEN;
-            openQ(q);
-        }
-    }
-
-    if (req->remainingContent > 0) {
-        qhead = &resp->queue[MA_QUEUE_RECEIVE];
-        for (q = qhead->prevQ; q != qhead; q = q->prevQ) {
-            if (q->open && !(q->flags & MA_QUEUE_OPEN)) {
-                if (q->pair == 0 || !(q->pair->flags & MA_QUEUE_OPEN)) {
-                    q->flags |= MA_QUEUE_OPEN;
-                    openQ(q);
-                }
-            }
-        }
-    }    
-    /*
-        Now that all stages are open, we can set the environment
-     */
-    setEnv(conn);
-
-    /*
-        Invoke any start routines
-     */
-    qhead = &resp->queue[MA_QUEUE_SEND];
-    for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
-        if (q->start && !(q->flags & MA_QUEUE_STARTED)) {
-            q->flags |= MA_QUEUE_STARTED;
-            startQ(q);
-        }
-    }
-
-    if (req->remainingContent > 0) {
-        qhead = &resp->queue[MA_QUEUE_RECEIVE];
-        for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
-            if (q->start && !(q->flags & MA_QUEUE_STARTED)) {
-                if (q->pair == 0 || !(q->pair->flags & MA_QUEUE_STARTED)) {
-                    q->flags |= MA_QUEUE_STARTED;
-                    startQ(q);
-                }
-            }
-        }
-    }
-    conn->flags |= MA_CONN_PIPE_CREATED;
-}
-
-
-void maDestroyPipeline(MaConn *conn)
-{
-    MaResponse      *resp;
-    MaQueue         *q, *qhead;
-    int             i;
-
-    resp = conn->response;
-
-    if (conn->flags & MA_CONN_PIPE_CREATED && resp) {
-        for (i = 0; i < MA_MAX_QUEUE; i++) {
-            qhead = &resp->queue[i];
-            for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
-                if (q->close && q->flags & MA_QUEUE_OPEN) {
-                    q->flags &= ~MA_QUEUE_OPEN;
-                    q->close(q);
-                }
-            }
-        }
-        conn->flags &= ~MA_CONN_PIPE_CREATED;
-    }
-}
-
-
-/*
- *  Invoke the run routine for the handler and then pump the pipeline by servicing all scheduled queues.
- */
-bool maRunPipeline(MaConn *conn)
-{
-    MaQueue     *q;
-    
-    q = conn->response->queue[MA_QUEUE_SEND].nextQ;
-    
-    if (q->stage->run) {
-        MEASURE(conn, q->stage->name, "run", q->stage->run(q));
-    }
-    if (conn->request) {
-        return maServiceQueues(conn);
-    }
-    return 0;
-}
-
-
-/*
- *  Run the queue service routines until there is no more work to be done. NOTE: all I/O is non-blocking.
- */
-bool maServiceQueues(MaConn *conn)
-{
-    MaQueue     *q;
-    bool        workDone;
-
-    workDone = 0;
-    while (!conn->disconnected && (q = maGetNextQueueForService(&conn->serviceq)) != NULL) {
-        maServiceQueue(q);
-        workDone = 1;
-    }
-    return workDone;
-}
-
-
-void maDiscardPipeData(MaConn *conn)
-{
-    MaResponse      *resp;
-    MaQueue         *q, *qhead;
-
-    resp = conn->response;
-    if (resp == 0) {
-        return;
-    }
-
-    qhead = &resp->queue[MA_QUEUE_SEND];
-    for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
-        maDiscardData(q, 0);
-    }
-
-    qhead = &resp->queue[MA_QUEUE_RECEIVE];
-    for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
-        maDiscardData(q, 0);
-    }
-}
-
-
-static MaStage *checkStage(MaConn *conn, MaStage *stage)
-{
-    MaRequest   *req;
-
-    req = conn->request;
-
-    if (stage == 0) {
-        return 0;
-    }
-    if ((stage->flags & MA_STAGE_ALL & req->method) == 0) {
-        return 0;
-    }
-    if (stage->match && !(stage->flags & MA_STAGE_UNLOADED)) {
-        /* Can't have match routines on unloadable modules */
-        if (!stage->match(conn, stage, req->url)) {
-            return 0;
-        }
-    }
-    return stage;
-}
-
-
-static cchar *getExtension(MaConn *conn, cchar *path)
-{
-    cchar   *cp;
-    char    *ext, *ep;
-
-    if ((cp = strrchr(path, '.')) != 0) {
-        ext = mprStrdup(conn->request, ++cp);
-        for (ep = ext; *ep && isalnum((int)*ep); ep++) {
-            ;
-        }
-        *ep = '\0';
-        return ext;
-    }
-    return 0;
-}
-
-/*
-    Get an extension used for mime type matching. This finds the last extension in the Uri 
-    (or filename if absent in the Uri). Note, the extension may be followed by extra path information.
- */
-cchar *maGetExtension(MaConn *conn)
-{
-    MaRequest   *req;
-    cchar       *ext;
-
-    req = conn->request;
-    ext = getExtension(conn, &req->url[req->alias->prefixLen]);
-    if (ext == 0) {
-        ext = getExtension(conn, conn->response->filename);
-    }
-    if (ext == 0) {
-        ext = "";
-    }
-    return ext;
-}
-
-
-/*
- *  Search for a handler by request extension. If that fails, use handler custom matching.
- *  If all that fails, return the catch-all handler (fileHandler)
- */
-static MaStage *findHandler(MaConn *conn)
-{
-    MaRequest   *req;
-    MaResponse  *resp;
-    MaStage     *handler;
-    MaLocation  *location;
-    MprHash     *hp;
-    cchar       *ext;
-    char        *path;
-    int         next;
-
-    req = conn->request;
-    resp = conn->response;
-    location = req->location;
-    handler = 0;
-    
-    /*
-        Do custom handler matching first
-     */
-    for (next = 0; (handler = mprGetNextItem(location->handlers, &next)) != 0; ) {
-        if (handler->match && checkStage(conn, handler)) {
-            resp->handler = handler;
-            return handler;
-        }
-    }
-
-    ext = resp->extension;
-    if (*ext) {
-        handler = maGetHandlerByExtension(location, resp->extension);
-        if (checkStage(conn, handler)) {
-            return handler;
-        }
-
-    } else {
-        /*
-            URI has no extension, check if the addition of configured  extensions results in a valid filename.
-         */
-        for (path = 0, hp = 0; (hp = mprGetNextHash(location->extensions, hp)) != 0; ) {
-            handler = (MaStage*) hp->data;
-            if (*hp->key && (handler->flags & MA_STAGE_MISSING_EXT)) {
-                path = mprStrcat(resp, -1, resp->filename, ".", hp->key, NULL);
-                if (mprGetPathInfo(conn, path, &resp->fileInfo) == 0) {
-                    mprLog(conn, 5, "findHandler: Adding extension, new path %s\n", path);
-                    maSetRequestUri(conn, mprStrcat(resp, -1, req->url, ".", hp->key, NULL), NULL);
-                    return handler;
-                }
-                mprFree(path);
-            }
-        }
-    }
-
-    /*
-        Failed to match. Return any catch-all handler
-     */
-    handler = maGetHandlerByExtension(location, "");
-    if (handler == 0) {
-        /*
-            Could be missing a catch-all in the config file, so invoke the file handler.
-         */
-        handler = maLookupStage(conn->http, "fileHandler");
-    }
-    if ((handler = checkStage(conn, handler)) == 0) {
-        handler = conn->http->passHandler;
-    }
-    return handler;
-}
-
-
-char *maMakeFilename(MaConn *conn, MaAlias *alias, cchar *url, bool skipAliasPrefix)
-{
-    char        *cleanPath, *path;
-
-    mprAssert(alias);
-    mprAssert(url);
-
-    if (skipAliasPrefix) {
-        url += alias->prefixLen;
-    }
-    while (*url == '/') {
-        url++;
-    }
-    if ((path = mprJoinPath(conn->request, alias->filename, url)) == 0) {
-        return 0;
-    }
-    cleanPath = mprGetNativePath(conn, path);
-    mprFree(path);
-    return cleanPath;
-}
-
-
-static MaStage *mapToFile(MaConn *conn, MaStage *handler)
-{
-    MaRequest   *req;
-    MaResponse  *resp;
-    MprPath     *info, ginfo;
-    char        *gfile;
-
-    req = conn->request;
-    resp = conn->response;
-    info = &resp->fileInfo;
-
-    mprAssert(resp->filename);
-    mprAssert(info->checked);
-
-    if (!handler || (handler->flags & MA_STAGE_VIRTUAL)) {
-        return handler;
-    }
-    if ((req->dir = maLookupBestDir(req->host, resp->filename)) == 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Missing directory block for %s", resp->filename);
-    } else {
-        if (req->dir->auth) {
-            req->auth = req->dir->auth;
-        }
-        if (info->isDir) {
-            handler = processDirectory(conn, handler);
-        } else if (info->valid) {
-            /*
-                Define an Etag for physical entities. Redo the file info if not valid now that extra path has been removed.
-             */
-            resp->etag = mprAsprintf(resp, -1, "\"%x-%Lx-%Lx\"", info->inode, info->size, info->mtime);
-        } else {
-            if (req->acceptEncoding) {
-                if (strstr(req->acceptEncoding, "gzip") != 0) {
-                    gfile = mprAsprintf(resp, -1, "%s.gz", resp->filename);
-                    if (mprGetPathInfo(resp, gfile, &ginfo) == 0) {
-                        resp->filename = gfile;
-                        resp->fileInfo = ginfo;
-                        maSetHeader(conn, 0, "Content-Encoding", "gzip");
-                        return handler;
-                    }
-                }
-            }
-            if (req->method != MA_REQ_PUT && handler->flags & MA_STAGE_VERIFY_ENTITY && 
-                    (req->auth == 0 || req->auth->type == 0)) {
-                /* If doing Authentication, must let authFilter generate the response */
-                maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't open document: %s", resp->filename);
-            }
-        }
-    }
-    return handler;
-}
-
-
-/*
- *  Match a filter by extension
- */
-static bool matchFilter(MaConn *conn, MaFilter *filter)
-{
-    MaRequest       *req;
-    MaResponse      *resp;
-    MaStage         *stage;
-
-    req = conn->request;
-    resp = conn->response;
-    stage = filter->stage;
-
-    if (stage->match) {
-        return stage->match(conn, stage, req->url);
-    }
-    if (filter->extensions && *resp->extension) {
-        return maMatchFilterByExtension(filter, resp->extension);
-    }
-    return 1;
-}
-
-
-static void openQ(MaQueue *q)
-{
-    MaConn      *conn;
-    MaStage     *stage;
-    MaResponse  *resp;
-
-    conn = q->conn;
-    resp = conn->response;
-    stage = q->stage;
-
-    if (resp->chunkSize > 0) {
-        q->packetSize = min(q->packetSize, resp->chunkSize);
-    }
-    if (stage->flags & MA_STAGE_UNLOADED) {
-        mprAssert(stage->path);
-        mprLog(q, 2, "Loading module %s", stage->name);
-        stage->module = maLoadModule(conn->http, stage->name, stage->path);
-    }
-    if (stage->module) {
-        stage->module->lastActivity = conn->host->now;
-    }
-    q->flags |= MA_QUEUE_OPEN;
-    if (q->open) {
-        MEASURE(conn, stage->name, "open", stage->open(q));
-    }
-}
-
-
-static void startQ(MaQueue *q)
-{
-    MaConn      *conn;
-    MaResponse  *resp;
-
-    conn = q->conn;
-    resp = conn->response;
-
-    if (resp->chunkSize > 0) {
-        q->packetSize = min(q->packetSize, resp->chunkSize);
-    }
-    q->flags |= MA_QUEUE_STARTED;
-    if (q->start) {
-        MEASURE(q, q->stage->name, "start", q->start(q));
-    }
-}
-
-
-/*
- *  Manage requests to directories. This will either do an external redirect back to the browser or do an internal 
- *  (transparent) redirection and serve different content back to the browser. This routine may modify the requested 
- *  URI and/or the request handler.
- */
-static MaStage *processDirectory(MaConn *conn, MaStage *handler)
-{
-    MaRequest       *req;
-    MaResponse      *resp;
-    MprUri          *prior;
-    MprPath         *info;
-    char            *path, *index, *uri, *pathInfo;
-
-    req = conn->request;
-    resp = conn->response;
-    info = &resp->fileInfo;
-    prior = req->parsedUri;
-    mprAssert(info->isDir);
-
-    index = req->dir->indexName;
-    path = mprJoinPath(resp, resp->filename, index);
-   
-    if (req->url[strlen(req->url) - 1] == '/') {
-        /*
-            Internal directory redirections
-         */
-        if (mprPathExists(resp, path, R_OK)) {
-            /*
-                Index file exists, so do an internal redirect to it. Client will not be aware of this happening.
-                Return zero so the request will be rematched on return.
-             */
-            pathInfo = mprJoinPath(req, req->url, index);
-            uri = mprFormatUri(req, prior->scheme, prior->host, prior->port, pathInfo, prior->query);
-            maSetRequestUri(conn, uri, NULL);
-            return 0;
-        }
-        mprFree(path);
-
-    } else {
-        /*
-         *  External redirect. If the index exists, redirect to it. If not, append a "/" to the URI and redirect.
-         */
-        if (mprPathExists(resp, path, R_OK)) {
-            pathInfo = mprJoinPath(req, req->url, index);
-        } else {
-            pathInfo = mprJoinPath(req, req->url, "/");
-        }
-        uri = mprFormatUri(req, prior->scheme, prior->host, prior->port, pathInfo, prior->query);
-        maRedirect(conn, MPR_HTTP_CODE_MOVED_PERMANENTLY, uri);
-        handler = conn->http->passHandler;
-    }
-    return handler;
-}
-
-
-static bool fileExists(MprCtx ctx, cchar *path) {
-    if (mprPathExists(ctx, path, R_OK)) {
-        return 1;
-    }
-#if BLD_WIN_LIKE
-{
-    char    *file;
-    file = mprStrcat(ctx, -1, path, ".exe", NULL);
-    if (mprPathExists(ctx, file, R_OK)) {
-        return 1;
-    }
-    file = mprStrcat(ctx, -1, path, ".bat", NULL);
-    if (mprPathExists(ctx, file, R_OK)) {
-        return 1;
-    }
-}
+    } else{
+#if BLD_FEATURE_AUTH_PAM
+        auth->method = MA_AUTH_METHOD_PAM;
+#elif BLD_FEATURE_AUTH_FILE
+        auth->method = MA_AUTH_METHOD_FILE;
 #endif
-    return 0;
+    }
+
+    return auth;
 }
 
+
+void maSetAuthAllow(MaAuth *auth, cchar *allow)
+{
+    mprFree(auth->allow);
+    auth->allow = mprStrdup(auth, allow);
+}
+
+
+void maSetAuthAnyValidUser(MaAuth *auth)
+{
+    auth->anyValidUser = 1;
+    auth->flags |= MA_AUTH_REQUIRED;
+}
+
+
+void maSetAuthDeny(MaAuth *auth, cchar *deny)
+{
+    mprFree(auth->deny);
+    auth->deny = mprStrdup(auth, deny);
+}
+
+
+void maSetAuthOrder(MaAuth *auth, int o)
+{
+    auth->order = o;
+}
+
+
+#else
+void __dummyAuth() {}
+#endif /* BLD_FEATURE_AUTH */
 
 /*
- *  Set the pathInfo (PATH_INFO) and update the request uri. This may set the response filename if convenient.
- */
-static void setPathInfo(MaConn *conn)
-{
-    MaStage     *handler;
-    MaAlias     *alias;
-    MaRequest   *req;
-    MaResponse  *resp;
-    char        *last, *start, *cp, *pathInfo;
-    int         found, sep, offset;
-
-    req = conn->request;
-    resp = conn->response;
-    alias = req->alias;
-    handler = resp->handler;
-
-    mprAssert(handler);
-
-    if (handler && handler->flags & MA_STAGE_PATH_INFO) {
-        if (!(handler->flags & MA_STAGE_VIRTUAL)) {
-            /*
-             *  Find the longest subset of the filename that matches a real file. Test each segment to see if 
-             *  it corresponds to a real physical file. This also defines a new response filename after trimming the 
-             *  extra path info.
-             */
-            last = 0;
-            sep = mprGetPathSeparator(req, resp->filename);
-            for (cp = start = &resp->filename[strlen(alias->filename)]; cp; ) {
-                if ((cp = strchr(cp, sep)) != 0) {
-                    *cp = '\0';
-                }
-                found = fileExists(conn, resp->filename);
-                if (cp) {
-                    *cp = sep;
-                }
-                if (found) {
-                    if (cp) {
-                        last = cp++;
-                    } else {
-                        last = &resp->filename[strlen(resp->filename)];
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-            if (last) {
-                offset = alias->prefixLen + (int) (last - start);
-                if (offset < (int) strlen(req->url)) {
-                    pathInfo = &req->url[offset];
-                    req->pathInfo = mprStrdup(req, pathInfo);
-                    pathInfo[0] = '\0';
-                    maSetRequestUri(conn, req->url, NULL);
-                } else {
-                    req->pathInfo = "";
-                }
-                if (req->pathInfo && req->pathInfo[0]) {
-                    req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0);
-                }
-            }
-        }
-        if (req->pathInfo == 0) {
-            req->pathInfo = req->url;
-            maSetRequestUri(conn, "/", NULL);
-            req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0); 
-        }
-    }
-}
-
-
-static void setEnv(MaConn *conn)
-{
-    MaRequest       *req;
-    MaResponse      *resp;
-    MaStage         *handler;
-
-    req = conn->request;
-    resp = conn->response;
-    handler = resp->handler;
-
-    mprAssert(resp->filename);
-    mprAssert(resp->extension);
-    mprAssert(resp->mimeType);
-
-    setPathInfo(conn);
-
-    if (handler->flags & MA_STAGE_VARS && req->parsedUri->query) {
-        maAddVars(req->formVars, req->parsedUri->query, (int) strlen(req->parsedUri->query));
-    }
-    if (handler->flags & MA_STAGE_ENV_VARS) {
-        maCreateEnvVars(conn);
-        if (resp->envCallback) {
-            resp->envCallback(conn);
-        }
-    }
-}
-
-
-char *maMapUriToStorage(MaConn *conn, cchar *url)
-{
-    MaAlias     *alias;
-
-    alias = maGetAlias(conn->request->host, url);
-    if (alias == 0) {
-        return 0;
-    }
-    return maMakeFilename(conn, alias, url, 1);
-}
-
-
-/*
-    @copy   default
-  
-    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
-    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
-  
-    This software is distributed under commercial and open source licenses.
-    You may use the GPL open source license described below or you may acquire
-    a commercial license from Embedthis Software. You agree to be fully bound
-    by the terms of either license. Consult the LICENSE.TXT distributed with
-    this software for full details.
-  
-    This software is open source; you can redistribute it and/or modify it
-    under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
-    option) any later version. See the GNU General Public License for more
-    details at: http://www.embedthis.com/downloads/gplLicense.html
-  
-    This program is distributed WITHOUT ANY WARRANTY; without even the
-    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
-    This GPL license does NOT permit incorporating this software into
-    proprietary programs. If you are unable to comply with the GPL, you must
-    acquire a commercial license to use this software. Commercial licenses
-    for this software and support services are available from Embedthis
-    Software at http://www.embedthis.com
-  
-    Local variables:
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
     tab-width: 4
     c-basic-offset: 4
     End:
@@ -1026,7 +232,746 @@ char *maMapUriToStorage(MaConn *conn, cchar *url)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/pipeline.c"
+ *  End of file "../src/http/auth.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/authFile.c"
+ */
+/************************************************************************/
+
+/*
+ *  authFile.c - File based authorization using httpPassword files.
+ *
+ *  Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+
+
+#if BLD_FEATURE_AUTH_FILE
+
+static bool isUserValid(MaAuth *auth, cchar *realm, cchar *user);
+static char *trimWhiteSpace(char *str);
+
+
+cchar *maGetNativePassword(MaConn *conn, cchar *realm, cchar *user)
+{
+    MaUser      *up;
+    MaAuth      *auth;
+    char        *key;
+
+    auth = conn->request->auth;
+
+    up = 0;
+    key = mprStrcat(conn, -1, realm, ":", user, NULL);
+    if (auth->users) {
+        up = (MaUser*) mprLookupHash(auth->users, key);
+    }
+    mprFree(key);
+    if (up == 0) {
+        return 0;
+    }
+    return up->password;
+}
+
+
+bool maValidateNativeCredentials(MaConn *conn, cchar *realm, cchar *user, cchar *password, cchar *requiredPassword, 
+        char **msg)
+{
+    MaAuth  *auth;
+    char    passbuf[MA_MAX_PASS * 2], *hashedPassword;
+    int     len;
+
+    hashedPassword = 0;
+    auth = conn->request->auth;
+    
+    if (auth->type == MA_AUTH_BASIC) {
+        mprSprintf(passbuf, sizeof(passbuf), "%s:%s:%s", user, realm, password);
+        len = (int) strlen(passbuf);
+        hashedPassword = mprGetMD5Hash(conn, passbuf, len, NULL);
+        password = hashedPassword;
+    }
+    if (!isUserValid(auth, realm, user)) {
+        *msg = "Access Denied, Unknown User.";
+        mprFree(hashedPassword);
+        return 0;
+    }
+    if (strcmp(password, requiredPassword)) {
+        *msg = "Access Denied, Wrong Password.";
+        mprFree(hashedPassword);
+        return 0;
+    }
+    mprFree(hashedPassword);
+    return 1;
+}
+
+
+/*
+ *  Determine if this user is specified as being eligible for this realm. We examine the requiredUsers and requiredGroups.
+ */
+static bool isUserValid(MaAuth *auth, cchar *realm, cchar *user)
+{
+    MaGroup         *gp;
+    MaUser          *up;
+    cchar           *tok, *gtok;
+    char            ubuf[80], gbuf[80], *key, *requiredUser, *group, *name;
+    int             rc, next;
+
+    if (auth->anyValidUser) {
+        key = mprStrcat(auth, -1, realm, ":", user, NULL);
+        if (auth->users == 0) {
+            return 0;
+        }
+        rc = mprLookupHash(auth->users, key) != 0;
+        mprFree(key);
+        return rc;
+    }
+
+    if (auth->requiredUsers) {
+        tok = NULL;
+        requiredUser = mprGetWordTok(ubuf, sizeof(ubuf), auth->requiredUsers, " \t", &tok);
+        while (requiredUser) {
+            if (strcmp(user, requiredUser) == 0) {
+                return 1;
+            }
+            requiredUser = mprGetWordTok(ubuf, sizeof(ubuf), 0, " \t", &tok);
+        }
+    }
+
+    if (auth->requiredGroups) {
+        gtok = NULL;
+        group = mprGetWordTok(gbuf, sizeof(gbuf), auth->requiredGroups, " \t", &gtok);
+        /*
+         *  For each group, check all the users in the group.
+         */
+        while (group) {
+            if (auth->groups == 0) {
+                gp = 0;
+            } else {
+                gp = (MaGroup*) mprLookupHash(auth->groups, group);
+            }
+            if (gp == 0) {
+                mprError(auth, "Can't find group %s", group);
+                group = mprGetWordTok(gbuf, sizeof(gbuf), 0, " \t", &gtok);
+                continue;
+            }
+
+            for (next = 0; (name = mprGetNextItem(gp->users, &next)) != 0; ) {
+                if (strcmp(user, name) == 0) {
+                    return 1;
+                }
+            }
+            group = mprGetWordTok(gbuf, sizeof(gbuf), 0, " \t", &gtok);
+        }
+    }
+
+    if (auth->requiredAcl != 0) {
+        key = mprStrcat(auth, -1, realm, ":", user, NULL);
+        up = (MaUser*) mprLookupHash(auth->users, key);
+        if (up) {
+            mprLog(auth, 6, "UserRealm \"%s\" has ACL %lx, Required ACL %lx", key, up->acl, auth->requiredAcl);
+            if (up->acl & auth->requiredAcl) {
+                mprFree(key);
+                return 1;
+            }
+        }
+        mprFree(key);
+    }
+    return 0;
+}
+
+
+MaGroup *maCreateGroup(MaAuth *auth, cchar *name, MaAcl acl, bool enabled)
+{
+    MaGroup     *gp;
+
+    gp = mprAllocObjZeroed(auth, MaGroup);
+    if (gp == 0) {
+        return 0;
+    }
+
+    gp->acl = acl;
+    gp->name = mprStrdup(gp, name);
+    gp->enabled = enabled;
+    gp->users = mprCreateList(gp);
+    return gp;
+}
+
+
+int maAddGroup(MaAuth *auth, char *group, MaAcl acl, bool enabled)
+{
+    MaGroup     *gp;
+
+    mprAssert(auth);
+    mprAssert(group && *group);
+
+    gp = maCreateGroup(auth, group, acl, enabled);
+    if (gp == 0) {
+        return MPR_ERR_NO_MEMORY;
+    }
+
+    /*
+     *  Create the index on demand
+     */
+    if (auth->groups == 0) {
+        auth->groups = mprCreateHash(auth, -1);
+    }
+
+    if (mprLookupHash(auth->groups, group)) {
+        return MPR_ERR_ALREADY_EXISTS;
+    }
+
+    if (mprAddHash(auth->groups, group, gp) == 0) {
+        return MPR_ERR_NO_MEMORY;
+    }
+    return 0;
+}
+
+
+MaUser *maCreateUser(MaAuth *auth, cchar *realm, cchar *user, cchar *password, bool enabled)
+{
+    MaUser      *up;
+
+    up = mprAllocObjZeroed(auth, MaUser);
+    if (up == 0) {
+        return 0;
+    }
+
+    up->name = mprStrdup(up, user);
+    up->realm = mprStrdup(up, realm);
+    up->password = mprStrdup(up, password);
+    up->enabled = enabled;
+    return up;
+}
+
+
+int maAddUser(MaAuth *auth, cchar *realm, cchar *user, cchar *password, bool enabled)
+{
+    MaUser  *up;
+
+    char    *key;
+
+    up = maCreateUser(auth, realm, user, password, enabled);
+    if (up == 0) {
+        return MPR_ERR_NO_MEMORY;
+    }
+
+    if (auth->users == 0) {
+        auth->users = mprCreateHash(auth, -1);
+    }
+    key = mprStrcat(auth, -1, realm, ":", user, NULL);
+    if (mprLookupHash(auth->users, key)) {
+        mprFree(key);
+        return MPR_ERR_ALREADY_EXISTS;
+    }
+
+    if (mprAddHash(auth->users, key, up) == 0) {
+        mprFree(key);
+        return MPR_ERR_NO_MEMORY;
+    }
+    mprFree(key);
+    return 0;
+}
+
+
+int maAddUserToGroup(MaAuth *auth, MaGroup *gp, cchar *user)
+{
+    char        *name;
+    int         next;
+
+    for (next = 0; (name = mprGetNextItem(gp->users, &next)) != 0; ) {
+        if (strcmp(name, user) == 0) {
+            return MPR_ERR_ALREADY_EXISTS;
+        }
+    }
+    mprAddItem(gp->users, mprStrdup(gp, user));
+    return 0;
+}
+
+
+int maAddUsersToGroup(MaAuth *auth, cchar *group, cchar *users)
+{
+    MaGroup     *gp;
+    cchar       *tok;
+    char        ubuf[80], *user;
+
+    gp = 0;
+
+    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+
+    tok = NULL;
+    user = mprGetWordTok(ubuf, sizeof(ubuf), users, " \t", &tok);
+    while (user) {
+        /* Ignore already exists errors */
+        maAddUserToGroup(auth, gp, user);
+        user = mprGetWordTok(ubuf, sizeof(ubuf), 0, " \t", &tok);
+    }
+    return 0;
+}
+
+
+int maDisableGroup(MaAuth *auth, cchar *group)
+{
+    MaGroup     *gp;
+
+    gp = 0;
+
+    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+    gp->enabled = 0;
+    return 0;
+}
+
+
+int maDisableUser(MaAuth *auth, cchar *realm, cchar *user)
+{
+    MaUser      *up;
+    char        *key;
+
+    up = 0;
+    key = mprStrcat(auth, -1, realm, ":", user, NULL);
+    if (auth->users == 0 || (up = (MaUser*) mprLookupHash(auth->users, key)) == 0) {
+        mprFree(key);
+        return MPR_ERR_CANT_ACCESS;
+    }
+    mprFree(key);
+    up->enabled = 0;
+    return 0;
+}
+
+
+int maEnableGroup(MaAuth *auth, cchar *group)
+{
+    MaGroup     *gp;
+
+    gp = 0;
+
+    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+    gp->enabled = 1;
+    return 0;
+}
+
+
+int maEnableUser(MaAuth *auth, cchar *realm, cchar *user)
+{
+    MaUser      *up;
+    char        *key;
+
+    up = 0;
+    key = mprStrcat(auth, -1, realm, ":", user, NULL);    
+    if (auth->users == 0 || (up = (MaUser*) mprLookupHash(auth->users, key)) == 0) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+    up->enabled = 1;
+    return 0;
+}
+
+
+MaAcl maGetGroupAcl(MaAuth *auth, char *group)
+{
+    MaGroup     *gp;
+
+    gp = 0;
+
+    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+    return gp->acl;
+}
+
+
+bool maIsGroupEnabled(MaAuth *auth, cchar *group)
+{
+    MaGroup     *gp;
+
+    gp = 0;
+    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
+        return 0;
+    }
+    return gp->enabled;
+}
+
+
+bool maIsUserEnabled(MaAuth *auth, cchar *realm, cchar *user)
+{
+    MaUser  *up;
+    char    *key;
+
+    up = 0;
+    key = mprStrcat(auth, -1, realm, ":", user, NULL);
+    if (auth->users == 0 || (up = (MaUser*) mprLookupHash(auth->users, key)) == 0) {
+        mprFree(key);
+        return 0;
+    }
+    mprFree(key);
+    return up->enabled;
+}
+
+
+/*
+ *  ACLs are simple hex numbers
+ */
+MaAcl maParseAcl(MaAuth *auth, cchar *aclStr)
+{
+    MaAcl   acl = 0;
+    int     c;
+
+    if (aclStr) {
+        if (aclStr[0] == '0' && aclStr[1] == 'x') {
+            aclStr += 2;
+        }
+        for (; isxdigit((int) *aclStr); aclStr++) {
+            c = (int) tolower((int) *aclStr);
+            if ('0' <= c && c <= '9') {
+                acl = (acl * 16) + c - '0';
+            } else {
+                acl = (acl * 16) + c - 'a' + 10;
+            }
+        }
+    }
+    return acl;
+}
+
+
+/*
+ *  Update the total ACL for each user. We do this by oring all the ACLs for each group the user is a member of. 
+ *  For fast access, this union ACL is stored in the MaUser object
+ */
+void maUpdateUserAcls(MaAuth *auth)
+{
+    MprHash     *groupHash, *userHash;
+    MaUser      *user;
+    MaGroup     *gp;
+    
+    /*
+     *  Reset the ACL for each user
+     */
+    if (auth->users != 0) {
+        for (userHash = 0; (userHash = mprGetNextHash(auth->users, userHash)) != 0; ) {
+            ((MaUser*) userHash->data)->acl = 0;
+        }
+    }
+
+    /*
+     *  Get the union of all ACLs defined for a user over all groups that the user is a member of.
+     */
+    if (auth->groups != 0 && auth->users != 0) {
+        for (groupHash = 0; (groupHash = mprGetNextHash(auth->groups, groupHash)) != 0; ) {
+            gp = ((MaGroup*) groupHash->data);
+            for (userHash = 0; (userHash = mprGetNextHash(auth->users, userHash)) != 0; ) {
+                user = ((MaUser*) userHash->data);
+                if (strcmp(user->name, user->name) == 0) {
+                    user->acl = user->acl | gp->acl;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+
+int maRemoveGroup(MaAuth *auth, cchar *group)
+{
+    if (auth->groups == 0 || !mprLookupHash(auth->groups, group)) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+    mprRemoveHash(auth->groups, group);
+    return 0;
+}
+
+
+int maRemoveUser(MaAuth *auth, cchar *realm, cchar *user)
+{
+    char    *key;
+
+    key = mprStrcat(auth, -1, realm, ":", user, NULL);
+    if (auth->users == 0 || !mprLookupHash(auth->users, key)) {
+        mprFree(key);
+        return MPR_ERR_CANT_ACCESS;
+    }
+    mprRemoveHash(auth->users, key);
+    mprFree(key);
+    return 0;
+}
+
+
+int maRemoveUsersFromGroup(MaAuth *auth, cchar *group, cchar *users)
+{
+    MaGroup     *gp;
+    cchar       *tok;
+    char        ubuf[80], *user;
+
+    gp = 0;
+    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+
+    tok = NULL;
+    user = mprGetWordTok(ubuf, sizeof(ubuf), users, " \t", &tok);
+    while (user) {
+        maRemoveUserFromGroup(gp, user);
+        user = mprGetWordTok(ubuf, sizeof(ubuf), 0, " \t", &tok);
+    }
+    return 0;
+}
+
+
+int maSetGroupAcl(MaAuth *auth, cchar *group, MaAcl acl)
+{
+    MaGroup     *gp;
+
+    gp = 0;
+    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+    gp->acl = acl;
+    return 0;
+}
+
+
+void maSetRequiredAcl(MaAuth *auth, MaAcl acl)
+{
+    auth->requiredAcl = acl;
+}
+
+
+int maRemoveUserFromGroup(MaGroup *gp, cchar *user)
+{
+    char    *name;
+    int     next;
+
+    for (next = 0; (name = mprGetNextItem(gp->users, &next)) != 0; ) {
+        if (strcmp(name, user) == 0) {
+            mprRemoveItem(gp->users, name);
+            return 0;
+        }
+    }
+    return MPR_ERR_CANT_ACCESS;
+}
+
+
+int maReadGroupFile(MaServer *server, MaAuth *auth, char *path)
+{
+    MprFile     *file;
+    MaAcl       acl;
+    char        buf[MPR_MAX_STRING];
+    char        *users, *group, *enabled, *aclSpec, *tok, *cp;
+
+    mprFree(auth->groupFile);
+    auth->groupFile = mprStrdup(server, path);
+
+    if ((file = mprOpen(auth, path, O_RDONLY | O_TEXT, 0444)) == 0) {
+        return MPR_ERR_CANT_OPEN;
+    }
+
+    while (mprGets(file, buf, sizeof(buf))) {
+        enabled = mprStrTok(buf, " :\t", &tok);
+        if (!enabled) {
+            continue;
+        }
+        for (cp = enabled; isspace((int) *cp); cp++) {
+            ;
+        }
+        if (*cp == '\0' || *cp == '#') {
+            continue;
+        }
+        aclSpec = mprStrTok(0, " :\t", &tok);
+        group = mprStrTok(0, " :\t", &tok);
+        users = mprStrTok(0, "\r\n", &tok);
+
+        acl = maParseAcl(auth, aclSpec);
+        maAddGroup(auth, group, acl, (*enabled == '0') ? 0 : 1);
+        maAddUsersToGroup(auth, group, users);
+    }
+    mprFree(file);
+
+    maUpdateUserAcls(auth);
+    return 0;
+}
+
+
+int maReadUserFile(MaServer *server, MaAuth *auth, char *path)
+{
+    MprFile     *file;
+    char        buf[MPR_MAX_STRING];
+    char        *enabled, *user, *password, *realm, *tok, *cp;
+
+    mprFree(auth->userFile);
+    auth->userFile = mprStrdup(auth, path);
+
+    if ((file = mprOpen(auth, path, O_RDONLY | O_TEXT, 0444)) == 0) {
+        return MPR_ERR_CANT_OPEN;
+    }
+
+    while (mprGets(file, buf, sizeof(buf))) {
+        enabled = mprStrTok(buf, " :\t", &tok);
+        if (!enabled) {
+            continue;
+        }
+        for (cp = enabled; isspace((int) *cp); cp++) {
+            ;
+        }
+        if (*cp == '\0' || *cp == '#') {
+            continue;
+        }
+        user = mprStrTok(0, ":", &tok);
+        realm = mprStrTok(0, ":", &tok);
+        password = mprStrTok(0, " \t\r\n", &tok);
+
+        user = trimWhiteSpace(user);
+        realm = trimWhiteSpace(realm);
+        password = trimWhiteSpace(password);
+
+        maAddUser(auth, realm, user, password, (*enabled == '0' ? 0 : 1));
+    }
+    mprFree(file);
+    maUpdateUserAcls(auth);
+    return 0;
+}
+
+
+int maWriteUserFile(MaServer *server, MaAuth *auth, char *path)
+{
+    MprFile         *file;
+    MprHash         *hp;
+    MaUser          *up;
+    char            buf[MA_MAX_PASS * 2];
+    char            *tempFile;
+
+    tempFile = mprGetTempPath(auth, NULL);
+    if ((file = mprOpen(auth, tempFile, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0444)) == 0) {
+        mprError(server, "Can't open %s", tempFile);
+        mprFree(tempFile);
+        return MPR_ERR_CANT_OPEN;
+    }
+    mprFree(tempFile);
+
+    hp = mprGetNextHash(auth->users, 0);
+    while (hp) {
+        up = (MaUser*) hp->data;
+        mprSprintf(buf, sizeof(buf), "%d: %s: %s: %s\n", up->enabled, up->name, up->realm, up->password);
+        mprWrite(file, buf, (int) strlen(buf));
+        hp = mprGetNextHash(auth->users, hp);
+    }
+
+    mprFree(file);
+
+    unlink(path);
+    if (rename(tempFile, path) < 0) {
+        mprError(server, "Can't create new %s", path);
+        return MPR_ERR_CANT_WRITE;
+    }
+    return 0;
+}
+
+
+int maWriteGroupFile(MaServer *server, MaAuth *auth, char *path)
+{
+    MprHash         *hp;
+    MprFile         *file;
+    MaGroup         *gp;
+    char            buf[MPR_MAX_STRING], *tempFile, *name;
+    int             next;
+
+    tempFile = mprGetTempPath(server, NULL);
+    if ((file = mprOpen(auth, tempFile, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0444)) == 0) {
+        mprError(server, "Can't open %s", tempFile);
+        mprFree(tempFile);
+        return MPR_ERR_CANT_OPEN;
+    }
+    mprFree(tempFile);
+
+    hp = mprGetNextHash(auth->groups, 0);
+    while (hp) {
+        gp = (MaGroup*) hp->data;
+        mprSprintf(buf, sizeof(buf), "%d: %x: %s: ", gp->enabled, gp->acl, gp->name);
+        mprWrite(file, buf, (int) strlen(buf));
+        for (next = 0; (name = mprGetNextItem(gp->users, &next)) != 0; ) {
+            mprWrite(file, name, (int) strlen(name));
+        }
+        mprWrite(file, "\n", 1);
+        hp = mprGetNextHash(auth->groups, hp);
+    }
+    mprFree(file);
+
+    unlink(path);
+    if (rename(tempFile, path) < 0) {
+        mprError(server, "Can't create new %s", path);
+        return MPR_ERR_CANT_WRITE;
+    }
+    return 0;
+}
+
+
+static char *trimWhiteSpace(char *str)
+{
+    int     len;
+
+    if (str == 0) {
+        return str;
+    }
+    while (isspace((int) *str)) {
+        str++;
+    }
+    len = (int) strlen(str) - 1;
+    while (isspace((int) str[len])) {
+        str[len--] = '\0';
+    }
+    return str;
+}
+
+
+#else
+void __nativeAuthFile() {}
+#endif /* BLD_FEATURE_AUTH_FILE */
+
+/*
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/authFile.c"
  */
 /************************************************************************/
 
@@ -1178,224 +1123,6 @@ void __pamAuth() {}
 /************************************************************************/
 /*
  *  End of file "../src/http/authPam.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/stage.c"
- */
-/************************************************************************/
-
-/*
- *  stages.c -- Stage module to processes HTTP requests.
- *
- *  Stages support the extensible and modular processing of HTTP requests. Handlers are a kind of stage that are the 
- *  first line processing of a request. Connectors are the last stage in a chain to send/receive data over a network.
- *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
-
-
-
-
-static void defaultOpen(MaQueue *q)
-{
-    MaResponse      *resp;
-
-    resp = q->conn->response;
-    q->packetSize = (resp->chunkSize > 0) ? min(q->max, resp->chunkSize): q->max;
-}
-
-
-static void defaultClose(MaQueue *q)
-{
-}
-
-
-static int defaultParse(MaHttp *http, cchar *key, char *value, MaConfigState *state)
-{
-    mprAssert(http);
-    mprAssert(key && *key);
-    mprAssert(state);
-    return 0;
-}
-
-
-/*
- *  The default put will put the packet on the service queue.
- */
-static void outgoingData(MaQueue *q, MaPacket *packet)
-{
-    int     enableService;
-
-    /*
-     *  Handlers service routines must only be enabled if in the processing state.
-     */
-    enableService = !(q->stage->flags & MA_STAGE_HANDLER) || (q->conn->state & MPR_HTTP_STATE_PROCESSING) ? 1 : 0;
-    maPutForService(q, packet, enableService);
-}
-
-
-/*
- *  Default incoming data routine. This is also used by the netConnector which is the default connector for incoming data.
- *  Simply transfer the data upstream to the next filter or handler.
- */
-static void incomingData(MaQueue *q, MaPacket *packet)
-{
-    MaResponse  *resp;
-    MaRequest   *req;
-    
-    mprAssert(q);
-    mprAssert(packet);
-    
-    resp = q->conn->response;
-    req = q->conn->request;
-
-    if (q->nextQ->put) {
-        maPutNext(q, packet);
-
-    } else if (maGetPacketLength(packet)) { 
-        maJoinForService(q, packet, 0);
-
-    } else if (req->form && (q->stage->flags & MA_STAGE_HANDLER) && resp->handler->flags & MA_STAGE_VARS) {
-        /*
-            Do this just for handlers that don't want to define an incoming data handler but do want query/form vars (EGI)
-         */
-        maAddVarsFromQueue(req->formVars, q);
-    }
-}
-
-
-/*
- *  The service routine runs when all input data has been received.
- */
-void maDefaultOutgoingServiceStage(MaQueue *q)
-{
-    MaPacket    *packet;
-
-    for (packet = maGet(q); packet; packet = maGet(q)) {
-        if (!maWillNextQueueAccept(q, packet)) {
-            maPutBack(q, packet);
-            return;
-        }
-        maPutNext(q, packet);
-    }
-}
-
-
-static void incomingService(MaQueue *q)
-{
-}
-
-
-MaStage *maCreateStage(MaHttp *http, cchar *name, int flags)
-{
-    MaStage     *stage;
-
-    mprAssert(http);
-    mprAssert(name && *name);
-
-    stage = mprAllocObjZeroed(http, MaStage);
-    if (stage == 0) {
-        return 0;
-    }
-    stage->flags = flags;
-    stage->name = mprStrdup(stage, name);
-
-    /*
-     *  Caller will selectively override
-     */
-    stage->open = defaultOpen;
-    stage->close = defaultClose;
-    stage->parse = defaultParse;
-    
-    stage->incomingData = incomingData;
-    stage->incomingService = incomingService;
-    
-    stage->outgoingData = outgoingData;
-    stage->outgoingService = maDefaultOutgoingServiceStage;
-
-    maRegisterStage(http, stage);
-    return stage;
-}
-
-
-MaStage *maCreateHandler(MaHttp *http, cchar *name, int flags)
-{
-    MaStage     *stage;
-    
-    stage = maCreateStage(http, name, flags);
-    stage->flags |= MA_STAGE_HANDLER;
-    return stage;
-}
-
-
-MaStage *maCreateFilter(MaHttp *http, cchar *name, int flags)
-{
-    MaStage     *stage;
-    
-    stage = maCreateStage(http, name, flags);
-    stage->flags |= MA_STAGE_FILTER;
-    return stage;
-}
-
-
-MaStage *maCreateConnector(MaHttp *http, cchar *name, int flags)
-{
-    MaStage     *stage;
-    
-    stage = maCreateStage(http, name, flags);
-    stage->flags |= MA_STAGE_CONNECTOR;
-    return stage;
-}
-
-
-bool maMatchFilterByExtension(MaFilter *filter, cchar *ext)
-{
-    return mprLookupHash(filter->extensions, ext) != 0;
-}
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/stage.c"
  */
 /************************************************************************/
 
@@ -3552,991 +3279,391 @@ static void tabs(int fd, int indent)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/misc.c"
+ *  Start of file "../src/http/conn.c"
  */
 /************************************************************************/
 
 /*
- *  misc.c -- Bits and pieces
- *
- *  Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-
-
-/*
- *  Build an ASCII time string.  If sbuf is NULL we use the current time, else we use the last modified time of sbuf
- */
-char *maGetDateString(MprCtx ctx, MprPath *sbuf)
-{
-    MprTime     when;
-    struct tm   tm;
-
-    if (sbuf == 0) {
-        when = mprGetTime(ctx);
-    } else {
-        when = (MprTime) sbuf->mtime * MPR_TICKS_PER_SEC;
-    }
-    mprDecodeUniversalTime(ctx, &tm, when);
-    return mprFormatTime(ctx, MPR_HTTP_DATE, &tm);
-}
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/misc.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/log.c"
- */
-/************************************************************************/
-
-/*
- *  log.c -- Logging
+ *  conn.c -- Connection module to handle individual HTTP connections.
  *
  *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
 
 
-/*
- *  Turn on logging. If no logSpec is specified, default to stdout:2. If the user specifies --log "none" then 
- *  the log is disabled. This is useful when specifying the log via the appweb.conf.
- */
-static void logHandler(MprCtx ctx, int flags, int level, cchar *msg)
-{
-    Mpr         *mpr;
-    MprFile     *file;
-    char        *prefix, buf[MPR_MAX_STRING];
 
-    mpr = mprGetMpr(ctx);
-    if ((file = (MprFile*) mpr->logHandlerData) == 0) {
-        return;
-    }
-    prefix = mpr->name;
-
-    while (*msg == '\n') {
-        mprFprintf(file, "\n");
-        msg++;
-    }
-
-    if (flags & MPR_LOG_SRC) {
-        mprFprintf(file, "%s: %d: %s\n", prefix, level, msg);
-
-    } else if (flags & MPR_ERROR_SRC) {
-        mprSprintf(buf, sizeof(buf), "%s: Error: %s\n", prefix, msg);
-        mprWriteToOsLog(ctx, buf, flags, level);
-
-        /*
-         *  Use static printing to avoid malloc when the messages are small.
-         *  This is important for memory allocation errors.
-         */
-        if (strlen(msg) < (MPR_MAX_STRING - 32)) {
-            mprWriteString(file, buf);
-        } else {
-            mprFprintf(file, "%s: Error: %s\n", prefix, msg);
-        }
-
-    } else if (flags & MPR_FATAL_SRC) {
-        mprSprintf(buf, sizeof(buf), "%s: Fatal: %s\n", prefix, msg);
-        mprWriteString(file, buf);
-        mprWriteToOsLog(ctx, buf, flags, level);
-        
-    } else if (flags & MPR_RAW) {
-        mprFprintf(file, "%s", msg);
-    }
-}
-
-
-/*
- *  Start error and information logging. Note: this is not per-request access logging
- */
-int maStartLogging(MprCtx ctx, cchar *logSpec)
-{
-    Mpr         *mpr;
-    MprFile     *file;
-    char        *levelSpec, *spec;
-    int         level;
-
-    level = 0;
-    mpr = mprGetMpr(ctx);
-
-    if (logSpec == 0) {
-        logSpec = "stdout:0";
-    }
-    if (*logSpec && strcmp(logSpec, "none") != 0) {
-        spec = mprStrdup(mpr, logSpec);
-        if ((levelSpec = strrchr(spec, ':')) != 0 && isdigit((int) levelSpec[1])) {
-            *levelSpec++ = '\0';
-            level = atoi(levelSpec);
-        }
-
-        if (strcmp(spec, "stdout") == 0) {
-            file = mpr->fileSystem->stdOutput;
-        } else {
-            if ((file = mprOpen(mpr, spec, O_CREAT | O_WRONLY | O_TRUNC | O_TEXT, 0664)) == 0) {
-                mprPrintfError(mpr, "Can't open log file %s\n", spec);
-                return -1;
-            }
-        }
-        mprSetLogLevel(mpr, level);
-        mprSetLogHandler(mpr, logHandler, (void*) file);
-
-        mprLog(mpr, MPR_CONFIG, "Configuration for %s", mprGetAppTitle(mpr));
-        mprLog(mpr, MPR_CONFIG, "---------------------------------------------");
-        mprLog(mpr, MPR_CONFIG, "Host:               %s", mprGetHostName(mpr));
-        mprLog(mpr, MPR_CONFIG, "CPU:                %s", BLD_CPU);
-        mprLog(mpr, MPR_CONFIG, "OS:                 %s", BLD_OS);
-        if (strcmp(BLD_DIST, "Unknown") != 0) {
-            mprLog(mpr, MPR_CONFIG, "Distribution:       %s %s", BLD_DIST, BLD_DIST_VER);
-        }
-        mprLog(mpr, MPR_CONFIG, "Version:            %s-%s", BLD_VERSION, BLD_NUMBER);
-        mprLog(mpr, MPR_CONFIG, "BuildType:          %s", BLD_TYPE);
-        mprLog(mpr, MPR_CONFIG, "---------------------------------------------");
-    }
-    return 0;
-}
-
-
-/*
- *  Stop the error and information logging. Note: this is not per-request access logging
- */
-int maStopLogging(MprCtx ctx)
-{
-    MprFile     *file;
-    Mpr         *mpr;
-
-    mpr = mprGetMpr(ctx);
-
-    file = mpr->logHandlerData;
-    if (file) {
-        mprFree(file);
-        mpr->logHandlerData = 0;
-        mprSetLogHandler(mpr, 0, 0);
-    }
-    return 0;
-}
-
-#if BLD_FEATURE_ACCESS_LOG
-
-int maStartAccessLogging(MaHost *host)
-{
-#if !BLD_FEATURE_ROMFS
-    if (host->logPath) {
-        host->accessLog = mprOpen(host, host->logPath, O_CREAT | O_APPEND | O_WRONLY | O_TEXT, 0664);
-        if (host->accessLog == 0) {
-            mprError(host, "Can't open log file %s", host->logPath);
-        }
-    }
-#endif
-    return 0;
-}
-
-
-int maStopAccessLogging(MaHost *host)
-{
-    if (host->accessLog) {
-        mprFree(host->accessLog);
-        host->accessLog = 0;
-    }
-    return 0;
-}
-
-
-void maSetAccessLog(MaHost *host, cchar *path, cchar *format)
-{
-    char    *src, *dest;
-
-    mprAssert(host);
-    mprAssert(path && *path);
-    mprAssert(format);
-    
-    if (format == NULL || *format == '\0') {
-        format = "%h %l %u %t \"%r\" %>s %b";
-    }
-
-    mprFree(host->logPath);
-    host->logPath = mprStrdup(host, path);
-
-    mprFree(host->logFormat);
-    host->logFormat = mprStrdup(host, format);
-
-    for (src = dest = host->logFormat; *src; src++) {
-        if (*src == '\\' && src[1] != '\\') {
-            continue;
-        }
-        *dest++ = *src;
-    }
-    *dest = '\0';
-}
-
-
-void maSetLogHost(MaHost *host, MaHost *logHost)
-{
-    host->logHost = logHost;
-}
-
-
-void maWriteAccessLogEntry(MaHost *host, cchar *buf, int len)
-{
-    static int once = 0;
-
-    if (mprWrite(host->accessLog, (char*) buf, len) != len && once++ == 0) {
-        mprError(host, "Can't write to access log %s", host->logPath);
-    }
-}
-
-
-/*
- *  Called to rotate the access log
- */
-void maRotateAccessLog(MaHost *host)
-{
-    MprPath         info;
-    struct tm       tm;
-    MprTime         when;
-    char            bak[MPR_MAX_FNAME];
-
-    if (mprGetPathInfo(host, host->logPath, &info) == 0) {
-        when = mprGetTime(host);
-        mprDecodeUniversalTime(host, &tm, when);
-        mprSprintf(bak, sizeof(bak), "%s-%02d-%02d-%02d-%02d:%02d:%02d", host->logPath, 
-            tm.tm_mon, tm.tm_mday, tm.tm_year, tm.tm_hour, tm.tm_min, tm.tm_sec);
-        mprFree(host->accessLog);
-        rename(host->logPath, bak);
-        unlink(host->logPath);
-        host->accessLog = mprOpen(host, host->logPath, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0664);
-    }
-}
-
-
-void maLogRequest(MaConn *conn)
-{
-    MaHost      *logHost, *host;
-    MaResponse  *resp;
-    MaRequest   *req;
-    MprBuf      *buf;
-    char        keyBuf[80], *timeText, *fmt, *cp, *qualifier, *value, c;
-    int         len;
-
-    resp = conn->response;
-    req = conn->request;
-    host = req->host;
-
-    logHost = host->logHost;
-    if (logHost == 0) {
-        return;
-    }
-    fmt = logHost->logFormat;
-    if (fmt == 0) {
-        return;
-    }
-    if (req->method == 0) {
-        return;
-    }
-
-    len = MPR_MAX_URL + 256;
-    buf = mprCreateBuf(resp, len, len);
-
-    while ((c = *fmt++) != '\0') {
-        if (c != '%' || (c = *fmt++) == '%') {
-            mprPutCharToBuf(buf, c);
-            continue;
-        }
-
-        switch (c) {
-        case 'a':                           /* Remote IP */
-            mprPutStringToBuf(buf, conn->remoteIpAddr);
-            break;
-
-        case 'A':                           /* Local IP */
-            mprPutStringToBuf(buf, conn->sock->listenSock->ipAddr);
-            break;
-
-        case 'b':
-            if (resp->bytesWritten == 0) {
-                mprPutCharToBuf(buf, '-');
-            } else {
-                mprPutIntToBuf(buf, resp->bytesWritten);
-            } 
-            break;
-
-        case 'B':                           /* Bytes written (minus headers) */
-            mprPutIntToBuf(buf, resp->bytesWritten - resp->headerSize);
-            break;
-
-        case 'h':                           /* Remote host */
-            mprPutStringToBuf(buf, conn->remoteIpAddr);
-            break;
-
-        case 'n':                           /* Local host */
-            mprPutStringToBuf(buf, req->parsedUri->host);
-            break;
-
-        case 'l':                           /* Supplied in authorization */
-            mprPutStringToBuf(buf, req->user ? req->user : "-");
-            break;
-
-        case 'O':                           /* Bytes written (including headers) */
-            mprPutIntToBuf(buf, resp->bytesWritten);
-            break;
-
-        case 'r':                           /* First line of request */
-            mprPutFmtToBuf(buf, "%s %s %s", req->methodName, req->parsedUri->originalUri, req->httpProtocol);
-            break;
-
-        case 's':                           /* Response code */
-            mprPutIntToBuf(buf, resp->code);
-            break;
-
-        case 't':                           /* Time */
-            mprPutCharToBuf(buf, '[');
-            timeText = mprFormatLocalTime(conn, mprGetTime(conn));
-            mprPutStringToBuf(buf, timeText);
-            mprFree(timeText);
-            mprPutCharToBuf(buf, ']');
-            break;
-
-        case 'u':                           /* Remote username */
-            mprPutStringToBuf(buf, req->user ? req->user : "-");
-            break;
-
-        case '{':                           /* Header line */
-            qualifier = fmt;
-            if ((cp = strchr(qualifier, '}')) != 0) {
-                fmt = &cp[1];
-                *cp = '\0';
-                c = *fmt++;
-                mprStrcpy(keyBuf, sizeof(keyBuf), "HTTP_");
-                mprStrcpy(&keyBuf[5], sizeof(keyBuf) - 5, qualifier);
-                mprStrUpper(keyBuf);
-                switch (c) {
-                case 'i':
-                    value = (char*) mprLookupHash(req->headers, keyBuf);
-                    mprPutStringToBuf(buf, value ? value : "-");
-                    break;
-                default:
-                    mprPutStringToBuf(buf, qualifier);
-                }
-                *cp = '}';
-
-            } else {
-                mprPutCharToBuf(buf, c);
-            }
-            break;
-
-        case '>':
-            if (*fmt == 's') {
-                fmt++;
-                mprPutIntToBuf(buf, resp->code);
-            }
-            break;
-
-        default:
-            mprPutCharToBuf(buf, c);
-            break;
-        }
-    }
-    mprPutCharToBuf(buf, '\n');
-    mprAddNullToBuf(buf);
-
-    mprWrite(logHost->accessLog, mprGetBufStart(buf), mprGetBufLength(buf));
-}
-
+static int  connectionDestructor(MaConn *conn);
+static inline MaPacket *getPacket(MaConn *conn, int *bytesToRead);
+static void readEvent(MaConn *conn);
+static int  ioEvent(MaConn *conn, int mask);
+#if SHOW_REQUEST
+static void showRequest(MprBuf *content, int nbytes, int len);
 #else
-void maLogRequest(MaConn *conn) {}
-#endif /* BLD_FEATURE_ACCESS_LOG */
-
-
+#define showRequest(content, nbytes, len)
+#endif
 
 /*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
+ *  The connection lock is the master per connection/request lock. This lock is held when multithreaded 
+ *  throughout an incoming I/O event. Handlers with callbacks (CGI) will assert this lock to prevent reentrant modification
+ *  of the connection or request.
  */
-/************************************************************************/
-/*
- *  End of file "../src/http/log.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/response.c"
- */
-/************************************************************************/
+#undef lock
+#undef unlock
+#define lock(conn) mprLock(conn->mutex)
+#define unlock(conn) mprUnlock(conn->mutex)
 
 /*
- *  response.c - Http response management
- *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ *  Create a new connection object.
  */
-
-
-
-
-static int destroyResponse(MaResponse *resp);
-static void putFormattedHeader(MaConn *conn, MaPacket *packet, cchar *key, cchar *fmt, ...);
-static void putHeader(MaConn *conn, MaPacket *packet, cchar *key, cchar *value);
-
-
-MaResponse *maCreateResponse(MaConn *conn)
+static MaConn *createConn(MprCtx ctx, MaHost *host, MprSocket *sock, cchar *ipAddr, int port, MaHostAddress *address)
 {
-    MaResponse  *resp;
-    MaHttp      *http;
+    MaConn      *conn;
 
-    http = conn->http;
-
-    resp = mprAllocObjWithDestructorZeroed(conn->request->arena, MaResponse, destroyResponse);
-    if (resp == 0) {
+    conn = mprAllocObjWithDestructorZeroed(ctx, MaConn, connectionDestructor);
+    if (conn == 0) {
         return 0;
     }
-
-    resp->conn = conn;
-    resp->code = MPR_HTTP_CODE_OK;
-    resp->mimeType = "text/html";
-    resp->handler = http->passHandler;
-    resp->length = -1;
-    resp->entityLength = -1;
-    resp->chunkSize = -1;
-
-    resp->headers = mprCreateHash(resp, MA_HEADER_HASH_SIZE);
-    maInitQueue(http, &resp->queue[MA_QUEUE_SEND], "responseSendHead");
-    maInitQueue(http, &resp->queue[MA_QUEUE_RECEIVE], "responseReceiveHead");
-    return resp;
-}
-
-
-static int destroyResponse(MaResponse *resp)
-{
-    mprLog(resp, 5, "destroyResponse");
-    maDestroyPipeline(resp->conn);
-    return 0;
-}
-
-
-void maFillHeaders(MaConn *conn, MaPacket *packet)
-{
-    MaRequest       *req;
-    MaResponse      *resp;
-    MaHost          *host;
-    MaRange         *range;
-    MprHash         *hp;
-    MprBuf          *buf;
-    struct tm       tm;
-    char            *hdr;
-    int             expires;
-
-    mprAssert(packet->flags == MA_PACKET_HEADER);
-
-    req = conn->request;
-    resp = conn->response;
-    host = req->host;
-    buf = packet->content;
-
-    if (resp->flags & MA_RESP_HEADERS_CREATED) {
-        return;
-    }    
-    if (req->method ==  MA_REQ_TRACE || req->method == MA_REQ_OPTIONS) {
-        maTraceOptions(conn);
+    if (host->keepAlive) {
+        conn->keepAliveCount = host->maxKeepAlive;
     }
-    mprPutStringToBuf(buf, req->httpProtocol);
-    mprPutCharToBuf(buf, ' ');
-    mprPutIntToBuf(buf, resp->code);
-    mprPutCharToBuf(buf, ' ');
-    mprPutStringToBuf(buf, mprGetHttpCodeString(resp, resp->code));
-    mprPutStringToBuf(buf, "\r\n");
+    conn->http = host->server->http;
+    conn->sock = sock;
+    mprStealBlock(conn, sock);
 
-    putHeader(conn, packet, "Date", req->host->currentDate);
-    putHeader(conn, packet, "Server", MA_SERVER_NAME);
+    conn->state = MPR_HTTP_STATE_BEGIN;
+    conn->timeout = host->timeout;
+    conn->remotePort = port;
+    conn->remoteIpAddr = mprStrdup(conn, ipAddr);
+    conn->address = address;
+    conn->host = host;
+    conn->originalHost = host;
+    conn->expire = mprGetTime(conn) + host->timeout;
+    conn->eventMask = -1;
 
-    if (mprLookupHash(resp->headers, "Expires") || mprLookupHash(resp->headers, "Cache-Control")) {
-        /* User defined expiry */;
+    maInitSchedulerQueue(&conn->serviceq);
 
-    } else if (resp->flags & MA_RESP_DONT_CACHE) {
-        /* Default for Ejs */
-        putHeader(conn, packet, "Cache-Control", "no-cache");
-
-    } else if (req->location->expires) {
-        expires = PTOI(mprLookupHash(req->location->expires, resp->mimeType));
-        if (expires == 0) {
-            expires = PTOI(mprLookupHash(req->location->expires, ""));
-        }
-        if (expires) {
-            mprDecodeUniversalTime(conn, &tm, mprGetTime(conn) + (expires * MPR_TICKS_PER_SEC));
-            putFormattedHeader(conn, packet, "Cache-Control", "max-age=%d", expires);
-            /* Expires is for old HTTP/1.0 clients */
-            hdr = mprFormatTime(conn, MPR_HTTP_DATE, &tm);
-            putFormattedHeader(conn, packet, "Expires", "%s", hdr);
-            mprFree(hdr);
-        }
-    }
-    if (resp->etag) {
-        putFormattedHeader(conn, packet, "ETag", "%s", resp->etag);
-    }
-    if (resp->altBody) {
-        resp->length = strlen(resp->altBody);
-    }
-    if (resp->chunkSize > 0 && !resp->altBody) {
-        if (!(req->method & MA_REQ_HEAD)) {
-            maSetHeader(conn, 0, "Transfer-Encoding", "chunked");
-        }
-
-    } else if (resp->length >= 0) {
-        putFormattedHeader(conn, packet, "Content-Length", "%Ld", resp->length);
-    }
-
-    if (req->ranges) {
-        if (req->ranges->next == 0) {
-            range = req->ranges;
-            if (resp->entityLength > 0) {
-                putFormattedHeader(conn, packet, "Content-Range", "bytes %Ld-%Ld/%Ld", 
-                    range->start, range->end, resp->entityLength);
-            } else {
-                putFormattedHeader(conn, packet, "Content-Range", "bytes %Ld-%Ld/*", range->start, range->end);
-            }
-        } else {
-            putFormattedHeader(conn, packet, "Content-Type", "multipart/byteranges; boundary=%s", resp->rangeBoundary);
-        }
-        putHeader(conn, packet, "Accept-Ranges", "bytes");
-
-    } else if (resp->code != MPR_HTTP_CODE_MOVED_TEMPORARILY && resp->mimeType[0]) {
-        if (!mprLookupHash(resp->headers, "Content-Type")) {
-            putHeader(conn, packet, "Content-Type", resp->mimeType);
-        }
-    }
-
-    if (--conn->keepAliveCount > 0) {
-        putHeader(conn, packet, "Connection", "keep-alive");
-        putFormattedHeader(conn, packet, "Keep-Alive", "timeout=%d, max=%d", 
-            host->keepAliveTimeout / 1000, conn->keepAliveCount);
-    } else {
-        putHeader(conn, packet, "Connection", "close");
-    }
-
-    /*
-     *  Output any remaining custom headers
-     */
-    hp = mprGetFirstHash(resp->headers);
-    while (hp) {
-        putHeader(conn, packet, hp->key, hp->data);
-        hp = mprGetNextHash(resp->headers, hp);
-    }
-
-#if BLD_DEBUG
-{
-    static int seq = 0;
-    putFormattedHeader(conn, packet, "X-Appweb-Seq", "%d", seq++);
-}
+#if BLD_FEATURE_MULTITHREAD
+    conn->mutex = mprCreateLock(conn);
 #endif
-
-    /*
-     *  By omitting the "\r\n" delimiter after the headers, chunks can emit "\r\nSize\r\n" as a single chunk delimiter
-     */
-    if (resp->chunkSize <= 0 || resp->altBody) {
-        mprPutStringToBuf(buf, "\r\n");
-    }
-    if (resp->altBody) {
-        mprPutStringToBuf(buf, resp->altBody);
-        maDiscardData(resp->queue[MA_QUEUE_SEND].nextQ, 0);
-    }
-    resp->headerSize = mprGetBufLength(buf);
-    resp->flags |= MA_RESP_HEADERS_CREATED;
-}
-
-
-void maTraceOptions(MaConn *conn)
-{
-    MaResponse  *resp;
-    MaRequest   *req;
-    int         flags;
-
-    if (conn->requestFailed) {
-        return;
-    }
-    resp = conn->response;
-    req = conn->request;
-
-    if (req->method & MA_REQ_TRACE) {
-        if (req->host->flags & MA_HOST_NO_TRACE) {
-            resp->code = MPR_HTTP_CODE_NOT_ACCEPTABLE;
-            maFormatBody(conn, "Trace Request Denied", "<p>The TRACE method is disabled on this server.</p>");
-        } else {
-            resp->altBody = mprAsprintf(resp, -1, "%s %s %s\r\n", req->methodName, req->parsedUri->originalUri, 
-                req->httpProtocol);
-        }
-
-    } else if (req->method & MA_REQ_OPTIONS) {
-        if (resp->handler == 0) {
-            maSetHeader(conn, 0, "Allow", "OPTIONS,TRACE");
-
-        } else {
-            flags = resp->handler->flags;
-            maSetHeader(conn, 0, "Allow", "OPTIONS,TRACE%s%s%s%s%s",
-                (flags & MA_STAGE_GET) ? ",GET" : "",
-                (flags & MA_STAGE_HEAD) ? ",HEAD" : "",
-                (flags & MA_STAGE_POST) ? ",POST" : "",
-                (flags & MA_STAGE_PUT) ? ",PUT" : "",
-                (flags & MA_STAGE_DELETE) ? ",DELETE" : "");
-        }
-        resp->length = 0;
-    }
-}
-
-
-static void putFormattedHeader(MaConn *conn, MaPacket *packet, cchar *key, cchar *fmt, ...)
-{
-    va_list     args;
-    char        *value;
-
-    va_start(args, fmt);
-    value = mprVasprintf(packet, MA_MAX_HEADERS, fmt, args);
-    va_end(args);
-
-    putHeader(conn, packet, key, value);
-    mprFree(value);
-}
-
-
-static void putHeader(MaConn *conn, MaPacket *packet, cchar *key, cchar *value)
-{
-    MprBuf      *buf;
-
-    buf = packet->content;
-
-    mprPutStringToBuf(buf, key);
-    mprPutStringToBuf(buf, ": ");
-    if (value) {
-        mprPutStringToBuf(buf, value);
-    }
-    mprPutStringToBuf(buf, "\r\n");
-}
-
-
-int maFormatBody(MaConn *conn, cchar *title, cchar *fmt, ...)
-{
-    MaResponse  *resp;
-    va_list     args;
-    char        *body;
-
-    resp = conn->response;
-    mprAssert(resp->altBody == 0);
-
-    va_start(args, fmt);
-
-    body = mprVasprintf(resp, MA_MAX_HEADERS, fmt, args);
-
-    resp->altBody = mprAsprintf(resp, -1,
-        "<!DOCTYPE html>\r\n"
-        "<html><head><title>%s</title></head>\r\n"
-        "<body>\r\n%s\r\n</body>\r\n</html>\r\n",
-        title, body);
-    mprFree(body);
-    va_end(args);
-    return (int) strlen(resp->altBody);
+    return conn;
 }
 
 
 /*
- *  Redirect the user to another web page. The targetUri may or may not have a scheme.
+ *  Cleanup a connection. Invoked automatically whenever the connection is freed.
  */
-void maRedirect(MaConn *conn, int code, cchar *targetUri)
+static int connectionDestructor(MaConn *conn)
 {
-    MaResponse  *resp;
-    MaRequest   *req;
-    MaHost      *host;
-    MprUri      *target, *prev;
-    char        *path, *uri, *dir, *cp, *hostName;
-    int         port;
-
-    mprAssert(targetUri);
-
-    req = conn->request;
-    resp = conn->response;
-    host = req->host;
-
-    mprLog(conn, 3, "redirect %d %s", code, targetUri);
-
-    if (resp->redirectCallback) {
-        targetUri = (resp->redirectCallback)(conn, &code, targetUri);
-    }
-
-    uri = 0;
-    resp->code = code;
-
-    prev = req->parsedUri;
-    target = mprParseUri(resp, targetUri);
-
-    if (strstr(targetUri, "://") == 0) {
-        /*
-         *  Redirect does not have a host specifier. Use request "Host" header by preference, then the host ServerName.
-         */
-        if (req->hostName) {
-            hostName = req->hostName;
-        } else {
-            hostName = host->name;
-        }
-        port = strchr(targetUri, ':') ? prev->port : conn->address->port;
-        if (target->url[0] == '/') {
-            /*
-             *  Absolute URL. If hostName has a port specifier, it overrides prev->port.
-             */
-            uri = mprFormatUri(resp, prev->scheme, hostName, port, target->url, target->query);
-        } else {
-            /*
-             *  Relative file redirection to a file in the same directory as the previous request.
-             */
-            dir = mprStrdup(resp, req->url);
-            if ((cp = strrchr(dir, '/')) != 0) {
-                /* Remove basename */
-                *cp = '\0';
-            }
-            path = mprStrcat(resp, -1, dir, "/", target->url, NULL);
-            uri = mprFormatUri(resp, prev->scheme, hostName, port, path, target->query);
-        }
-        targetUri = uri;
-    }
-
-    maSetHeader(conn, 0, "Location", "%s", targetUri);
-    mprAssert(resp->altBody == 0);
-    resp->altBody = mprAsprintf(resp, -1,
-        "<!DOCTYPE html>\r\n"
-        "<html><head><title>%s</title></head>\r\n"
-        "<body><h1>%s</h1>\r\n<p>The document has moved <a href=\"%s\">here</a>.</p>\r\n"
-        "<address>%s at %s Port %d</address></body>\r\n</html>\r\n",
-        mprGetHttpCodeString(conn, code), mprGetHttpCodeString(conn, code), targetUri,
-        MA_SERVER_NAME, host->name, prev->port);
-    mprFree(uri);
+    mprAssert(conn);
+    mprAssert(conn->host);
+    mprAssert(conn->sock);
 
     /*
-     *  The original request has failed and is being redirected. This is regarded as a request failure and
-     *  will prevent further processing of the pipeline.
+     *  Must remove from the connection list first. This ensures that the host timer will not find the connection 
+     *  nor mess with it anymore.
      */
+    maRemoveConn(conn->host, conn);
+
+    if (conn->sock) {
+        mprLog(conn, 4, "Closing connection fd %d", conn->sock->fd);
+        mprCloseSocket(conn->sock, conn->connectionFailed ? 0 : MPR_SOCKET_GRACEFUL);
+        mprFree(conn->sock);
+    }
+    return 0;
+}
+
+
+/*
+ *  Set the connection for disconnection when the I/O event returns. Setting keepAliveCount to zero will cause a 
+ *  server-led disconnection.
+ */
+void maDisconnectConn(MaConn *conn)
+{
+    conn->canProceed = 0;
+    conn->disconnected = 1;
+    conn->keepAliveCount = 0;
     conn->requestFailed = 1;
-}
 
-
-void maDontCacheResponse(MaConn *conn)
-{
     if (conn->response) {
-        conn->response->flags |= MA_RESP_DONT_CACHE;
+        mprLog(conn, 4, "Disconnect conn fd %d", conn->sock ? conn->sock->fd : 0);
+        maCompleteRequest(conn);
+        maDiscardPipeData(conn);
     }
 }
 
 
-void maSetHeader(MaConn *conn, bool allowMultiple, cchar *key, cchar *fmt, ...)
+/*
+ *  Prepare a connection after completing a request for a new request.
+ */
+void maPrepConnection(MaConn *conn)
 {
-    MaResponse      *resp;
-    char            *value;
-    va_list         vargs;
+    mprAssert(conn);
 
-    resp = conn->response;
-
-    va_start(vargs, fmt);
-    value = mprVasprintf(resp, MA_MAX_HEADERS, fmt, vargs);
-
-    if (allowMultiple) {
-        mprAddDuplicateHash(resp->headers, key, value);
-    } else {
-        mprAddHash(resp->headers, key, value);
+    conn->requestFailed = 0;
+    conn->request = 0;
+    conn->response = 0;
+    conn->trace = 0;
+    conn->state =  MPR_HTTP_STATE_BEGIN;
+    conn->flags &= ~MA_CONN_CLEAN_MASK;
+    conn->expire = mprGetTime(conn) + conn->host->keepAliveTimeout;
+    conn->dedicated = 0;
+    if (conn->sock) {
+        mprSetSocketBlockingMode(conn->sock, 0);
     }
 }
 
 
-void maSetCookie(MaConn *conn, cchar *name, cchar *value, cchar *path, cchar *cookieDomain, int lifetime, bool isSecure)
+/*
+ *  Accept a new client connection. If multithreaded, this will come in on a worker thread dedicated to this connection.
+ *  This is called from the listen wait handler.
+ */
+int maAcceptConn(MprSocket *sock, MaServer *server, cchar *ip, int port)
 {
-    MaRequest   *req;
-    MaResponse  *resp;
-    struct tm   tm;
-    char        *cp, *expiresAtt, *expires, *domainAtt, *domain, *secure;
-    int         webkitVersion;
+    MaHostAddress   *address;
+    MaHost          *host;
+    MaConn          *conn;
+    MprSocket       *listenSock;
+    MprHeap         *arena;
+    int             rc;
 
-    req = conn->request;
-    resp = conn->response;
+    mprAssert(server);
+    mprAssert(sock);
+    mprAssert(ip);
+    mprAssert(port > 0);
 
-    if (path == 0) {
-        path = "/";
+    rc = 0;
+    listenSock = sock->listenSock;
+
+    mprLog(server, 4, "New connection from %s:%d for %s:%d %s",
+        ip, port, listenSock->ipAddr, listenSock->port, listenSock->sslSocket ? "(secure)" : "");
+
+    /*
+     *  Map the address onto a suitable host to initially serve the request initially until we can parse the Host header.
+     */
+    address = (MaHostAddress*) maLookupHostAddress(server, listenSock->ipAddr, listenSock->port);
+
+    if (address == 0 || (host = mprGetFirstItem(address->vhosts)) == 0) {
+        mprError(server, "No host configured for request %s:%d", listenSock->ipAddr, listenSock->port);
+        mprFree(sock);
+        return 1;
+    }
+    arena = mprAllocHeap(host, "conn", 1, 0, NULL);
+    if (arena == 0) {
+        mprError(server, "Can't create connect arena object. Insufficient memory.");
+        mprFree(sock);
+        return 1;
+    }
+
+    conn = createConn(arena, host, sock, ip, port, address);
+    if (conn == 0) {
+        mprError(server, "Can't create connect object. Insufficient memory.");
+        mprFree(sock);
+        return 1;
+    }
+    conn->arena = arena;
+    maAddConn(host, conn);
+
+    mprSetSocketCallback(conn->sock, (MprSocketProc) ioEvent, conn, MPR_READABLE, MPR_NORMAL_PRIORITY);
+ 
+#if BLD_FEATURE_MULTITHREAD
+    mprEnableSocketEvents(listenSock);
+#endif
+    return rc;
+}
+
+
+/*
+ *  IO event handler. If multithreaded, this will be run by a worker thread. NOTE: a request is not typically permanently 
+ *  assigned to a worker thread. Each io event may be serviced by a different worker thread. The exception is CGI
+ *  requests which block to wait for the child to complete (Needed on some platforms that don't permit cross thread
+ *  waiting).
+ */
+static int ioEvent(MaConn *conn, int mask)
+{
+    mprAssert(conn);
+
+    lock(conn);
+    conn->time = mprGetTime(conn);
+
+    mprLog(conn, 7, "ioEvent for fd %d, mask %d\n", conn->sock->fd);
+    if (mask & MPR_WRITABLE) {
+        maProcessWriteEvent(conn);
+    }
+    if (mask & MPR_READABLE) {
+        readEvent(conn);
+    }
+    conn->time = mprGetTime(conn);
+    if (mprIsSocketEof(conn->sock) || conn->disconnected || conn->connectionFailed || 
+            (conn->request == 0 && conn->keepAliveCount < 0)) {
+        /*
+         *  This will close the connection and free all connection resources. NOTE: we compare keepAliveCount with "< 0" 
+         *  so that the client can have one more keep alive request. It should respond to the "Connection: close" and 
+         *  thus initiate a client-led close. This reduces TIME_WAIT states on the server. Must unlock the connection 
+         *  to allow pending callbacks to run and complete.
+         */
+        unlock(conn);
+        maDestroyPipeline(conn);
+        mprFree(conn->arena);
+        return 1;
     }
 
     /*
-     *  Fix for Safari >= 3.2.1 with Bonjour addresses with a trailing ".". Safari discards cookies without a domain 
-     *  specifier or with a domain that includes a trailing ".". Solution: include an explicit domain and trim the 
-     *  trailing ".".
-     *
-     *   User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_5_6; en-us) 
-     *       AppleWebKit/530.0+ (KHTML, like Gecko) Version/3.1.2 Safari/525.20.1
+     *  We allow read events even if the current request is not complete and does not have body data. The pipelined
+     *  request will be buffered and be ready for when the current request completes.
      */
-    webkitVersion = 0;
-    if (cookieDomain == 0 && req->userAgent && strstr(req->userAgent, "AppleWebKit") != 0) {
-        if ((cp = strstr(req->userAgent, "Version/")) != NULL && strlen(cp) >= 13) {
-            cp = &cp[8];
-            webkitVersion = (cp[0] - '0') * 100 + (cp[2] - '0') * 10 + (cp[4] - '0');
+    maEnableConnEvents(conn, MPR_READABLE);
+    unlock(conn);
+    return 0;
+}
+
+
+/*
+ *  Enable the connection's I/O events
+ */
+void maEnableConnEvents(MaConn *conn, int eventMask)
+{
+    if (conn->request) {
+        if (conn->response->queue[MA_QUEUE_SEND].prevQ->first) {
+            eventMask |= MPR_WRITABLE;
         }
     }
-    domain = (char*) cookieDomain;
-    if (webkitVersion >= 312) {
-        domain = mprStrdup(resp, req->hostName);
-        if ((cp = strchr(domain, ':')) != 0) {
-            *cp = '\0';
+    mprLog(conn, 7, "Enable conn events mask %x", eventMask);
+    conn->expire = mprGetTime(conn);
+    conn->expire += (conn->state == MPR_HTTP_STATE_BEGIN) ? conn->host->keepAliveTimeout : conn->host->timeout;
+    eventMask &= conn->eventMask;
+    mprSetSocketCallback(conn->sock, (MprSocketProc) ioEvent, conn, eventMask, MPR_NORMAL_PRIORITY);
+}
+
+
+/*
+ *  Process a socket readable event
+ */
+static void readEvent(MaConn *conn)
+{
+    MaPacket    *packet;
+    MprBuf      *content;
+    int         nbytes, len;
+
+    do {
+        if ((packet = getPacket(conn, &len)) == 0) {
+            break;
         }
-        if (*domain && domain[strlen(domain) - 1] == '.') {
-            domain[strlen(domain) - 1] = '\0';
+        mprAssert(len > 0);
+        content = packet->content;
+        nbytes = mprReadSocket(conn->sock, mprGetBufEnd(content), len);
+        showRequest(content, nbytes, len);
+       
+        if (nbytes > 0) {
+            mprAdjustBufEnd(content, nbytes);
+            maProcessReadEvent(conn, packet);
         } else {
-            domain = 0;
+            if (mprIsSocketEof(conn->sock)) {
+                conn->dedicated = 0;
+                if (conn->request) {
+                    maProcessReadEvent(conn, packet);
+                }
+            } else if (nbytes < 0) {
+                maFailConnection(conn, MPR_HTTP_CODE_COMMS_ERROR, "Communications read error");
+            }
         }
-    }
-    if (domain) {
-        domainAtt = "; domain=";
-    } else {
-        domainAtt = "";
-        domain = "";
-    }
-    if (lifetime > 0) {
-        mprDecodeUniversalTime(resp, &tm, conn->time + (lifetime * MPR_TICKS_PER_SEC));
-        expiresAtt = "; expires=";
-        expires = mprFormatTime(resp, MPR_HTTP_DATE, &tm);
+    } while (!conn->disconnected && conn->dedicated);
+}
 
-    } else {
-        expires = expiresAtt = "";
-    }
-    if (isSecure) {
-        secure = "; secure";
-    } else {
-        secure = ";";
-    }
+
+/*
+ *  Get the packet into which to read data. This may be owned by the connection or if mid-request, may be owned by the
+ *  request. Also return in *bytesToRead the length of data to attempt to read.
+ */
+static inline MaPacket *getPacket(MaConn *conn, int *bytesToRead)
+{
+    MaPacket    *packet;
+    MaRequest   *req;
+    MprBuf      *content;
+    MprOff      remaining;
+    int         len;
+
+    req = conn->request;
+    len = MA_BUFSIZE;
 
     /*
-     *  Allow multiple cookie headers. Even if the same name. Later definitions take precedence
+     *  The input packet may have pipelined headers and data left from the prior request. It may also have incomplete
+     *  chunk boundary data.
      */
-    maSetHeader(conn, 1, "Set-Cookie", 
-        mprStrcat(resp, -1, name, "=", value, "; path=", path, domainAtt, domain, expiresAtt, expires, secure, NULL));
+    if ((packet = conn->input) == NULL) {
+        conn->input = packet = maCreateConnPacket(conn, len);
 
-    maSetHeader(conn, 0, "Cache-control", "no-cache=\"set-cookie\"");
+    } else {
+        content = packet->content;
+        mprResetBufIfEmpty(content);
+        if (req) {
+            /*
+             *  Don't read more than the remainingContent unless chunked. We do this to minimize requests split 
+             *  across packets.
+             */
+            if (req->remainingContent) {
+                remaining = req->remainingContent;
+                if (req->flags & MA_REQ_CHUNKED) {
+                    remaining = max(remaining, MA_BUFSIZE);
+                }
+                len = (int) min(remaining, MAXINT);
+            }
+            len = min(len, MA_BUFSIZE);
+            mprAssert(len > 0);
+            if (mprGetBufSpace(content) < len) {
+                mprGrowBuf(content, len);
+            }
+
+        } else {
+            /*
+             *  Still reading the request headers
+             */
+            if (mprGetBufLength(content) >= conn->http->limits.maxHeader) {
+                maFailConnection(conn, MPR_HTTP_CODE_REQUEST_TOO_LARGE, "Header too big");
+                return 0;
+            }
+            if (mprGetBufSpace(content) < MA_BUFSIZE) {
+                mprGrowBuf(content, MA_BUFSIZE);
+            }
+            len = mprGetBufSpace(content);
+        }
+    }
+    mprAssert(len > 0);
+    *bytesToRead = len;
+    return packet;
 }
 
 
-void maSetEntityLength(MaConn *conn, MprOff len)
+void maDedicateThreadToConn(MaConn *conn)
 {
-    MaRequest       *req;
-    MaResponse      *resp;
+    mprAssert(conn);
 
-    resp = conn->response;
-    req = conn->request;
-
-    resp->entityLength = len;
-    if (req->ranges == 0) {
-        resp->length = len;
+    conn->dedicated = 1;
+    if (conn->sock) {
+        mprSetSocketBlockingMode(conn->sock, 1);
     }
 }
 
 
-void maSetResponseCode(MaConn *conn, int code)
+void *maGetHandlerQueueData(MaConn *conn)
 {
-    conn->response->code = code;
+    MaQueue     *q;
+
+    q = &conn->response->queue[MA_QUEUE_SEND];
+    return q->nextQ->queueData;
 }
 
 
-void maSetResponseMimeType(MaConn *conn, cchar *mimeType)
+#if SHOW_REQUEST
+static void showRequest(MprBuf *content, int nbytes, int len);
 {
-    MaResponse      *resp;
-
-    resp = conn->response;
-
-    /*  Can't free old mime type, as it is sometimes a literal constant */
-    resp->mimeType = mprStrdup(resp, mimeType);
+    mprLog(content, 5, "readEvent: read nbytes %d, bufsize %d", nbytes, len);
+    char *buf = mprGetBufStart(content);
+    buf[nbytes] = '\0';
+    print("\n>>>>>>>>>>>>>>>>>>>>>>>>>");
+    write(1, buf, nbytes);
+    print("<<<<<<<<<<<<<<<<<<<<<<<<<\n");
 }
-
-
-void maOmitResponseBody(MaConn *conn)
-{
-    if (conn->response) {
-        conn->response->flags |= MA_RESP_NO_BODY;
-        // conn->response->mimeType = "";
-    }
-}
-
-
-void maSetRedirectCallback(MaConn *conn, MaRedirectCallback redirectCallback)
-{
-    conn->response->redirectCallback = redirectCallback;
-}
-
-
-void maSetEnvCallback(MaConn *conn, MaEnvCallback envCallback)
-{
-    conn->response->envCallback = envCallback;
-}
+#endif
 
 
 /*
@@ -4576,7 +3703,7 @@ void maSetEnvCallback(MaConn *conn, MaEnvCallback envCallback)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/response.c"
+ *  End of file "../src/http/conn.c"
  */
 /************************************************************************/
 
@@ -4584,189 +3711,645 @@ void maSetEnvCallback(MaConn *conn, MaEnvCallback envCallback)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/mime.c"
+ *  Start of file "../src/http/connectors/netConnector.c"
  */
 /************************************************************************/
 
-/* 
- *  mime.c
+/*
+ *  netConnector.c -- General network connector. 
  *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ *  The Network connector handles output data (only) from upstream handlers and filters. It uses vectored writes to
+ *  aggregate output packets into fewer actual I/O requests to the O/S. 
+ *
+ *  Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 
 
+#if BLD_FEATURE_NET
 
-int maOpenMimeTypes(MaHost *host, cchar *path)
+static void addPacketForNet(MaQueue *q, MaPacket *packet);
+static void adjustNetVec(MaQueue *q, int written);
+static int64  buildNetVec(MaQueue *q);
+static void freeNetPackets(MaQueue *q, int64 written);
+
+
+static void netOutgoingService(MaQueue *q)
 {
-    MprFile     *file;
-    char        buf[80], *tok, *ext, *type;
-    int         line;
+    MaConn      *conn;
+    MaResponse  *resp;
+    int         written, errCode;
 
-    host->mimeFile = mprStrdup(host, path);
+    conn = q->conn;
+    resp = conn->response;
+    
+    while (q->first || q->ioIndex) {
+        written = 0;
+        if (q->ioIndex == 0 && buildNetVec(q) <= 0) {
+            break;
+        }
+        /*
+         *  Issue a single I/O request to write all the blocks in the I/O vector
+         */
+        errCode = mprGetOsError();
+        mprAssert(q->ioIndex > 0);
+        written = mprWriteSocketVector(conn->sock, q->iovec, q->ioIndex);
+        mprLog(q, 5, "Net connector written %d", written);
+        if (written < 0) {
+            errCode = mprGetOsError();
+            if (errCode == EAGAIN || errCode == EWOULDBLOCK) {
+                maRequestWriteBlocked(conn);
+                break;
+            }
+            if (errCode == EPIPE || errCode == ECONNRESET) {
+                maDisconnectConn(conn);
+            } else {
+                mprLog(conn, 7, "mprVectorWriteSocket failed, error %d", errCode);
+                maDisconnectConn(conn);
+            }
+            freeNetPackets(q, MAXINT);
+            break;
 
-    if (host->mimeTypes == 0) {
-        host->mimeTypes = mprCreateHash(host, MA_MIME_HASH_SIZE);
-        mprSetHashCaseless(host->mimeTypes);
-    }
-    file = mprOpen(host, path, O_RDONLY | O_TEXT, 0);
-    if (file == 0) {
-        return MPR_ERR_CANT_OPEN;
-    }
-    line = 0;
-    while (mprGets(file, buf, sizeof(buf)) != 0) {
-        line++;
-        if (buf[0] == '#' || isspace((int) buf[0])) {
-            continue;
-        }
-        type = mprStrTok(buf, " \t\n\r", &tok);
-        ext = mprStrTok(0, " \t\n\r", &tok);
-        if (type == 0 || ext == 0) {
-            mprError(host, "Bad mime spec in %s at line %d", path, line);
-            continue;
-        }
-        while (ext) {
-            maAddMimeType(host, ext, type);
-            ext = mprStrTok(0, " \t\n\r", &tok);
+        } else if (written == 0) {
+            /* 
+             * Socket full. Wait for an I/O event. Conn.c will setup listening for write events if the queue is non-empty
+             */
+            maRequestWriteBlocked(conn);
+            break;
+
+        } else if (written > 0) {
+            resp->bytesWritten += written;
+            freeNetPackets(q, written);
+            adjustNetVec(q, written);
         }
     }
-    mprFree(file);
-    return 0;
+    if (q->ioCount == 0 && q->flags & MA_QUEUE_EOF) {
+        maCompleteRequest(conn);
+    }
 }
 
 
 /*
- *  Add a mime type to the mime lookup table. Action Programs are added separately.
+ *  Build the IO vector. Return the count of bytes to be written. Return -1 for EOF.
  */
-MaMimeType *maAddMimeType(MaHost *host, cchar *ext, cchar *mimeType)
+static int64 buildNetVec(MaQueue *q)
 {
-    MaMimeType  *mime;
+    MaConn      *conn;
+    MaResponse  *resp;
+    MaPacket    *packet;
 
-    mime = mprAllocObjZeroed(host->mimeTypes, MaMimeType);
-    if (mime == 0) {
-        return 0;
+    conn = q->conn;
+    resp = conn->response;
+
+    /*
+     *  Examine each packet and accumulate as many packets into the I/O vector as possible. Leave the packets on the queue 
+     *  for now, they are removed after the IO is complete for the entire packet.
+     */
+    for (packet = q->first; packet; packet = packet->next) {
+        if (packet->flags & MA_PACKET_HEADER) {
+            if (resp->chunkSize <= 0 && q->count > 0 && resp->length < 0) {
+                /* Incase no chunking filter and we've not seen all the data yet */
+                conn->keepAliveCount = 0;
+            }
+            maFillHeaders(conn, packet);
+            q->count += maGetPacketLength(packet);
+
+        } else if (maGetPacketLength(packet) == 0) {
+            q->flags |= MA_QUEUE_EOF;
+            if (packet->prefix == NULL) {
+                break;
+            }
+            
+        } else if (resp->flags & MA_RESP_NO_BODY) {
+            maDiscardData(q, 0);
+            continue;
+        }
+        if (q->ioIndex >= (MA_MAX_IOVEC - 2)) {
+            break;
+        }
+        addPacketForNet(q, packet);
     }
-    mime->type = mprStrdup(host, mimeType);
-    if (host->mimeTypes == 0) {
-        host->mimeTypes = mprCreateHash(host, MA_MIME_HASH_SIZE);
-        mprSetHashCaseless(host->mimeTypes);
-    }
-    if (*ext == '.') {
-        ext++;
-    }
-    mprAddHash(host->mimeTypes, ext, mime);
-    return mime;
+    return q->ioCount;
 }
 
 
-int maSetMimeActionProgram(MaHost *host, cchar *mimeType, cchar *actionProgram)
+/*
+ *  Add one entry to the io vector
+ */
+static void addToNetVector(MaQueue *q, char *ptr, int bytes)
 {
-    MaMimeType      *mime;
-    MprHash         *hp;
-    
-    if (host->mimeTypes == 0) {
-        host->mimeTypes = mprCreateHash(host, MA_MIME_HASH_SIZE);
-        mprSetHashCaseless(host->mimeTypes);
-        maAddStandardMimeTypes(host);
+    mprAssert(bytes > 0);
+
+    q->iovec[q->ioIndex].start = ptr;
+    q->iovec[q->ioIndex].len = bytes;
+    q->ioCount += bytes;
+    q->ioIndex++;
+}
+
+
+/*
+ *  Add a packet to the io vector. Return the number of bytes added to the vector.
+ */
+static void addPacketForNet(MaQueue *q, MaPacket *packet)
+{
+    MaResponse  *resp;
+    MaConn      *conn;
+    int         mask;
+
+    conn = q->conn;
+    resp = conn->response;
+
+    mprAssert(q->count >= 0);
+    mprAssert(q->ioIndex < (MA_MAX_IOVEC - 2));
+
+    if (packet->prefix) {
+        addToNetVector(q, mprGetBufStart(packet->prefix), mprGetBufLength(packet->prefix));
     }
-    
-    hp = 0;
-    mime = 0;
-    while ((hp = mprGetNextHash(host->mimeTypes, hp)) != 0) {
-        mime = (MaMimeType*) hp->data;
-        if (mime->type[0] == mimeType[0] && strcmp(mime->type, mimeType) == 0) {
+    if (maGetPacketLength(packet) > 0) {
+        addToNetVector(q, mprGetBufStart(packet->content), mprGetBufLength(packet->content));
+    }
+    mask = MA_TRACE_RESPONSE | ((packet->flags & MA_PACKET_HEADER) ? MA_TRACE_HEADERS : MA_TRACE_BODY);
+    if (maShouldTrace(conn, mask)) {
+        maTraceContent(conn, packet, 0, resp->bytesWritten, mask);
+    }
+}
+
+
+static void freeNetPackets(MaQueue *q, int64 bytes)
+{
+    MaPacket    *packet;
+    int         len;
+
+    mprAssert(q->first);
+    mprAssert(q->count >= 0);
+    mprAssert(bytes >= 0);
+
+    while ((packet = q->first) != 0) {
+        if (packet->prefix) {
+            len = mprGetBufLength(packet->prefix);
+            len = (int) min(len, bytes);
+            mprAdjustBufStart(packet->prefix, len);
+            bytes -= len;
+            /* Prefixes don't count in the q->count. No need to adjust */
+            if (mprGetBufLength(packet->prefix) == 0) {
+                mprFree(packet->prefix);
+                packet->prefix = 0;
+            }
+        }
+
+        if (packet->content) {
+            len = mprGetBufLength(packet->content);
+            len = (int) min(len, bytes);
+            mprAdjustBufStart(packet->content, len);
+            bytes -= len;
+            q->count -= len;
+            mprAssert(q->count >= 0);
+        }
+        if (packet->content == 0 || mprGetBufLength(packet->content) == 0) {
+            /*
+             *  This will remove the packet from the queue and will re-enable upstream disabled queues.
+             */
+            if ((packet = maGet(q)) != 0) {
+                maFreePacket(q, packet);
+            }
+        }
+        mprAssert(bytes >= 0);
+        if (bytes == 0) {
             break;
         }
     }
-    if (mime == 0) {
-        mprError(host, "Can't find mime type %s for action program %s", mimeType, actionProgram);
-        return MPR_ERR_NOT_FOUND;
+}
+
+
+/*
+ *  Clear entries from the IO vector that have actually been transmitted. Support partial writes.
+ */
+static void adjustNetVec(MaQueue *q, int written)
+{
+    MprIOVec    *iovec;
+    int         len, i, j;
+
+    /*
+     *  Cleanup the IO vector
+     */
+    if (written == q->ioCount) {
+        /*
+         *  Entire vector written. Just reset.
+         */
+        q->ioIndex = 0;
+        q->ioCount = 0;
+
+    } else {
+        /*
+         *  Partial write of an vector entry. Need to copy down the unwritten vector entries.
+         */
+        q->ioCount -= written;
+        mprAssert(q->ioCount >= 0);
+        iovec = q->iovec;
+        for (i = 0; i < q->ioIndex; i++) {
+            len = (int) iovec[i].len;
+            if (written < len) {
+                iovec[i].start += written;
+                iovec[i].len -= written;
+                break;
+            } else {
+                written -= len;
+            }
+        }
+        /*
+         *  Compact
+         */
+        for (j = 0; i < q->ioIndex; ) {
+            iovec[j++] = iovec[i++];
+        }
+        q->ioIndex = j;
     }
-    mprFree(mime->actionProgram);
-    mime->actionProgram = mprStrdup(host, actionProgram);
+}
+
+
+/*
+ *  Initialize the net connector
+ */
+int maOpenNetConnector(MaHttp *http)
+{
+    MaStage     *stage;
+
+    stage = maCreateConnector(http, "netConnector", MA_STAGE_ALL);
+    if (stage == 0) {
+        return MPR_ERR_CANT_CREATE;
+    }
+    stage->outgoingService = netOutgoingService;
+    http->netConnector = stage;
     return 0;
 }
 
 
-cchar *maGetMimeActionProgram(MaHost *host, cchar *mimeType)
-{
-    MaMimeType      *mime;
+#else 
+void __dummyNetConnector() {}
+#endif /* BLD_FEATURE_NET */
 
-    if (mimeType == 0 || *mimeType == '\0') {
-        return 0;
+/*
+ *  @copy   default
+ *
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire
+ *  a commercial license from Embedthis Software. You agree to be fully bound
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with
+ *  this software for full details.
+ *
+ *  This software is open source; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version. See the GNU General Public License for more
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ *  This GPL license does NOT permit incorporating this software into
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses
+ *  for this software and support services are available from Embedthis
+ *  Software at http://www.embedthis.com
+ *
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/connectors/netConnector.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/connectors/sendConnector.c"
+ */
+/************************************************************************/
+
+/*
+ *  sendConnector.c -- Send file connector. 
+ *
+ *  The Sendfile connector supports the optimized transmission of whole static files. It uses operating system 
+ *  sendfile APIs to eliminate reading the document into user space and multiple socket writes. The send connector 
+ *  is not a general purpose connector. It cannot handle dynamic data or ranged requests. It does support chunked requests.
+ *
+ *  Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+
+
+#if BLD_FEATURE_SEND
+
+
+static void addPacketForSend(MaQueue *q, MaPacket *packet);
+static void adjustSendVec(MaQueue *q, int64 written);
+static int64  buildSendVec(MaQueue *q);
+static void freeSentPackets(MaQueue *q, int64 written);
+
+/*
+ *  Invoked to initialize the send connector for a request
+ */
+static void sendOpen(MaQueue *q)
+{
+    MaConn          *conn;
+    MaResponse      *resp;
+
+    conn = q->conn;
+    resp = conn->response;
+
+    if (!conn->requestFailed && !(resp->flags & MA_RESP_NO_BODY)) {
+        resp->file = mprOpen(q, resp->filename, O_RDONLY | O_BINARY, 0);
+        if (resp->file == 0) {
+            maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't open document: %s", resp->filename);
+        }
     }
-    mime = (MaMimeType*) mprLookupHash(host->mimeTypes, mimeType);
-    if (mime == 0) {
-        return 0;
-    }
-    return mime->actionProgram;
 }
 
 
-cchar *maLookupMimeType(MaHost *host, cchar *ext)
+/*
+ *  Outgoing data service routine. May be called multiple times.
+ */
+static void sendOutgoingService(MaQueue *q)
 {
-    MaMimeType      *mime;
+    MaConn      *conn;
+    MaResponse  *resp;
+    int         written;
+    int         errCode;
 
-    if (ext == 0 || *ext == '\0') {
-        return 0;
+    conn = q->conn;
+    resp = conn->response;
+
+    if (conn->sock == 0) {
+        return;
     }
-    mime = (MaMimeType*) mprLookupHash(host->mimeTypes, ext);
-    if (mime == 0) {
-        return 0;
+
+    /*
+     *  Loop doing non-blocking I/O until blocked or all the packets received are written.
+     */
+    while (1) {
+        /*
+         *  Rebuild the iovector only when the past vector has been completely written. Simplifies the logic quite a bit.
+         */
+        written = 0;
+        if (q->ioIndex == 0 && buildSendVec(q) <= 0) {
+            break;
+        }
+        /*
+         *  Write the vector and file data. Exclude the file entry in the io vector.
+         */
+        written = (int) mprSendFileToSocket(conn->sock, resp->file, q->ioPos, q->ioCount, q->iovec, q->ioIndex, NULL, 0);
+        mprLog(q, 5, "Send connector written %d", written);
+        if (written < 0) {
+            errCode = mprGetError();
+            if (errCode == EAGAIN || errCode == EWOULDBLOCK) {
+                maRequestWriteBlocked(conn);
+                break;
+            }
+            if (errCode == EPIPE || errCode == ECONNRESET) {
+                maDisconnectConn(conn);
+            } else {
+                mprLog(conn, 7, "mprSendFileToSocket failed, errCode %d", errCode);
+                maDisconnectConn(conn);
+            }
+            freeSentPackets(q, MAXINT);
+            break;
+
+        } else if (written == 0) {
+            /* Socket is full. Wait for an I/O event */
+            maRequestWriteBlocked(conn);
+            break;
+
+        } else if (written > 0) {
+            resp->bytesWritten += written;
+            freeSentPackets(q, written);
+            adjustSendVec(q, written);
+        }
     }
-    return mime->type;
+    if (q->ioCount == 0 && q->flags & MA_QUEUE_EOF) {
+        maCompleteRequest(conn);
+    }
 }
 
 
-void maAddStandardMimeTypes(MaHost *host)
+/*
+ *  Build the IO vector. This connector uses the send file API which permits multiple IO blocks to be written with 
+ *  file data. This is used to write transfer the headers and chunk encoding boundaries. Return the count of bytes to 
+ *  be written.
+ */
+static int64 buildSendVec(MaQueue *q)
 {
-    maAddMimeType(host, "ai", "application/postscript");
-    maAddMimeType(host, "asc", "text/plain");
-    maAddMimeType(host, "au", "audio/basic");
-    maAddMimeType(host, "avi", "video/x-msvideo");
-    maAddMimeType(host, "bin", "application/octet-stream");
-    maAddMimeType(host, "bmp", "image/bmp");
-    maAddMimeType(host, "class", "application/octet-stream");
-    maAddMimeType(host, "css", "text/css");
-    maAddMimeType(host, "dll", "application/octet-stream");
-    maAddMimeType(host, "doc", "application/msword");
-    maAddMimeType(host, "ejs", "text/html");
-    maAddMimeType(host, "eps", "application/postscript");
-    maAddMimeType(host, "es", "application/x-javascript");
-    maAddMimeType(host, "exe", "application/octet-stream");
-    maAddMimeType(host, "gif", "image/gif");
-    maAddMimeType(host, "gz", "application/x-gzip");
-    maAddMimeType(host, "htm", "text/html");
-    maAddMimeType(host, "html", "text/html");
-    maAddMimeType(host, "ico", "image/x-icon");
-    maAddMimeType(host, "jar", "application/octet-stream");
-    maAddMimeType(host, "jpeg", "image/jpeg");
-    maAddMimeType(host, "jpg", "image/jpeg");
-    maAddMimeType(host, "js", "application/javascript");
-    maAddMimeType(host, "mp3", "audio/mpeg");
-    maAddMimeType(host, "pdf", "application/pdf");
-    maAddMimeType(host, "png", "image/png");
-    maAddMimeType(host, "ppt", "application/vnd.ms-powerpoint");
-    maAddMimeType(host, "ps", "application/postscript");
-    maAddMimeType(host, "ra", "audio/x-realaudio");
-    maAddMimeType(host, "ram", "audio/x-pn-realaudio");
-    maAddMimeType(host, "rmm", "audio/x-pn-realaudio");
-    maAddMimeType(host, "rtf", "text/rtf");
-    maAddMimeType(host, "rv", "video/vnd.rn-realvideo");
-    maAddMimeType(host, "so", "application/octet-stream");
-    maAddMimeType(host, "swf", "application/x-shockwave-flash");
-    maAddMimeType(host, "tar", "application/x-tar");
-    maAddMimeType(host, "tgz", "application/x-gzip");
-    maAddMimeType(host, "tiff", "image/tiff");
-    maAddMimeType(host, "txt", "text/plain");
-    maAddMimeType(host, "wav", "audio/x-wav");
-    maAddMimeType(host, "xls", "application/vnd.ms-excel");
-    maAddMimeType(host, "zip", "application/zip");
+    MaConn      *conn;
+    MaResponse  *resp;
+    MaPacket    *packet;
 
-    maAddMimeType(host, "php", "application/x-appweb-php");
-    maAddMimeType(host, "pl", "application/x-appweb-perl");
-    maAddMimeType(host, "py", "application/x-appweb-python");
+    conn = q->conn;
+    resp = conn->response;
+
+    mprAssert(q->ioIndex == 0);
+    q->ioCount = 0;
+    q->ioFile = 0;
+
+    /*
+     *  Examine each packet and accumulate as many packets into the I/O vector as possible. Can only have one data packet at
+     *  a time due to the limitations of the sendfile API (on Linux). And the data packet must be after all the 
+     *  vector entries. Leave the packets on the queue for now, they are removed after the IO is complete for the 
+     *  entire packet.
+     */
+    for (packet = q->first; packet; packet = packet->next) {
+        if (packet->flags & MA_PACKET_HEADER) {
+            maFillHeaders(conn, packet);
+            q->count += maGetPacketLength(packet);
+
+        } else if (maGetPacketLength(packet) == 0 && packet->esize == 0) {
+            q->flags |= MA_QUEUE_EOF;
+            if (packet->prefix == NULL) {
+                break;
+            }
+        } else if (resp->flags & MA_RESP_NO_BODY) {
+            maDiscardData(q, 0);
+            continue;
+        }
+        if (q->ioFile || q->ioIndex >= (MA_MAX_IOVEC - 2)) {
+            break;
+        }
+        addPacketForSend(q, packet);
+    }
+    return q->ioCount;
 }
+
+
+/*
+ *  Add one entry to the io vector
+ */
+static void addToSendVector(MaQueue *q, char *ptr, int bytes)
+{
+    mprAssert(bytes > 0);
+
+    q->iovec[q->ioIndex].start = ptr;
+    q->iovec[q->ioIndex].len = bytes;
+    q->ioCount += bytes;
+    q->ioIndex++;
+}
+
+
+/*
+ *  Add a packet to the io vector. Return the number of bytes added to the vector.
+ */
+static void addPacketForSend(MaQueue *q, MaPacket *packet)
+{
+    MaResponse  *resp;
+    MaConn      *conn;
+    int         mask;
+
+    conn = q->conn;
+    resp = conn->response;
+    
+    mprAssert(q->count >= 0);
+    mprAssert(q->ioIndex < (MA_MAX_IOVEC - 2));
+
+    if (packet->prefix) {
+        addToSendVector(q, mprGetBufStart(packet->prefix), mprGetBufLength(packet->prefix));
+    }
+    if (packet->esize > 0) {
+        mprAssert(q->ioFile == 0);
+        q->ioFile = 1;
+        q->ioCount += packet->esize;
+
+    } else if (maGetPacketLength(packet) > 0) {
+        /*
+         *  Header packets have actual content. File data packets are virtual and only have a count.
+         */
+        addToSendVector(q, mprGetBufStart(packet->content), mprGetBufLength(packet->content));
+        mask = (packet->flags & MA_PACKET_HEADER) ? MA_TRACE_HEADERS : MA_TRACE_BODY;
+        if (maShouldTrace(conn, mask)) {
+            maTraceContent(conn, packet, 0, resp->bytesWritten, mask);
+        }
+    }
+}
+
+
+/*
+ *  Clear entries from the IO vector that have actually been transmitted. This supports partial writes due to the socket
+ *  being full. Don't come here if we've seen all the packets and all the data has been completely written. ie. small files
+ *  don't come here.
+ */
+static void freeSentPackets(MaQueue *q, int64 bytes)
+{
+    MaPacket    *packet;
+    int64       len;
+
+    mprAssert(q->first);
+    mprAssert(q->count >= 0);
+    mprAssert(bytes >= 0);
+
+    while ((packet = q->first) != 0) {
+        if (packet->prefix) {
+            len = mprGetBufLength(packet->prefix);
+            len = min(len, bytes);
+            mprAdjustBufStart(packet->prefix, (int) len);
+            bytes -= len;
+            /* Prefixes don't count in the q->count. No need to adjust */
+            if (mprGetBufLength(packet->prefix) == 0) {
+                mprFree(packet->prefix);
+                packet->prefix = 0;
+            }
+        }
+        if (packet->esize) {
+            len = min(packet->esize, bytes);
+            packet->esize -= len;
+            packet->epos += len;
+            bytes -= len;
+            mprAssert(packet->esize >= 0);
+            mprAssert(bytes == 0);
+            if (packet->esize > 0) {
+                break;
+            }
+        } else if ((len = maGetPacketLength(packet)) > 0) {
+            len = min(len, bytes);
+            mprAdjustBufStart(packet->content, (int) len);
+            bytes -= len;
+            q->count -= (int) len;
+            mprAssert(q->count >= 0);
+        }
+        if (maGetPacketLength(packet) == 0) {
+            if ((packet = maGet(q)) != 0) {
+                maFreePacket(q, packet);
+            }
+        }
+        mprAssert(bytes >= 0);
+        if (bytes == 0) {
+            break;
+        }
+    }
+}
+
+
+/*
+ *  Clear entries from the IO vector that have actually been transmitted. This supports partial writes due to the socket
+ *  being full. Don't come here if we've seen all the packets and all the data has been completely written. ie. small files
+ *  don't come here.
+ */
+static void adjustSendVec(MaQueue *q, int64 written)
+{
+    MprIOVec    *iovec;
+    size_t      len;
+    int         i, j;
+
+    iovec = q->iovec;
+    for (i = 0; i < q->ioIndex; i++) {
+        len = iovec[i].len;
+        if (written < len) {
+            iovec[i].start += (size_t) written;
+            iovec[i].len -= (size_t) written;
+            return;
+        }
+        written -= len;
+        q->ioCount -= len;
+        for (j = i + 1; i < q->ioIndex; ) {
+            iovec[j++] = iovec[i++];
+        }
+        q->ioIndex--;
+        i--;
+    }
+    if (written > 0 && q->ioFile) {
+        /* All remaining data came from the file */
+        q->ioPos += written;
+    }
+    q->ioIndex = 0;
+    q->ioCount = 0;
+    q->ioFile = 0;
+}
+
+
+int maOpenSendConnector(MaHttp *http)
+{
+    MaStage     *stage;
+
+    stage = maCreateConnector(http, "sendConnector", MA_STAGE_ALL);
+    if (stage == 0) {
+        return MPR_ERR_CANT_CREATE;
+    }
+    stage->open = sendOpen;
+    stage->outgoingService = sendOutgoingService; 
+    http->sendConnector = stage;
+    return 0;
+}
+
+
+#else
+void __dummySendConnector() {}
+#endif /* BLD_FEATURE_SEND */
 
 /*
  *  @copy   default
@@ -4805,7 +4388,7 @@ void maAddStandardMimeTypes(MaHost *host)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/mime.c"
+ *  End of file "../src/http/connectors/sendConnector.c"
  */
 /************************************************************************/
 
@@ -4813,309 +4396,757 @@ void maAddStandardMimeTypes(MaHost *host)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/var.c"
+ *  Start of file "../src/http/dir.c"
  */
 /************************************************************************/
 
- /*
- *  var.c -- Create header and query variables.
+/*
+ *  dir.c -- Support authorization on a per-directory basis.
  *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ *  Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 
 
-/*
- *  Define standard CGI environment variables
- */
-void maCreateEnvVars(MaConn *conn)
+
+MaDir *maCreateBareDir(MaHost *host, cchar *path)
 {
-    MaRequest       *req;
-    MaResponse      *resp;
-    MaHost          *host;
-    MprSocket       *listenSock;
-    MprHashTable    *vars;
-    char            port[16];
+    MaDir   *dir;
 
-    req = conn->request;
-    resp = conn->response;
-    host = conn->host;
-    
-    vars = req->headers;
+    mprAssert(host);
+    mprAssert(path);
 
-    mprAddHash(vars, "AUTH_TYPE", req->authType);
-    mprAddHash(vars, "AUTH_USER", (req->user && *req->user) ? req->user : 0);
-    mprAddHash(vars, "AUTH_GROUP", req->group);
-    mprAddHash(vars, "AUTH_ACL", "");
-    mprAddHash(vars, "CONTENT_LENGTH", req->contentLengthStr);
-    mprAddHash(vars, "CONTENT_TYPE", req->mimeType);
-    mprAddHash(vars, "DOCUMENT_ROOT", host->documentRoot);
-    mprAddHash(vars, "GATEWAY_INTERFACE", "CGI/1.1");
-    mprAddHash(vars, "QUERY_STRING", req->parsedUri->query);
-
-    mprAddHash(vars, "REMOTE_ADDR", conn->remoteIpAddr);
-    mprItoa(port, sizeof(port) - 1, conn->remotePort, 10);
-    mprAddHash(vars, "REMOTE_PORT", mprStrdup(vars, port));
-
-
-#if BLD_FEATURE_REVERSE_DNS && !WIN
-    /*
-     *  This feature has denial of service risks. Doing a reverse DNS will be slower,
-     *  and can potentially hang the web server. Use at your own risk!!  Not supported for windows.
-     */
-    {
-        struct addrinfo *result;
-        char            name[MPR_MAX_STRING];
-        int             rc;
-
-        if (getaddrinfo(remoteIpAddr, NULL, NULL, &result) == 0) {
-            rc = getnameinfo(result->ai_addr, sizeof(struct sockaddr), name, sizeof(name), NULL, 0, NI_NAMEREQD);
-            freeaddrinfo(result);
-            if (rc == 0) {
-                mprAddHash(vars, "REMOTE_HOST", remoteIpAddr);
-            }
-        }
-        mprAddHash(vars, "REMOTE_HOST", (rc == 0) ? name : remoteIpAddr);
+    dir = mprAllocObjZeroed(host, MaDir);
+    if (dir == 0) {
+        return 0;
     }
-#else
-    mprAddHash(vars, "REMOTE_HOST", conn->remoteIpAddr);
+    dir->indexName = mprStrdup(dir, "index.html");
+    dir->host = host;
+
+#if BLD_FEATURE_AUTH
+    dir->auth = maCreateAuth(dir, 0);
 #endif
 
-    /*
-     *  Same as AUTH_USER (yes this is right)
-     */
-    mprAddHash(vars, "REMOTE_USER", (req->user && *req->user) ? req->user : 0);
-    mprAddHash(vars, "REQUEST_METHOD", req->methodName);
-
-#if BLD_FEATURE_SSL
-    mprAddHash(vars, "REQUEST_TRANSPORT", (char*) ((host->secure) ? "https" : "http"));
-#else
-    mprAddHash(vars, "REQUEST_TRANSPORT", "http");
-#endif
-    
-    listenSock = conn->sock->listenSock;
-    mprAddHash(vars, "SERVER_ADDR", listenSock->ipAddr);
-    mprItoa(port, sizeof(port) - 1, listenSock->port, 10);
-    mprAddHash(vars, "SERVER_PORT", mprStrdup(req, port));
-    mprAddHash(vars, "SERVER_NAME", host->name);
-    mprAddHash(vars, "SERVER_PROTOCOL", req->parsedUri->scheme);
-    mprAddHash(vars, "SERVER_SOFTWARE", MA_SERVER_NAME);
-
-    /*
-     *  This is the complete URI before decoding
-     */ 
-    mprAddHash(vars, "REQUEST_URI", req->parsedUri->originalUri);
-
-    /*
-     *  URLs are broken into the following: http://{SERVER_NAME}:{SERVER_PORT}{SCRIPT_NAME}{PATH_INFO}
-     */
-    mprAddHash(vars, "SCRIPT_NAME", req->url);
-    mprAddHash(vars, "SCRIPT_FILENAME", resp->filename);
-    mprAddHash(vars, "PATH_INFO", req->pathInfo);
-
-    if (req->pathTranslated) {
-        /*
-         *  Only set PATH_TRANSLATED if PATH_INFO is set (CGI spec)
-         */
-        mprAddHash(vars, "PATH_TRANSLATED", req->pathTranslated);
+    if (path) {
+        dir->path = mprStrdup(dir, path);
+        dir->pathLen = (int) strlen(path);
     }
+
+    return dir;
+}
+
+
+MaDir *maCreateDir(MaHost *host, cchar *path, MaDir *parent)
+{
+    MaDir   *dir;
+
+    mprAssert(host);
+    mprAssert(path);
+    mprAssert(parent);
+
+    dir = mprAllocObjZeroed(host, MaDir);
+    if (dir == 0) {
+        return 0;
+    }
+    
+    dir->host = host;
+    dir->indexName = mprStrdup(dir, parent->indexName);
+
+    if (path == 0) {
+        path = parent->path;
+    }
+    maSetDirPath(dir, path);
+
+#if BLD_FEATURE_AUTH
+    dir->auth = maCreateAuth(dir, parent->auth);
+#endif
+
+    return dir;
+}
+
+
+void maSetDirPath(MaDir *dir, cchar *fileName)
+{
+    mprAssert(dir);
+    mprAssert(fileName);
+
+    mprFree(dir->path);
+    dir->path = mprGetAbsPath(dir, fileName);
+    dir->pathLen = (int) strlen(dir->path);
+}
+
+
+void maSetDirIndex(MaDir *dir, cchar *name) 
+{ 
+    mprAssert(dir);
+    mprAssert(name && *name);
+
+    mprFree(dir->indexName);
+    dir->indexName = mprStrdup(dir, name); 
 }
 
 
 /*
- *  Add variables to the vars environment store. This comes from the query string and urlencoded post data.
- *  Make variables for each keyword in a query string. The buffer must be url encoded (ie. key=value&key2=value2..., 
- *  spaces converted to '+' and all else should be %HEX encoded).
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
  */
-void maAddVars(MprHashTable *table, cchar *buf, int len)
+/************************************************************************/
+/*
+ *  End of file "../src/http/dir.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/filters/authFilter.c"
+ */
+/************************************************************************/
+
+/*
+ *  authFilter.c - Authorization filter for basic and digest authentication.
+ *
+ *  Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+
+
+#if BLD_FEATURE_AUTH
+/*
+ *  Per-request authorization data
+ */
+typedef struct AuthData 
 {
-    cchar   *oldValue;
-    char    *newValue, *decoded, *keyword, *value, *tok;
-
-    mprAssert(table);
-
-    decoded = (char*) mprAlloc(table, len + 1);
-    decoded[len] = '\0';
-    memcpy(decoded, buf, len);
-
-    keyword = mprStrTok(decoded, "&", &tok);
-    while (keyword != 0) {
-        if ((value = strchr(keyword, '=')) != 0) {
-            *value++ = '\0';
-            value = mprUrlDecode(table, value);
-        } else {
-            value = "";
-        }
-        keyword = mprUrlDecode(table, keyword);
-
-        if (*keyword) {
-            /*
-             *  Append to existing keywords.
-             */
-            oldValue = mprLookupHash(table, keyword);
-            if (oldValue != 0 && *oldValue) {
-                if (*value) {
-                    newValue = mprStrcat(table, MA_MAX_HEADERS, oldValue, " ", value, NULL);
-                    mprAddHash(table, keyword, newValue);
-                }
-            } else {
-                mprAddHash(table, keyword, value);
-            }
-        }
-        keyword = mprStrTok(0, "&", &tok);
-    }
-    /*
-     *  Must not free "decoded". This will be freed when the table is freed.
-     */
-}
+    char            *password;          /* User password or digest */
+    char            *userName;
+#if BLD_FEATURE_AUTH_DIGEST
+    char            *cnonce;
+    char            *nc;
+    char            *nonce;
+    char            *opaque;
+    char            *qop;
+    char            *realm;
+    char            *uri;
+#endif
+} AuthData;
 
 
-void maAddVarsFromQueue(MprHashTable *table, MaQueue *q)
+static void decodeBasicAuth(MaConn *conn, AuthData *ad);
+static void formatAuthResponse(MaConn *conn, MaAuth *auth, int code, char *msg, char *logMsg);
+static cchar *getPassword(MaConn *conn, cchar *realm, cchar *user);
+static bool validateUserCredentials(MaConn *conn, cchar *realm, char *user, cchar *password, cchar *requiredPass, 
+        char **msg);
+#if BLD_FEATURE_AUTH_DIGEST
+static int  decodeDigestDetails(MaConn *conn, AuthData *ad);
+#endif
+
+/*
+ *  Match the request for authorization. This implements basic and digest authentication.
+ */
+static bool matchAuth(MaConn *conn, MaStage *stage, cchar *url)
 {
-    MaConn      *conn;
     MaRequest   *req;
-    MprBuf      *content;
+    MaAuth      *auth;
+    AuthData    *ad;
+    cchar       *requiredPassword;
+    char        *msg;
+    int         actualAuthType;
 
-    mprAssert(q);
-    
-    conn = q->conn;
     req = conn->request;
-    
-    if (req->form && q->first && q->first->content) {
-        maJoinPackets(q);
-        content = q->first->content;
-        mprAddNullToBuf(content);
-        mprLog(q, 3, "encoded body data: length %d, \"%s\"", mprGetBufLength(content), mprGetBufStart(content));
-        maAddVars(table, mprGetBufStart(content), mprGetBufLength(content));
+    auth = req->auth;
+
+    if (auth == 0) {
+        maFailRequest(conn, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Authorization enabled.");
+        return 1;
     }
-}
-
-
-int maTestFormVar(MaConn *conn, cchar *var)
-{
-    MprHashTable    *vars;
-    
-    vars = conn->request->formVars;
-    if (vars == 0) {
-        return 0;
+    if ((ad = mprAllocObjZeroed(req, AuthData)) == 0) {
+        maFailRequest(conn, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Server Error.");
+        return 1;
     }
-    return vars && mprLookupHash(vars, var) != 0;
-}
-
-
-cchar *maGetFormVar(MaConn *conn, cchar *var, cchar *defaultValue)
-{
-    MprHashTable    *vars;
-    cchar           *value;
-    
-    vars = conn->request->formVars;
-    if (vars) {
-        value = mprLookupHash(vars, var);
-        return (value) ? value : defaultValue;
+    if (auth->type == 0) {
+        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Authorization required.", 0);
+        return 1;
     }
-    return defaultValue;
-}
-
-
-int maGetIntFormVar(MaConn *conn, cchar *var, int defaultValue)
-{
-    MprHashTable    *vars;
-    cchar           *value;
-    
-    vars = conn->request->formVars;
-    if (vars) {
-        value = mprLookupHash(vars, var);
-        return (value) ? (int) mprAtoi(value, 10) : defaultValue;
+    if (req->authDetails == 0) {
+        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Missing authorization details.", 0);
+        return 1;
     }
-    return defaultValue;
-}
+    if (mprStrcmpAnyCase(req->authType, "basic") == 0) {
+        decodeBasicAuth(conn, ad);
+        actualAuthType = MA_AUTH_BASIC;
 
-
-void maSetFormVar(MaConn *conn, cchar *var, cchar *value) 
-{
-    MprHashTable    *vars;
-    
-    vars = conn->request->formVars;
-    if (vars == 0) {
-        /* This is allowed. Upload filter uses this when uploading to the file handler */
-        return;
+#if BLD_FEATURE_AUTH_DIGEST
+    } else if (mprStrcmpAnyCase(req->authType, "digest") == 0) {
+        if (decodeDigestDetails(conn, ad) < 0) {
+            maFailRequest(conn, 400, "Bad authorization header");
+            return 1;
+        }
+        actualAuthType = MA_AUTH_DIGEST;
+#endif
+    } else {
+        actualAuthType = MA_AUTH_UNKNOWN;
     }
-    mprAddHash(vars, var, (void*) value);
-}
+    mprLog(conn, 4, "openAuth: type %d, url %s\nDetails %s\n", auth->type, req->url, req->authDetails);
 
-
-void maSetIntFormVar(MaConn *conn, cchar *var, int value) 
-{
-    MprHashTable    *vars;
-    
-    vars = conn->request->formVars;
-    if (vars == 0) {
-        /* This is allowed. Upload filter uses this when uploading to the file handler */
-        return;
+    if (ad->userName == 0) {
+        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Missing user name.", 0);
+        return 1;
     }
-    mprAddHash(vars, var, mprAsprintf(vars, -1, "%d", value));
-}
-
-
-int maCompareFormVar(MaConn *conn, cchar *var, cchar *value)
-{
-    MprHashTable    *vars;
-    
-    vars = conn->request->formVars;
-    
-    if (vars == 0) {
-        return 0;
+    if (auth->type != actualAuthType) {
+        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Wrong authentication protocol.", 0);
+        return 1;
     }
-    if (strcmp(value, maGetFormVar(conn, var, " __UNDEF__ ")) == 0) {
+
+    /*
+     *  Some backend methods can't return the password and will simply do everything in validateUserCredentials. 
+     *  In this case, they and will return "". That is okay.
+     */
+    if ((requiredPassword = getPassword(conn, auth->requiredRealm, ad->userName)) == 0) {
+        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, authentication error.", 
+            "User not defined");
+        return 1;
+    }
+
+#if BLD_FEATURE_AUTH_DIGEST
+    if (auth->type == MA_AUTH_DIGEST) {
+        char *requiredDigest;
+        if (strcmp(ad->qop, auth->qop) != 0) {
+            formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, 
+                "Access Denied, Quality of protection does not match.", 0);
+            return 1;
+        }
+        mprCalcDigest(req, &requiredDigest, 0, requiredPassword, ad->realm, req->url, ad->nonce, ad->qop, ad->nc, ad->cnonce,
+            req->methodName);
+        requiredPassword = requiredDigest;
+    }
+#endif
+    if (!validateUserCredentials(conn, auth->requiredRealm, ad->userName, ad->password, requiredPassword, &msg)) {
+        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, 
+            "Access denied, authentication error", msg);
         return 1;
     }
     return 0;
 }
 
 
-void maAddUploadFile(MaConn *conn, cchar *id, MaUploadFile *upfile)
+/*
+ *  Validate the user credentials with the designated authorization backend method.
+ */
+static bool validateUserCredentials(MaConn *conn, cchar *realm, char *user, cchar *password, cchar *requiredPass, char **msg)
+{
+    MaAuth      *auth;
+
+    auth = conn->request->auth;
+
+    /*
+     *  Use this funny code construct incase no backend method is configured. Still want the code to compile.
+     */
+    if (0) {
+#if BLD_FEATURE_AUTH_FILE
+    } else if (auth->method == MA_AUTH_METHOD_FILE) {
+        return maValidateNativeCredentials(conn, realm, user, password, requiredPass, msg);
+#endif
+#if BLD_FEATURE_AUTH_PAM
+    } else if (auth->method == MA_AUTH_METHOD_PAM) {
+        return maValidatePamCredentials(conn, realm, user, password, NULL, msg);
+#endif
+    } else {
+        *msg = "Required authorization backend method is not enabled or configured";
+    }
+    return 0;
+}
+
+
+/*
+ *  Get the password (if the designated authorization backend method will give it to us)
+ */
+static cchar *getPassword(MaConn *conn, cchar *realm, cchar *user)
+{
+    MaAuth      *auth;
+
+    auth = conn->request->auth;
+
+    /*
+     *  Use this funny code construct incase no backend method is configured. Still want the code to compile.
+     */
+    if (0) {
+#if BLD_FEATURE_AUTH_FILE
+    } else if (auth->method == MA_AUTH_METHOD_FILE) {
+        return maGetNativePassword(conn, realm, user);
+#endif
+#if BLD_FEATURE_AUTH_PAM
+    } else if (auth->method == MA_AUTH_METHOD_PAM) {
+        return maGetPamPassword(conn, realm, user);
+#endif
+    }
+    return 0;
+}
+
+
+/*
+ *  Decode basic authorization details
+ */
+static void decodeBasicAuth(MaConn *conn, AuthData *ad)
 {
     MaRequest   *req;
+    char        decodedDetails[64], *cp;
 
     req = conn->request;
-    if (req->files == 0) {
-        req->files = mprCreateHash(req, -1);
+    mprDecode64(decodedDetails, sizeof(decodedDetails), req->authDetails);
+    if ((cp = strchr(decodedDetails, ':')) != 0) {
+        *cp++ = '\0';
     }
-    mprAddHash(req->files, id, upfile);
+    if (cp) {
+        ad->userName = mprStrdup(req, decodedDetails);
+        ad->password = mprStrdup(req, cp);
+
+    } else {
+        ad->userName = mprStrdup(req, "");
+        ad->password = mprStrdup(req, "");
+    }
+    maSetRequestUser(conn, ad->userName);
 }
 
 
-void maRemoveUploadFile(MaConn *conn, cchar *id)
+#if BLD_FEATURE_AUTH_DIGEST
+/*
+ *  Decode the digest authentication details.
+ */
+static int decodeDigestDetails(MaConn *conn, AuthData *ad)
 {
-    MaRequest       *req;
-    MaUploadFile    *upfile;
+    MaRequest   *req;
+    char        *authDetails, *value, *tok, *key, *dp, *sp;
+    int         seenComma;
 
     req = conn->request;
+    key = authDetails = mprStrdup(req, req->authDetails);
 
-    upfile = (MaUploadFile*) mprLookupHash(req->files, id);
-    if (upfile) {
-        mprDeletePath(conn, upfile->filename);
-        upfile->filename = 0;
-    }
-}
+    while (*key) {
+        while (*key && isspace((int) *key)) {
+            key++;
+        }
+        tok = key;
+        while (*tok && !isspace((int) *tok) && *tok != ',' && *tok != '=') {
+            tok++;
+        }
+        *tok++ = '\0';
 
+        while (isspace((int) *tok)) {
+            tok++;
+        }
+        seenComma = 0;
+        if (*tok == '\"') {
+            value = ++tok;
+            while (*tok != '\"' && *tok != '\0') {
+                tok++;
+            }
+        } else {
+            value = tok;
+            while (*tok != ',' && *tok != '\0') {
+                tok++;
+            }
+            seenComma++;
+        }
+        *tok++ = '\0';
 
-void maRemoveAllUploadedFiles(MaConn *conn)
-{
-    MaRequest       *req;
-    MaUploadFile   *upfile;
-    MprHash         *hp;
+        /*
+         *  Handle back-quoting
+         */
+        if (strchr(value, '\\')) {
+            for (dp = sp = value; *sp; sp++) {
+                if (*sp == '\\') {
+                    sp++;
+                }
+                *dp++ = *sp++;
+            }
+            *dp = '\0';
+        }
 
-    req = conn->request;
+        /*
+         *  username, response, oqaque, uri, realm, nonce, nc, cnonce, qop
+         */
+        switch (tolower((int) *key)) {
+        case 'a':
+            if (mprStrcmpAnyCase(key, "algorithm") == 0) {
+                break;
+            } else if (mprStrcmpAnyCase(key, "auth-param") == 0) {
+                break;
+            }
+            break;
 
-    for (hp = 0; req->files && (hp = mprGetNextHash(req->files, hp)) != 0; ) {
-        upfile = (MaUploadFile*) hp->data;
-        if (upfile->filename) {
-            mprDeletePath(conn, upfile->filename);
-            upfile->filename = 0;
+        case 'c':
+            if (mprStrcmpAnyCase(key, "cnonce") == 0) {
+                ad->cnonce = mprStrdup(req, value);
+            }
+            break;
+
+        case 'd':
+            if (mprStrcmpAnyCase(key, "domain") == 0) {
+                break;
+            }
+            break;
+
+        case 'n':
+            if (mprStrcmpAnyCase(key, "nc") == 0) {
+                ad->nc = mprStrdup(req, value);
+            } else if (mprStrcmpAnyCase(key, "nonce") == 0) {
+                ad->nonce = mprStrdup(req, value);
+            }
+            break;
+
+        case 'o':
+            if (mprStrcmpAnyCase(key, "opaque") == 0) {
+                ad->opaque = mprStrdup(req, value);
+            }
+            break;
+
+        case 'q':
+            if (mprStrcmpAnyCase(key, "qop") == 0) {
+                ad->qop = mprStrdup(req, value);
+            }
+            break;
+
+        case 'r':
+            if (mprStrcmpAnyCase(key, "realm") == 0) {
+                ad->realm = mprStrdup(req, value);
+            } else if (mprStrcmpAnyCase(key, "response") == 0) {
+                /* Store the response digest in the password field */
+                ad->password = mprStrdup(req, value);
+            }
+            break;
+
+        case 's':
+            if (mprStrcmpAnyCase(key, "stale") == 0) {
+                break;
+            }
+        
+        case 'u':
+            if (mprStrcmpAnyCase(key, "uri") == 0) {
+                ad->uri = mprStrdup(req, value);
+            } else if (mprStrcmpAnyCase(key, "username") == 0) {
+                ad->userName = mprStrdup(req, value);
+            }
+            break;
+
+        default:
+            /*  Just ignore keywords we don't understand */
+            ;
+        }
+        key = tok;
+        if (!seenComma) {
+            while (*key && *key != ',') {
+                key++;
+            }
+            if (*key) {
+                key++;
+            }
         }
     }
+    mprFree(authDetails);
+    if (ad->userName == 0 || ad->realm == 0 || ad->nonce == 0 || ad->uri == 0 || ad->password == 0) {
+        return MPR_ERR_BAD_ARGS;
+    }
+    if (ad->qop && (ad->cnonce == 0 || ad->nc == 0)) {
+        return MPR_ERR_BAD_ARGS;
+    }
+    if (ad->qop == 0) {
+        ad->qop = mprStrdup(req, "");
+    }
+
+    maSetRequestUser(conn, ad->userName);
+    return 0;
 }
+#endif
+
+
+#if BLD_FEATURE_CONFIG_PARSE
+/*
+ *  Parse the appweb.conf directives for authorization
+ */
+static int parseAuth(MaHttp *http, cchar *key, char *value, MaConfigState *state)
+{
+    MaServer    *server;
+    MaHost      *host;
+    MaAuth      *auth;
+    MaAcl       acl;
+    char        *path, *names, *tok, *type, *aclSpec;
+
+    server = state->server;
+    host = state->host;
+    auth = state->auth;
+
+    if (mprStrcmpAnyCase(key, "AuthGroupFile") == 0) {
+        path = maMakePath(host, mprStrTrim(value, "\""));
+        if (maReadGroupFile(server, auth, path) < 0) {
+            mprError(http, "Can't open AuthGroupFile %s", path);
+            return MPR_ERR_BAD_SYNTAX;
+        }
+        mprFree(path);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "AuthMethod") == 0) {
+        value = mprStrTrim(value, "\"");
+        if (mprStrcmpAnyCase(value, "pam") == 0) {
+            auth->method = MA_AUTH_METHOD_PAM;
+            return 1;
+
+        } else if (mprStrcmpAnyCase(value, "file") == 0) {
+            auth->method = MA_AUTH_METHOD_FILE;
+            return 1;
+
+        } else {
+            return MPR_ERR_BAD_SYNTAX;
+        }
+
+    } else if (mprStrcmpAnyCase(key, "AuthName") == 0) {
+        maSetAuthRealm(auth, mprStrTrim(value, "\""));
+        return 1;
+        
+    } else if (mprStrcmpAnyCase(key, "AuthType") == 0) {
+        value = mprStrTrim(value, "\"");
+        if (mprStrcmpAnyCase(value, "Basic") == 0) {
+            auth->type = MA_AUTH_BASIC;
+
+        } else if (mprStrcmpAnyCase(value, "None") == 0) {
+            auth->type = 0;
+
+#if BLD_FEATURE_AUTH_DIGEST
+        } else if (mprStrcmpAnyCase(value, "Digest") == 0) {
+            auth->type = MA_AUTH_DIGEST;
+#endif
+
+        } else {
+            mprError(http, "Unsupported authorization protocol");
+            return MPR_ERR_BAD_SYNTAX;
+        }
+        return 1;
+        
+    } else if (mprStrcmpAnyCase(key, "AuthUserFile") == 0) {
+        path = maMakePath(host, mprStrTrim(value, "\""));
+        if (maReadUserFile(server, auth, path) < 0) {
+            mprError(http, "Can't open AuthUserFile %s", path);
+            return MPR_ERR_BAD_SYNTAX;
+        }
+        mprFree(path);
+        return 1;
+
+#if BLD_FEATURE_AUTH_DIGEST
+    } else if (mprStrcmpAnyCase(key, "AuthDigestQop") == 0) {
+        value = mprStrTrim(value, "\"");
+        mprStrLower(value);
+        if (strcmp(value, "none") != 0 && strcmp(value, "auth") != 0 && strcmp(value, "auth-int") != 0) {
+            return MPR_ERR_BAD_SYNTAX;
+        }
+        maSetAuthQop(auth, value);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "AuthDigestAlgorithm") == 0) {
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "AuthDigestDomain") == 0) {
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "AuthDigestNonceLifetime") == 0) {
+        return 1;
+
+#endif
+    } else if (mprStrcmpAnyCase(key, "Require") == 0) {
+        if (maGetConfigValue(http, &type, value, &tok, 1) < 0) {
+            return MPR_ERR_BAD_SYNTAX;
+        }
+        if (mprStrcmpAnyCase(type, "acl") == 0) {
+            aclSpec = mprStrTrim(tok, "\"");
+            acl = maParseAcl(auth, aclSpec);
+            maSetRequiredAcl(auth, acl);
+
+        } else if (mprStrcmpAnyCase(type, "valid-user") == 0) {
+            maSetAuthAnyValidUser(auth);
+
+        } else {
+            names = mprStrTrim(tok, "\"");
+            if (mprStrcmpAnyCase(type, "user") == 0) {
+                maSetAuthRequiredUsers(auth, names);
+
+            } else if (mprStrcmpAnyCase(type, "group") == 0) {
+                maSetAuthRequiredGroups(auth, names);
+
+            } else {
+                mprError(http, "Bad Require syntax: %s", type);
+                return MPR_ERR_BAD_SYNTAX;
+            }
+        }
+        return 1;
+    }
+    return 0;
+}
+#endif
+
+
+/*
+ *  Format an authentication response. This is typically a 401 response code.
+ */
+static void formatAuthResponse(MaConn *conn, MaAuth *auth, int code, char *msg, char *logMsg)
+{
+    MaRequest       *req;
+#if BLD_FEATURE_AUTH_DIGEST
+    char            *qopClass, *nonceStr, *etag;
+#endif
+
+    req = conn->request;
+    if (logMsg == 0) {
+        logMsg = msg;
+    }
+
+    mprLog(conn, 3, "formatAuthResponse: code %d, %s\n", code, logMsg);
+
+    if (auth->type == MA_AUTH_BASIC) {
+        maSetHeader(conn, 0, "WWW-Authenticate", "Basic realm=\"%s\"", auth->requiredRealm);
+
+#if BLD_FEATURE_AUTH_DIGEST
+    } else if (auth->type == MA_AUTH_DIGEST) {
+
+        qopClass = auth->qop;
+
+        /*
+         *  Use the etag as our opaque string
+         */
+        etag = conn->response->etag;
+        if (etag == 0) {
+            etag = "";
+        }
+        if (etag[0] == '"') {
+            etag = mprStrdup(req, etag);
+            etag = mprStrTrim(etag, "\"");
+        }
+        mprCalcDigestNonce(req, &nonceStr, conn->host->secret, etag, auth->requiredRealm);
+
+        if (strcmp(qopClass, "auth") == 0) {
+            maSetHeader(conn, 0, "WWW-Authenticate", "Digest realm=\"%s\", domain=\"%s\", "
+                "qop=\"auth\", nonce=\"%s\", opaque=\"%s\", algorithm=\"MD5\", stale=\"FALSE\"", 
+                auth->requiredRealm, conn->host->name, nonceStr, etag);
+
+        } else if (strcmp(qopClass, "auth-int") == 0) {
+            maSetHeader(conn, 0, "WWW-Authenticate", "Digest realm=\"%s\", domain=\"%s\", "
+                "qop=\"auth\", nonce=\"%s\", opaque=\"%s\", algorithm=\"MD5\", stale=\"FALSE\"", 
+                auth->requiredRealm, conn->host->name, nonceStr, etag);
+
+        } else {
+            maSetHeader(conn, 0, "WWW-Authenticate", "Digest realm=\"%s\", nonce=\"%s\"", auth->requiredRealm, nonceStr);
+        }
+        mprFree(nonceStr);
+#endif
+    }
+
+    maFailRequest(conn, code, "Authentication Error: %s", msg);
+}
+
+
+void maSetAuthQop(MaAuth *auth, cchar *qop)
+{
+    if (mprGetParent(auth->qop) == auth) {
+        mprFree(auth->qop);
+    }
+    if (strcmp(qop, "auth") == 0 || strcmp(qop, "auth-int") == 0) {
+        auth->qop = mprStrdup(auth, qop);
+    } else {
+        auth->qop = mprStrdup(auth, "");
+    }
+}
+
+
+void maSetAuthRealm(MaAuth *auth, cchar *realm)
+{
+    if (mprGetParent(auth->requiredRealm) == auth) {
+        mprFree(auth->requiredRealm);
+    }
+    auth->requiredRealm = mprStrdup(auth, realm);
+}
+
+
+void maSetAuthRequiredGroups(MaAuth *auth, cchar *groups)
+{
+    if (mprGetParent(auth->requiredGroups) == auth) {
+        mprFree(auth->requiredGroups);
+    }
+    auth->requiredGroups = mprStrdup(auth, groups);
+    auth->flags |= MA_AUTH_REQUIRED;
+    auth->anyValidUser = 0;
+}
+
+
+void maSetAuthRequiredUsers(MaAuth *auth, cchar *users)
+{
+    if (mprGetParent(auth->requiredUsers) == auth) {
+        mprFree(auth->requiredUsers);
+    }
+    auth->requiredUsers = mprStrdup(auth, users);
+    auth->flags |= MA_AUTH_REQUIRED;
+    auth->anyValidUser = 0;
+}
+
+
+/*
+ *  Loadable module initialization
+ */
+MprModule *maAuthFilterInit(MaHttp *http, cchar *path)
+{
+    MprModule   *module;
+    MaStage     *filter;
+
+    module = mprCreateModule(http, "authFilter", BLD_VERSION, NULL, NULL, NULL);
+    if (module == 0) {
+        return 0;
+    }
+    filter = maCreateFilter(http, "authFilter", MA_STAGE_ALL);
+    if (filter == 0) {
+        mprFree(module);
+        return 0;
+    }
+    http->authFilter = filter;
+    filter->match = matchAuth; 
+    filter->parse = parseAuth; 
+    return module;
+}
+
+
+#else
+MprModule *maAuthFilterInit(MaHttp *http, cchar *path)
+{
+    return 0;
+}
+#endif /* BLD_FEATURE_AUTH */
 
 /*
  *  @copy   default
@@ -5154,7 +5185,301 @@ void maRemoveAllUploadedFiles(MaConn *conn)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/var.c"
+ *  End of file "../src/http/filters/authFilter.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/filters/chunkFilter.c"
+ */
+/************************************************************************/
+
+/*
+ *  chunkFilter.c - Transfer chunk endociding filter.
+ *
+ *  Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+
+
+#if BLD_FEATURE_CHUNK
+
+static void setChunkPrefix(MaQueue *q, MaPacket *packet);
+
+
+static void openChunk(MaQueue *q)
+{
+    MaConn          *conn;
+    MaRequest       *req;
+
+    conn = q->conn;
+    req = conn->request;
+
+    q->packetSize = (int) min(conn->http->limits.maxChunkSize, q->max);
+    req->chunkState = MA_CHUNK_START;
+}
+
+
+static bool matchChunk(MaConn *conn, MaStage *handler, cchar *uri)
+{
+    MaResponse  *resp;
+
+    /*
+        Don't match if chunking is explicitly turned off vi a the X_APPWEB_CHUNK_SIZE header which sets the chunk 
+        size to zero. Also remove if the response length is already known.
+     */
+    resp = conn->response;
+    return (resp->length < 0 && resp->chunkSize != 0) ? 1: 0;
+}
+
+
+/*
+ *  Get the next chunk size. Chunked data format is:
+ *      Chunk spec <CRLF>
+ *      Data <CRLF>
+ *      Chunk spec (size == 0) <CRLF>
+ *      <CRLF>
+ *  Chunk spec is: "HEX_COUNT; chunk length DECIMAL_COUNT\r\n". The "; chunk length DECIMAL_COUNT is optional.
+ *  As an optimization, use "\r\nSIZE ...\r\n" as the delimiter so that the CRLF after data does not special consideration.
+ *  Achive this by parseHeaders reversing the input start by 2.
+ */
+static void incomingChunkData(MaQueue *q, MaPacket *packet)
+{
+    MaConn      *conn;
+    MaRequest   *req;
+    MprBuf      *buf;
+    char        *start, *cp;
+    int         bad;
+
+    conn = q->conn;
+    req = conn->request;
+    buf = packet->content;
+
+    mprAssert(req->flags & MA_REQ_CHUNKED);
+
+    if (packet->content == 0) {
+        if (req->chunkState == MA_CHUNK_DATA) {
+            maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad chunk state");
+            return;
+        }
+        req->chunkState = MA_CHUNK_EOF;
+    }
+    
+    /*
+     *  NOTE: the request head ensures that packets are correctly sized by packet inspection. The packet will never
+     *  have more data than the chunk state expects.
+     */
+    switch (req->chunkState) {
+    case MA_CHUNK_START:
+        /*
+         *  Validate:  "\r\nSIZE.*\r\n"
+         */
+        if (mprGetBufLength(buf) < 5) {
+            break;
+        }
+        start = mprGetBufStart(buf);
+        bad = (start[0] != '\r' || start[1] != '\n');
+        for (cp = &start[2]; cp < buf->end && *cp != '\n'; cp++) {}
+        if (*cp != '\n' && (cp - start) < 80) {
+            break;
+        }
+        bad += (cp[-1] != '\r' || cp[0] != '\n');
+        if (bad) {
+            maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad chunk specification");
+            return;
+        }
+        req->chunkSize = (int) mprAtoi(&start[2], 16);
+        if (!isxdigit((int) start[2]) || req->chunkSize < 0) {
+            maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad chunk specification");
+            return;
+        }
+        mprAdjustBufStart(buf, (int) (cp - start + 1));
+        req->remainingContent = req->chunkSize;
+        if (req->chunkSize == 0) {
+            req->chunkState = MA_CHUNK_EOF;
+            /*
+             *  We are lenient if the request does not have a trailing "\r\n" after the last chunk
+             */
+            cp = mprGetBufStart(buf);
+            if (mprGetBufLength(buf) == 2 && *cp == '\r' && cp[1] == '\n') {
+                mprAdjustBufStart(buf, 2);
+            }
+        } else {
+            req->chunkState = MA_CHUNK_DATA;
+        }
+        mprAssert(mprGetBufLength(buf) == 0);
+        maFreePacket(q, packet);
+        mprLog(q, 5, "chunkFilter: start incoming chunk of %d bytes", req->chunkSize);
+        break;
+
+    case MA_CHUNK_DATA:
+        mprAssert(maGetPacketLength(packet) <= req->chunkSize);
+        mprLog(q, 5, "chunkFilter: data %d bytes, req->remainingContent %d", maGetPacketLength(packet), 
+            req->remainingContent);
+        maPutNext(q, packet);
+        if (req->remainingContent == 0) {
+            req->chunkState = MA_CHUNK_START;
+            req->remainingContent = MA_BUFSIZE;
+        }
+        break;
+
+    case MA_CHUNK_EOF:
+        mprAssert(maGetPacketLength(packet) == 0);
+        maPutNext(q, packet);
+        mprLog(q, 5, "chunkFilter: last chunk");
+        break;    
+
+    default:
+        mprAssert(0);
+    }
+}
+
+
+/*
+ *  Apply chunks to dynamic outgoing data. 
+ */
+static void outgoingChunkService(MaQueue *q)
+{
+    MaConn      *conn;
+    MaPacket    *packet;
+    MaResponse  *resp;
+
+    conn = q->conn;
+    resp = conn->response;
+
+    if (!(q->flags & MA_QUEUE_SERVICED)) {
+        /*
+         *  If the last packet is the end packet, we have all the data. Thus we know the actual content length 
+         *  and can bypass the chunk handler.
+         */
+        if (q->last->flags & MA_PACKET_END) {
+            if (resp->chunkSize < 0 && resp->length <= 0) {
+                /*  
+                 *  Set the response content length and thus disable chunking -- not needed as we know the entity length.
+                 */
+                resp->length = q->count;
+            }
+        } else {
+            if (resp->chunkSize < 0 && resp->entityLength < 0) {
+                resp->chunkSize = (int) min(conn->http->limits.maxChunkSize, q->max);
+            }
+        }
+    }
+
+    if (resp->chunkSize <= 0) {
+        maDefaultOutgoingServiceStage(q);
+    } else {
+        for (packet = maGet(q); packet; packet = maGet(q)) {
+            if (!(packet->flags & MA_PACKET_HEADER)) {
+                if (maGetPacketLength(packet) > resp->chunkSize) {
+                    maResizePacket(q, packet, resp->chunkSize);
+                }
+            }
+            if (!maWillNextQueueAccept(q, packet)) {
+                maPutBack(q, packet);
+                return;
+            }
+            if (!(packet->flags & MA_PACKET_HEADER)) {
+                setChunkPrefix(q, packet);
+            }
+            maPutNext(q, packet);
+        }
+    }
+}
+
+
+static void setChunkPrefix(MaQueue *q, MaPacket *packet)
+{
+    if (packet->prefix) {
+        return;
+    }
+    packet->prefix = mprCreateBuf(packet, 32, 32);
+    /*
+     *  NOTE: prefixes don't count in the queue length. No need to adjust q->count
+     */
+    if (maGetPacketLength(packet)) {
+        mprPutFmtToBuf(packet->prefix, "\r\n%x\r\n", maGetPacketLength(packet));
+    } else {
+        mprPutStringToBuf(packet->prefix, "\r\n0\r\n\r\n");
+    }
+}
+
+
+/*
+ *  Loadable module initialization
+ */
+MprModule *maChunkFilterInit(MaHttp *http, cchar *path)
+{
+    MprModule   *module;
+    MaStage     *filter;
+
+    module = mprCreateModule(http, "chunkFilter", BLD_VERSION, NULL, NULL, NULL);
+    if (module == 0) {
+        return 0;
+    }
+    filter = maCreateFilter(http, "chunkFilter", MA_STAGE_ALL);
+    if (filter == 0) {
+        mprFree(module);
+        return 0;
+    }
+    http->chunkFilter = filter;
+    filter->open = openChunk; 
+    filter->match = matchChunk; 
+    filter->outgoingService = outgoingChunkService; 
+    filter->incomingData = incomingChunkData; 
+    return module;
+}
+
+
+#else
+
+MprModule *maChunkFilterInit(MaHttp *http, cchar *path)
+{
+    return 0;
+}
+#endif /* BLD_FEATURE_CHUNK */
+
+/*
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/filters/chunkFilter.c"
  */
 /************************************************************************/
 
@@ -5476,300 +5801,6 @@ MprModule *maRangeFilterInit(MaHttp *http, cchar *path)
 /************************************************************************/
 /*
  *  End of file "../src/http/filters/rangeFilter.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/filters/chunkFilter.c"
- */
-/************************************************************************/
-
-/*
- *  chunkFilter.c - Transfer chunk endociding filter.
- *
- *  Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-
-
-#if BLD_FEATURE_CHUNK
-
-static void setChunkPrefix(MaQueue *q, MaPacket *packet);
-
-
-static void openChunk(MaQueue *q)
-{
-    MaConn          *conn;
-    MaRequest       *req;
-
-    conn = q->conn;
-    req = conn->request;
-
-    q->packetSize = (int) min(conn->http->limits.maxChunkSize, q->max);
-    req->chunkState = MA_CHUNK_START;
-}
-
-
-static bool matchChunk(MaConn *conn, MaStage *handler, cchar *uri)
-{
-    MaResponse  *resp;
-
-    /*
-        Don't match if chunking is explicitly turned off vi a the X_APPWEB_CHUNK_SIZE header which sets the chunk 
-        size to zero. Also remove if the response length is already known.
-     */
-    resp = conn->response;
-    return (resp->length < 0 && resp->chunkSize != 0) ? 1: 0;
-}
-
-
-/*
- *  Get the next chunk size. Chunked data format is:
- *      Chunk spec <CRLF>
- *      Data <CRLF>
- *      Chunk spec (size == 0) <CRLF>
- *      <CRLF>
- *  Chunk spec is: "HEX_COUNT; chunk length DECIMAL_COUNT\r\n". The "; chunk length DECIMAL_COUNT is optional.
- *  As an optimization, use "\r\nSIZE ...\r\n" as the delimiter so that the CRLF after data does not special consideration.
- *  Achive this by parseHeaders reversing the input start by 2.
- */
-static void incomingChunkData(MaQueue *q, MaPacket *packet)
-{
-    MaConn      *conn;
-    MaRequest   *req;
-    MprBuf      *buf;
-    char        *start, *cp;
-    int         bad;
-
-    conn = q->conn;
-    req = conn->request;
-    buf = packet->content;
-
-    mprAssert(req->flags & MA_REQ_CHUNKED);
-
-    if (packet->content == 0) {
-        if (req->chunkState == MA_CHUNK_DATA) {
-            maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad chunk state");
-            return;
-        }
-        req->chunkState = MA_CHUNK_EOF;
-    }
-    
-    /*
-     *  NOTE: the request head ensures that packets are correctly sized by packet inspection. The packet will never
-     *  have more data than the chunk state expects.
-     */
-    switch (req->chunkState) {
-    case MA_CHUNK_START:
-        /*
-         *  Validate:  "\r\nSIZE.*\r\n"
-         */
-        if (mprGetBufLength(buf) < 5) {
-            break;
-        }
-        start = mprGetBufStart(buf);
-        bad = (start[0] != '\r' || start[1] != '\n');
-        for (cp = &start[2]; cp < buf->end && *cp != '\n'; cp++) {}
-        if (*cp != '\n' && (cp - start) < 80) {
-            break;
-        }
-        bad += (cp[-1] != '\r' || cp[0] != '\n');
-        if (bad) {
-            maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad chunk specification");
-            return;
-        }
-        req->chunkSize = (int) mprAtoi(&start[2], 16);
-        if (!isxdigit((int) start[2]) || req->chunkSize < 0) {
-            maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad chunk specification");
-            return;
-        }
-        mprAdjustBufStart(buf, (int) (cp - start + 1));
-        req->remainingContent = req->chunkSize;
-        if (req->chunkSize == 0) {
-            req->chunkState = MA_CHUNK_EOF;
-            /*
-             *  We are lenient if the request does not have a trailing "\r\n" after the last chunk
-             */
-            cp = mprGetBufStart(buf);
-            if (mprGetBufLength(buf) == 2 && *cp == '\r' && cp[1] == '\n') {
-                mprAdjustBufStart(buf, 2);
-            }
-        } else {
-            req->chunkState = MA_CHUNK_DATA;
-        }
-        mprAssert(mprGetBufLength(buf) == 0);
-        maFreePacket(q, packet);
-        mprLog(q, 5, "chunkFilter: start incoming chunk of %d bytes", req->chunkSize);
-        break;
-
-    case MA_CHUNK_DATA:
-        mprAssert(maGetPacketLength(packet) <= req->chunkSize);
-        mprLog(q, 5, "chunkFilter: data %d bytes, req->remainingContent %d", maGetPacketLength(packet), 
-            req->remainingContent);
-        maPutNext(q, packet);
-        if (req->remainingContent == 0) {
-            req->chunkState = MA_CHUNK_START;
-            req->remainingContent = MA_BUFSIZE;
-        }
-        break;
-
-    case MA_CHUNK_EOF:
-        mprAssert(maGetPacketLength(packet) == 0);
-        maPutNext(q, packet);
-        mprLog(q, 5, "chunkFilter: last chunk");
-        break;    
-
-    default:
-        mprAssert(0);
-    }
-}
-
-
-/*
- *  Apply chunks to dynamic outgoing data. 
- */
-static void outgoingChunkService(MaQueue *q)
-{
-    MaConn      *conn;
-    MaPacket    *packet;
-    MaResponse  *resp;
-
-    conn = q->conn;
-    resp = conn->response;
-
-    if (!(q->flags & MA_QUEUE_SERVICED)) {
-        /*
-         *  If the last packet is the end packet, we have all the data. Thus we know the actual content length 
-         *  and can bypass the chunk handler.
-         */
-        if (q->last->flags & MA_PACKET_END) {
-            if (resp->chunkSize < 0 && resp->length <= 0) {
-                /*  
-                 *  Set the response content length and thus disable chunking -- not needed as we know the entity length.
-                 */
-                resp->length = q->count;
-            }
-        } else {
-            if (resp->chunkSize < 0 && resp->entityLength < 0) {
-                resp->chunkSize = (int) min(conn->http->limits.maxChunkSize, q->max);
-            }
-        }
-    }
-
-    if (resp->chunkSize <= 0) {
-        maDefaultOutgoingServiceStage(q);
-    } else {
-        for (packet = maGet(q); packet; packet = maGet(q)) {
-            if (!(packet->flags & MA_PACKET_HEADER)) {
-                if (maGetPacketLength(packet) > resp->chunkSize) {
-                    maResizePacket(q, packet, resp->chunkSize);
-                }
-            }
-            if (!maWillNextQueueAccept(q, packet)) {
-                maPutBack(q, packet);
-                return;
-            }
-            if (!(packet->flags & MA_PACKET_HEADER)) {
-                setChunkPrefix(q, packet);
-            }
-            maPutNext(q, packet);
-        }
-    }
-}
-
-
-static void setChunkPrefix(MaQueue *q, MaPacket *packet)
-{
-    if (packet->prefix) {
-        return;
-    }
-    packet->prefix = mprCreateBuf(packet, 32, 32);
-    /*
-     *  NOTE: prefixes don't count in the queue length. No need to adjust q->count
-     */
-    if (maGetPacketLength(packet)) {
-        mprPutFmtToBuf(packet->prefix, "\r\n%x\r\n", maGetPacketLength(packet));
-    } else {
-        mprPutStringToBuf(packet->prefix, "\r\n0\r\n\r\n");
-    }
-}
-
-
-/*
- *  Loadable module initialization
- */
-MprModule *maChunkFilterInit(MaHttp *http, cchar *path)
-{
-    MprModule   *module;
-    MaStage     *filter;
-
-    module = mprCreateModule(http, "chunkFilter", BLD_VERSION, NULL, NULL, NULL);
-    if (module == 0) {
-        return 0;
-    }
-    filter = maCreateFilter(http, "chunkFilter", MA_STAGE_ALL);
-    if (filter == 0) {
-        mprFree(module);
-        return 0;
-    }
-    http->chunkFilter = filter;
-    filter->open = openChunk; 
-    filter->match = matchChunk; 
-    filter->outgoingService = outgoingChunkService; 
-    filter->incomingData = incomingChunkData; 
-    return module;
-}
-
-
-#else
-
-MprModule *maChunkFilterInit(MaHttp *http, cchar *path)
-{
-    return 0;
-}
-#endif /* BLD_FEATURE_CHUNK */
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/filters/chunkFilter.c"
  */
 /************************************************************************/
 
@@ -6468,482 +6499,952 @@ MprModule *maUploadFilterInit(MaHttp *http, cchar *path)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/filters/authFilter.c"
+ *  Start of file "../src/http/handlers/cgiHandler.c"
  */
 /************************************************************************/
 
-/*
- *  authFilter.c - Authorization filter for basic and digest authentication.
- *
- *  Copyright (c) All Rights Reserved. See details at the end of the file.
+/* 
+    cgiHandler.c -- Common Gateway Interface Handler
+
+    Support the CGI/1.1 standard for external gateway programs to respond to HTTP requests.
+    This CGI handler uses async-pipes and non-blocking I/O for all communications.
+
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
 
 
-#if BLD_FEATURE_AUTH
-/*
- *  Per-request authorization data
- */
-typedef struct AuthData 
-{
-    char            *password;          /* User password or digest */
-    char            *userName;
-#if BLD_FEATURE_AUTH_DIGEST
-    char            *cnonce;
-    char            *nc;
-    char            *nonce;
-    char            *opaque;
-    char            *qop;
-    char            *realm;
-    char            *uri;
-#endif
-} AuthData;
+#if BLD_FEATURE_CGI
 
+static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp);
+static int cgiCallback(MprCmd *cmd, int channel, void *data);
+static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel);
+static char *getCgiToken(MprBuf *buf, cchar *delim);
+static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd);
+static bool parseHeader(MaConn *conn, MprCmd *cmd);
+static void writeToCGI(MaQueue *q);
+static void startCgi(MaQueue *q);
 
-static void decodeBasicAuth(MaConn *conn, AuthData *ad);
-static void formatAuthResponse(MaConn *conn, MaAuth *auth, int code, char *msg, char *logMsg);
-static cchar *getPassword(MaConn *conn, cchar *realm, cchar *user);
-static bool validateUserCredentials(MaConn *conn, cchar *realm, char *user, cchar *password, cchar *requiredPass, 
-        char **msg);
-#if BLD_FEATURE_AUTH_DIGEST
-static int  decodeDigestDetails(MaConn *conn, AuthData *ad);
+#if BLD_DEBUG
+static void traceCGIData(MprCmd *cmd, char *src, int size);
+#define traceData(cmd, src, size) traceCGIData(cmd, src, size)
+#else
+#define traceData(cmd, src, size)
 #endif
 
-/*
- *  Match the request for authorization. This implements basic and digest authentication.
- */
-static bool matchAuth(MaConn *conn, MaStage *stage, cchar *url)
-{
-    MaRequest   *req;
-    MaAuth      *auth;
-    AuthData    *ad;
-    cchar       *requiredPassword;
-    char        *msg;
-    int         actualAuthType;
+#if BLD_WIN_LIKE || VXWORKS
+static void findExecutable(MaConn *conn, char **program, char **script, char **bangScript, char *fileName);
+#endif
+#if BLD_WIN_LIKE
+static void checkCompletion(MaQueue *q, MprEvent *event);
+#endif
 
+
+static void closeCgi(MaQueue *q)
+{
+    MprCmd  *cmd;
+
+    cmd = (MprCmd*) q->queueData;
+    mprAssert(cmd);
+    if (cmd && cmd->pid) {
+        mprStopCmd(cmd);
+    }
+}
+
+
+static void startCgi(MaQueue *q)
+{
+    MaRequest       *req;
+    MaConn          *conn;
+    MprCmd          *cmd;
+    MprHash         *hp;
+    cchar           *baseName;
+    char            **argv, **envv, *fileName;
+    int             index, argc, varCount;
+
+    argv = 0;
+    argc = 0;
+    conn = q->conn;
     req = conn->request;
-    auth = req->auth;
+    if ((req->form || req->flags & MA_REQ_UPLOADING) && conn->state <= MPR_HTTP_STATE_CONTENT) {
+        /*
+            Delay starting the CGI process if uploading files or a form request. This enables env vars to be defined
+            with file upload and form data before starting the CGI gateway.
+         */
+        return;
+    }
 
-    if (auth == 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Authorization enabled.");
-        return 1;
+    cmd = q->queueData = mprCreateCmd(req);
+    if (conn->http->forkCallback) {
+        cmd->forkCallback = conn->http->forkCallback;
+        cmd->forkData = conn->http->forkData;
     }
-    if ((ad = mprAllocObjZeroed(req, AuthData)) == 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Server Error.");
-        return 1;
-    }
-    if (auth->type == 0) {
-        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Authorization required.", 0);
-        return 1;
-    }
-    if (req->authDetails == 0) {
-        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Missing authorization details.", 0);
-        return 1;
-    }
-    if (mprStrcmpAnyCase(req->authType, "basic") == 0) {
-        decodeBasicAuth(conn, ad);
-        actualAuthType = MA_AUTH_BASIC;
+    /*
+        Build the commmand line arguments
+     */
+    argc = 1;                                   /* argv[0] == programName */
+    buildArgs(conn, cmd, &argc, &argv);
+    fileName = argv[0];
 
-#if BLD_FEATURE_AUTH_DIGEST
-    } else if (mprStrcmpAnyCase(req->authType, "digest") == 0) {
-        if (decodeDigestDetails(conn, ad) < 0) {
-            maFailRequest(conn, 400, "Bad authorization header");
-            return 1;
-        }
-        actualAuthType = MA_AUTH_DIGEST;
-#endif
-    } else {
-        actualAuthType = MA_AUTH_UNKNOWN;
-    }
-    mprLog(conn, 4, "openAuth: type %d, url %s\nDetails %s\n", auth->type, req->url, req->authDetails);
-
-    if (ad->userName == 0) {
-        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Missing user name.", 0);
-        return 1;
-    }
-    if (auth->type != actualAuthType) {
-        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, Wrong authentication protocol.", 0);
-        return 1;
+    baseName = mprGetPathBase(q, fileName);
+    if (strncmp(baseName, "nph-", 4) == 0 || 
+            (strlen(baseName) > 4 && strcmp(&baseName[strlen(baseName) - 4], "-nph") == 0)) {
+        /*
+            Pretend we've seen the header for Non-parsed Header CGI programs
+         */
+        cmd->userFlags |= MA_CGI_SEEN_HEADER;
     }
 
     /*
-     *  Some backend methods can't return the password and will simply do everything in validateUserCredentials. 
-     *  In this case, they and will return "". That is okay.
+        Build environment variables
      */
-    if ((requiredPassword = getPassword(conn, auth->requiredRealm, ad->userName)) == 0) {
-        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, "Access Denied, authentication error.", 
-            "User not defined");
-        return 1;
+    varCount = mprGetHashCount(req->headers) + mprGetHashCount(req->formVars);
+    envv = (char**) mprAlloc(cmd, (varCount + 1) * (int) sizeof(char*));
+
+    index = 0;
+    hp = mprGetFirstHash(req->headers);
+    while (hp) {
+        if (hp->data) {
+            envv[index] = mprStrcat(cmd, -1, hp->key, "=", (char*) hp->data, NULL);
+            index++;
+        }
+        hp = mprGetNextHash(req->headers, hp);
+    }
+    hp = mprGetFirstHash(req->formVars);
+    while (hp) {
+        if (hp->data) {
+            envv[index] = mprStrcat(cmd, -1, hp->key, "=", (char*) hp->data, NULL);
+            index++;
+        }
+        hp = mprGetNextHash(req->formVars, hp);
+    }
+    envv[index] = 0;
+    mprAssert(index <= varCount);
+
+    cmd->stdoutBuf = mprCreateBuf(cmd, MA_BUFSIZE, -1);
+    cmd->stderrBuf = mprCreateBuf(cmd, MA_BUFSIZE, -1);
+    cmd->lastActivity = mprGetTime(cmd);
+
+    mprSetCmdDir(cmd, mprGetPathDir(q, fileName));
+    mprSetCmdCallback(cmd, cgiCallback, conn);
+
+    maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
+    maDontCacheResponse(conn);
+    maPutForService(q, maCreateHeaderPacket(q), 0);
+
+    if (mprStartCmd(cmd, argc, argv, envv, MPR_CMD_IN | MPR_CMD_OUT | MPR_CMD_ERR) < 0) {
+        maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't run CGI process: %s, URI %s", fileName, req->url);
+        return;
+    }
+    /*
+        This will dedicate this thread to the connection. It will also put the socket into blocking mode.
+     */
+    maDedicateThreadToConn(conn);
+}
+
+
+/*
+    This routine runs after all incoming data has been received
+ */
+static void runCgi(MaQueue *q)
+{
+    MaConn      *conn;
+    MprCmd      *cmd;
+
+    conn = q->conn;
+    cmd = (MprCmd*) q->queueData;
+
+    if (cmd == 0) {
+        startCgi(q);
+        cmd = (MprCmd*) q->queueData;
+        if (q->pair->count > 0) {
+            writeToCGI(q->pair);
+        }
     }
 
-#if BLD_FEATURE_AUTH_DIGEST
-    if (auth->type == MA_AUTH_DIGEST) {
-        char *requiredDigest;
-        if (strcmp(ad->qop, auth->qop) != 0) {
-            formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, 
-                "Access Denied, Quality of protection does not match.", 0);
-            return 1;
-        }
-        mprCalcDigest(req, &requiredDigest, 0, requiredPassword, ad->realm, req->url, ad->nonce, ad->qop, ad->nc, ad->cnonce,
-            req->methodName);
-        requiredPassword = requiredDigest;
+    /*
+        Close the CGI program's stdin. This will allow it to exit if it was expecting input data.
+     */
+    mprCloseCmdFd(cmd, MPR_CMD_STDIN);
+
+    if (conn->requestFailed) {
+        maPutForService(q, maCreateEndPacket(q), 1);
+        return;
     }
-#endif
-    if (!validateUserCredentials(conn, auth->requiredRealm, ad->userName, ad->password, requiredPassword, &msg)) {
-        formatAuthResponse(conn, auth, MPR_HTTP_CODE_UNAUTHORIZED, 
-            "Access denied, authentication error", msg);
-        return 1;
+    while (mprWaitForCmd(cmd, 1000) < 0) {
+        if (mprGetElapsedTime(cmd, cmd->lastActivity) >= conn->host->timeout) {
+            break;
+        }
+    }
+    if (cmd->pid == 0) {
+        maPutForService(q, maCreateEndPacket(q), 1);
+    } else {
+        mprStopCmd(cmd);
+        mprReapCmd(cmd, MPR_TIMEOUT_STOP_TASK);
+        cmd->status = 255;
+    }
+}
+
+
+/*
+    Accept incoming body data from the client (via the pipeline) destined for the CGI gateway. This is typically
+    POST or PUT data.
+ */
+static void incomingCgiData(MaQueue *q, MaPacket *packet)
+{
+    MaConn      *conn;
+    MaRequest   *req;
+    MprCmd      *cmd;
+
+    mprAssert(q);
+    mprAssert(packet);
+    
+    conn = q->conn;
+    req = conn->request;
+    cmd = (MprCmd*) q->pair->queueData;
+    if (cmd) {
+        cmd->lastActivity = mprGetTime(cmd);
+    }
+    if (maGetPacketLength(packet) == 0) {
+        /*
+            End of input
+         */
+        if (req->remainingContent > 0) {
+            /*
+                Short incoming body data. Just kill the CGI process.
+             */
+            mprFree(cmd);
+            q->queueData = 0;
+            maFailRequest(conn, MPR_HTTP_CODE_BAD_REQUEST, "Client supplied insufficient body data");
+        }
+        if (req->form) {
+            maAddVarsFromQueue(req->formVars, q);
+        }
+
+    } else {
+        /*
+            No service routine, we just need it to be queued for writeToCGI
+         */
+        if (req->form) {
+            maJoinForService(q, packet, 0);
+        } else {
+            maPutForService(q, packet, 0);
+        }
+    }
+    if (cmd) {
+        writeToCGI(q);
+    }
+}
+
+
+static void writeToCGI(MaQueue *q)
+{
+    MaConn      *conn;
+    MaPacket    *packet;
+    MprCmd      *cmd;
+    MprBuf      *buf;
+    int         len, rc, err;
+
+    cmd = (MprCmd*) q->pair->queueData;
+    mprAssert(cmd);
+    conn = q->conn;
+
+    for (packet = maGet(q); packet && !conn->requestFailed; packet = maGet(q)) {
+        buf = packet->content;
+        len = mprGetBufLength(buf);
+        mprAssert(len > 0);
+        rc = mprWriteCmdPipe(cmd, MPR_CMD_STDIN, mprGetBufStart(buf), len);
+        mprLog(q, 5, "CGI: write %d bytes to gateway. Rc rc %d, errno %d", len, rc, mprGetOsError());
+        if (rc < 0) {
+            err = mprGetError();
+            if (err == EINTR) {
+                continue;
+            } else if (err == EAGAIN || err == EWOULDBLOCK) {
+                break;
+            }
+            mprLog(q, 2, "CGI: write to gateway failed for %d bytes, rc %d, errno %d", len, rc, mprGetOsError());
+            mprCloseCmdFd(cmd, MPR_CMD_STDIN);
+            maFailRequest(conn, MPR_HTTP_CODE_BAD_GATEWAY, "Can't write body data to CGI gateway");
+            break;
+
+        } else {
+            mprLog(q, 5, "CGI: write to gateway %d bytes asked to write %d", rc, len);
+            mprAdjustBufStart(buf, rc);
+            if (mprGetBufLength(buf) > 0) {
+                maPutBack(q, packet);
+            } else {
+                maFreePacket(q, packet);
+            }
+        }
+    }
+}
+
+
+/*
+    Write data back to the client (browser). Must be locked when called.
+ */
+static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
+{
+    MaConn  *conn;
+    int     rc, len;
+
+    conn = q->conn;
+
+    /*
+        Write to the browser. We write as much as we can. Service queues to get the filters and connectors pumping.
+     */
+    while ((len = mprGetBufLength(buf)) > 0) {
+        if (!conn->requestFailed) {
+            rc = maWriteBlock(q, mprGetBufStart(buf), len, 1);
+            mprLog(q, 5, "CGI: write %d bytes to client. Rc rc %d, errno %d", len, rc, mprGetOsError());
+        } else {
+            /* Request has failed so just eat the data */
+            rc = len;
+            mprAssert(len > 0);
+        }
+        if (rc < 0) {
+            return MPR_ERR_CANT_WRITE;
+        }
+        mprAssert(rc == len);
+        mprAdjustBufStart(buf, rc);
+        mprResetBufIfEmpty(buf);
+        maServiceQueues(conn);
     }
     return 0;
 }
 
 
 /*
- *  Validate the user credentials with the designated authorization backend method.
+    Read the output data from the CGI script and return it to the client. This is called for stdout/stderr data from
+    the CGI script and for EOF from the CGI's stdin.
  */
-static bool validateUserCredentials(MaConn *conn, cchar *realm, char *user, cchar *password, cchar *requiredPass, char **msg)
+static int cgiCallback(MprCmd *cmd, int channel, void *data)
 {
-    MaAuth      *auth;
+    MaQueue     *q;
+    MaConn      *conn;
 
-    auth = conn->request->auth;
+    conn = (MaConn*) data;
 
-    /*
-     *  Use this funny code construct incase no backend method is configured. Still want the code to compile.
-     */
-    if (0) {
-#if BLD_FEATURE_AUTH_FILE
-    } else if (auth->method == MA_AUTH_METHOD_FILE) {
-        return maValidateNativeCredentials(conn, realm, user, password, requiredPass, msg);
-#endif
-#if BLD_FEATURE_AUTH_PAM
-    } else if (auth->method == MA_AUTH_METHOD_PAM) {
-        return maValidatePamCredentials(conn, realm, user, password, NULL, msg);
-#endif
-    } else {
-        *msg = "Required authorization backend method is not enabled or configured";
-    }
+    mprAssert(cmd);
+    mprAssert(conn);
+    mprAssert(conn->response);
+
+    q = conn->response->queue[MA_QUEUE_SEND].nextQ;
+    mprAssert(q);
+    mprLog(q, 5, "CGI: gateway I/O event on channel %d, state %d", channel, conn->state);
+
+    cgiEvent(q, cmd, channel);
     return 0;
 }
 
 
-/*
- *  Get the password (if the designated authorization backend method will give it to us)
- */
-static cchar *getPassword(MaConn *conn, cchar *realm, cchar *user)
+static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
 {
-    MaAuth      *auth;
+    MaConn      *conn;
+    MaResponse  *resp;
+    MprBuf      *buf;
+    int         space, nbytes, err;
 
-    auth = conn->request->auth;
+    mprLog(cmd, 6, "CGI callback channel %d", channel);
+    
+    buf = 0;
+    conn = q->conn;
+    resp = conn->response;
+    mprAssert(resp);
+
+    cmd->lastActivity = mprGetTime(cmd);
+
+    switch (channel) {
+    case MPR_CMD_STDIN:
+        writeToCGI(q->pair);
+        return;
+
+    case MPR_CMD_STDOUT:
+        buf = cmd->stdoutBuf;
+        break;
+
+    case MPR_CMD_STDERR:
+        buf = cmd->stderrBuf;
+        break;
+    }
+    mprAssert(buf);
+    mprResetBufIfEmpty(buf);
 
     /*
-     *  Use this funny code construct incase no backend method is configured. Still want the code to compile.
+        Come here for CGI stdout, stderr events. ie. reading data from the CGI program.
      */
-    if (0) {
-#if BLD_FEATURE_AUTH_FILE
-    } else if (auth->method == MA_AUTH_METHOD_FILE) {
-        return maGetNativePassword(conn, realm, user);
-#endif
-#if BLD_FEATURE_AUTH_PAM
-    } else if (auth->method == MA_AUTH_METHOD_PAM) {
-        return maGetPamPassword(conn, realm, user);
-#endif
-    }
-    return 0;
-}
+    while (mprGetCmdFd(cmd, channel) >= 0) {
+        /*
+            Read as much data from the CGI as possible
+         */
+        do {
+            if ((space = mprGetBufSpace(buf)) == 0) {
+                mprGrowBuf(buf, MA_BUFSIZE);
+                if ((space = mprGetBufSpace(buf)) == 0) {
+                    break;
+                }
+            }
+            nbytes = mprReadCmdPipe(cmd, channel, mprGetBufEnd(buf), space);
+            mprLog(q, 5, "CGI: read from gateway %d on channel %d. errno %d", nbytes, channel, 
+                    nbytes >= 0 ? 0 : mprGetOsError());
+            if (nbytes < 0) {
+                err = mprGetError();
+                if (err == EINTR) {
+                    continue;
+                } else if (err == EAGAIN || err == EWOULDBLOCK) {
+                    break;
+                }
+                mprLog(cmd, 5, "CGI read error %d for %", mprGetError(), (channel == MPR_CMD_STDOUT) ? "stdout" : "stderr");
+                mprCloseCmdFd(cmd, channel);
+                
+            } else if (nbytes == 0) {
+                /*
+                    This may reap the terminated child and thus clear cmd->process if both stderr and stdout are closed.
+                 */
+                mprLog(cmd, 5, "CGI EOF for %s", (channel == MPR_CMD_STDOUT) ? "stdout" : "stderr");
+                mprCloseCmdFd(cmd, channel);
+                break;
 
+            } else {
+                mprLog(cmd, 5, "CGI read %d bytes from %s", nbytes, (channel == MPR_CMD_STDOUT) ? "stdout" : "stderr");
+                mprAdjustBufEnd(buf, nbytes);
+                traceData(cmd, mprGetBufStart(buf), nbytes);
+            }
+        } while ((space = mprGetBufSpace(buf)) > 0);
 
-/*
- *  Decode basic authorization details
- */
-static void decodeBasicAuth(MaConn *conn, AuthData *ad)
-{
-    MaRequest   *req;
-    char        decodedDetails[64], *cp;
-
-    req = conn->request;
-    mprDecode64(decodedDetails, sizeof(decodedDetails), req->authDetails);
-    if ((cp = strchr(decodedDetails, ':')) != 0) {
-        *cp++ = '\0';
-    }
-    if (cp) {
-        ad->userName = mprStrdup(req, decodedDetails);
-        ad->password = mprStrdup(req, cp);
-
-    } else {
-        ad->userName = mprStrdup(req, "");
-        ad->password = mprStrdup(req, "");
-    }
-    maSetRequestUser(conn, ad->userName);
-}
-
-
-#if BLD_FEATURE_AUTH_DIGEST
-/*
- *  Decode the digest authentication details.
- */
-static int decodeDigestDetails(MaConn *conn, AuthData *ad)
-{
-    MaRequest   *req;
-    char        *authDetails, *value, *tok, *key, *dp, *sp;
-    int         seenComma;
-
-    req = conn->request;
-    key = authDetails = mprStrdup(req, req->authDetails);
-
-    while (*key) {
-        while (*key && isspace((int) *key)) {
-            key++;
+        if (mprGetBufLength(buf) == 0) {
+            return;
         }
-        tok = key;
-        while (*tok && !isspace((int) *tok) && *tok != ',' && *tok != '=') {
-            tok++;
-        }
-        *tok++ = '\0';
-
-        while (isspace((int) *tok)) {
-            tok++;
-        }
-        seenComma = 0;
-        if (*tok == '\"') {
-            value = ++tok;
-            while (*tok != '\"' && *tok != '\0') {
-                tok++;
+        if (channel == MPR_CMD_STDERR) {
+            /*
+                If we have an error message, send that to the client
+             */
+            if (mprGetBufLength(buf) > 0) {
+                mprAddNullToBuf(buf);
+                mprLog(conn, 4, mprGetBufStart(buf));
+                if (writeToClient(q, cmd, buf, channel) < 0) {
+                    return;
+                }
+                maSetResponseCode(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE);
+                cmd->userFlags |= MA_CGI_SEEN_HEADER;
+                cmd->status = 0;
             }
         } else {
-            value = tok;
-            while (*tok != ',' && *tok != '\0') {
-                tok++;
-            }
-            seenComma++;
-        }
-        *tok++ = '\0';
-
-        /*
-         *  Handle back-quoting
-         */
-        if (strchr(value, '\\')) {
-            for (dp = sp = value; *sp; sp++) {
-                if (*sp == '\\') {
-                    sp++;
+            if (!(cmd->userFlags & MA_CGI_SEEN_HEADER) && !parseHeader(conn, cmd)) {
+                return;
+            } 
+            if (cmd->userFlags & MA_CGI_SEEN_HEADER) {
+                if (writeToClient(q, cmd, buf, channel) < 0) {
+                    return;
                 }
-                *dp++ = *sp++;
             }
-            *dp = '\0';
         }
+    }
+}
 
+
+/*
+    Parse the CGI output first line
+ */
+static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd)
+{
+    MprBuf          *buf;
+    char            *protocol, *code, *message;
+    
+    buf = mprGetCmdBuf(cmd, MPR_CMD_STDOUT);
+    
+    protocol = getCgiToken(buf, " ");
+    if (protocol == 0 || protocol[0] == '\0') {
+        maFailRequest(conn, MPR_HTTP_CODE_BAD_GATEWAY, "Bad CGI HTTP protocol response");
+        return 0;
+    }
+    if (strncmp(protocol, "HTTP/1.", 7) != 0) {
+        maFailRequest(conn, MPR_HTTP_CODE_BAD_GATEWAY, "Unsupported CGI protocol");
+        return 0;
+    }
+    code = getCgiToken(buf, " ");
+    if (code == 0 || *code == '\0') {
+        maFailRequest(conn, MPR_HTTP_CODE_BAD_GATEWAY, "Bad CGI header response");
+        return 0;
+    }
+    message = getCgiToken(buf, "\n");
+    mprLog(conn, 4, "CGI status line: %s %s %s", protocol, code, message);
+    return 1;
+}
+
+
+/*
+    Parse the CGI output headers. 
+    Sample CGI program:
+
+    Content-type: text/html
+   
+    <html.....
+ */
+static bool parseHeader(MaConn *conn, MprCmd *cmd)
+{
+    MaResponse      *resp;
+    MaQueue         *q;
+    MprBuf          *buf;
+    char            *endHeaders, *headers, *key, *value, *location;
+    int             fd, len;
+
+    resp = conn->response;
+    location = 0;
+    value = 0;
+
+    buf = mprGetCmdBuf(cmd, MPR_CMD_STDOUT);
+    mprAddNullToBuf(buf);
+    headers = mprGetBufStart(buf);
+
+    /*
+        Split the headers from the body.
+     */
+    len = 0;
+    fd = mprGetCmdFd(cmd, MPR_CMD_STDOUT);
+    if ((endHeaders = strstr(headers, "\r\n\r\n")) == NULL) {
+        if ((endHeaders = strstr(headers, "\n\n")) == NULL) {
+            if (fd >= 0 && strlen(headers) < MA_MAX_HEADERS) {
+                /* Not EOF and less than max headers and have not yet seen an end of headers delimiter */
+                return 0;
+            }
+        } else len = 2;
+    } else {
+        len = 4;
+    }
+    if (endHeaders) {
+        endHeaders[len - 1] = '\0';
+        endHeaders += len;
+    }
+
+    /*
+        Want to be tolerant of CGI programs that omit the status line.
+     */
+    if (strncmp((char*) buf->start, "HTTP/1.", 7) == 0) {
+        if (!parseFirstCgiResponse(conn, cmd)) {
+            /* maFailConnection already called */
+            return 0;
+        }
+    }
+    
+    if (endHeaders && strchr(mprGetBufStart(buf), ':')) {
+        mprLog(conn, 4, "CGI: parseHeader: header\n%s", headers);
+
+        while (mprGetBufLength(buf) > 0 && buf->start[0] && (buf->start[0] != '\r' && buf->start[0] != '\n')) {
+
+            if ((key = getCgiToken(buf, ":")) == 0) {
+                maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad header format");
+                return 0;
+            }
+            value = getCgiToken(buf, "\n");
+            while (isspace((int) *value)) {
+                value++;
+            }
+            len = (int) strlen(value);
+            while (len > 0 && (value[len - 1] == '\r' || value[len - 1] == '\n')) {
+                value[len - 1] = '\0';
+                len--;
+            }
+            mprStrLower(key);
+
+            if (strcmp(key, "location") == 0) {
+                location = value;
+
+            } else if (strcmp(key, "status") == 0) {
+                maSetResponseCode(conn, atoi(value));
+
+            } else if (strcmp(key, "content-type") == 0) {
+                maSetResponseMimeType(conn, value);
+
+            } else if (strcmp(key, "content-length") == 0) {
+                maSetEntityLength(conn, (MprOff) mprAtoi(value, 10));
+                resp->chunkSize = 0;
+
+            } else {
+                /*
+                    Now pass all other headers back to the client
+                 */
+                maSetHeader(conn, 0, key, "%s", value);
+            }
+        }
+        buf->start = endHeaders;
+    }
+    if (location) {
+        maRedirect(conn, resp->code, location);
+        q = resp->queue[MA_QUEUE_SEND].nextQ;
+        maPutForService(q, maCreateEndPacket(q), 1);
+    }
+    cmd->userFlags |= MA_CGI_SEEN_HEADER;
+    return 1;
+}
+
+
+/*
+    Build the command arguments. NOTE: argv is untrusted input.
+ */
+static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
+{
+    MaRequest   *req;
+    MaResponse  *resp;
+    char        *fileName, **argv, status[8], *indexQuery, *cp, *tok;
+    cchar       *actionProgram;
+    int         argc, argind, len;
+
+    req = conn->request;
+    resp = conn->response;
+    fileName = resp->filename;
+    mprAssert(fileName);
+
+    actionProgram = 0;
+    argind = 0;
+    argc = *argcp;
+
+    if (resp->extension) {
+        actionProgram = maGetMimeActionProgram(req->host, resp->extension);
+        if (actionProgram != 0) {
+            argc++;
+        }
+    }
+    /*
+        This is an Apache compatible hack for PHP 5.3
+     */
+    mprItoa(status, sizeof(status), MPR_HTTP_CODE_MOVED_TEMPORARILY, 10);
+    mprAddHash(req->headers, "REDIRECT_STATUS", mprStrdup(req, status));
+
+    /*
+        Count the args for ISINDEX queries. Only valid if there is not a "=" in the query. 
+        If this is so, then we must not have these args in the query env also?
+     */
+    indexQuery = req->parsedUri->query;
+    if (indexQuery && !strchr(indexQuery, '=')) {
+        argc++;
+        for (cp = indexQuery; *cp; cp++) {
+            if (*cp == '+') {
+                argc++;
+            }
+        }
+    } else {
+        indexQuery = 0;
+    }
+
+#if BLD_WIN_LIKE || VXWORKS
+{
+    char    *bangScript, *cmdBuf, *program, *cmdScript;
+
+    /*
+        On windows we attempt to find an executable matching the fileName.
+        We look for *.exe, *.bat and also do unix style processing "#!/program"
+     */
+    findExecutable(conn, &program, &cmdScript, &bangScript, fileName);
+    mprAssert(program);
+
+    if (cmdScript) {
         /*
-         *  username, response, oqaque, uri, realm, nonce, nc, cnonce, qop
+            Cmd/Batch script (.bat | .cmd)
+            Convert the command to the form where there are 4 elements in argv
+            that cmd.exe can interpret.
+
+                argv[0] = cmd.exe
+                argv[1] = /Q
+                argv[2] = /C
+                argv[3] = ""script" args ..."
          */
-        switch (tolower((int) *key)) {
-        case 'a':
-            if (mprStrcmpAnyCase(key, "algorithm") == 0) {
-                break;
-            } else if (mprStrcmpAnyCase(key, "auth-param") == 0) {
-                break;
-            }
-            break;
+        argc = 4;
 
-        case 'c':
-            if (mprStrcmpAnyCase(key, "cnonce") == 0) {
-                ad->cnonce = mprStrdup(req, value);
-            }
-            break;
+        len = (argc + 1) * sizeof(char*);
+        argv = (char**) mprAlloc(cmd, len);
+        memset(argv, 0, len);
 
-        case 'd':
-            if (mprStrcmpAnyCase(key, "domain") == 0) {
-                break;
-            }
-            break;
+        argv[argind++] = program;               /* Duped in findExecutable */
+        argv[argind++] = mprStrdup(cmd, "/Q");
+        argv[argind++] = mprStrdup(cmd, "/C");
 
-        case 'n':
-            if (mprStrcmpAnyCase(key, "nc") == 0) {
-                ad->nc = mprStrdup(req, value);
-            } else if (mprStrcmpAnyCase(key, "nonce") == 0) {
-                ad->nonce = mprStrdup(req, value);
-            }
-            break;
+        len = (int) strlen(cmdScript) + 2 + 1;
+        cmdBuf = (char*) mprAlloc(cmd, len);
+        mprSprintf(cmdBuf, len, "\"%s\"", cmdScript);
+        argv[argind++] = cmdBuf;
 
-        case 'o':
-            if (mprStrcmpAnyCase(key, "opaque") == 0) {
-                ad->opaque = mprStrdup(req, value);
-            }
-            break;
-
-        case 'q':
-            if (mprStrcmpAnyCase(key, "qop") == 0) {
-                ad->qop = mprStrdup(req, value);
-            }
-            break;
-
-        case 'r':
-            if (mprStrcmpAnyCase(key, "realm") == 0) {
-                ad->realm = mprStrdup(req, value);
-            } else if (mprStrcmpAnyCase(key, "response") == 0) {
-                /* Store the response digest in the password field */
-                ad->password = mprStrdup(req, value);
-            }
-            break;
-
-        case 's':
-            if (mprStrcmpAnyCase(key, "stale") == 0) {
-                break;
-            }
+        mprSetCmdDir(cmd, cmdScript);
+        mprFree(cmdScript);
+        /*  program will get freed when argv[] gets freed */
         
-        case 'u':
-            if (mprStrcmpAnyCase(key, "uri") == 0) {
-                ad->uri = mprStrdup(req, value);
-            } else if (mprStrcmpAnyCase(key, "username") == 0) {
-                ad->userName = mprStrdup(req, value);
-            }
-            break;
+    } else if (bangScript) {
+        /*
+            Script used "#!/program". NOTE: this may be overridden by a mime
+            Action directive.
+         */
+        argc++;     /* Adding bangScript arg */
 
-        default:
-            /*  Just ignore keywords we don't understand */
-            ;
+        len = (argc + 1) * sizeof(char*);
+        argv = (char**) mprAlloc(cmd, len);
+        memset(argv, 0, len);
+
+        argv[argind++] = program;       /* Will get freed when argv[] is freed */
+        argv[argind++] = bangScript;    /* Will get freed when argv[] is freed */
+        mprSetCmdDir(cmd, bangScript);
+
+    } else {
+        /*
+            Either unknown extension or .exe (.out) program.
+         */
+        len = (argc + 1) * sizeof(char*);
+        argv = (char**) mprAlloc(cmd, len);
+        memset(argv, 0, len);
+
+        if (actionProgram) {
+            argv[argind++] = mprStrdup(cmd, actionProgram);
         }
-        key = tok;
-        if (!seenComma) {
-            while (*key && *key != ',') {
-                key++;
-            }
-            if (*key) {
-                key++;
-            }
+        argv[argind++] = program;
+    }
+}
+#else
+    len = (argc + 1) * (int) sizeof(char*);
+    argv = (char**) mprAlloc(cmd, len);
+    memset(argv, 0, len);
+
+    if (actionProgram) {
+        argv[argind++] = mprStrdup(cmd, actionProgram);
+    }
+    argv[argind++] = mprStrdup(cmd, fileName);
+
+#endif
+
+    /*
+        ISINDEX queries. Only valid if there is not a "=" in the query. If this is so, then we must not
+        have these args in the query env also?
+     */
+    if (indexQuery) {
+        indexQuery = mprStrdup(cmd, indexQuery);
+
+        cp = mprStrTok(indexQuery, "+", &tok);
+        while (cp) {
+            argv[argind++] = mprEscapeCmd(resp, mprUrlDecode(resp, cp), 0);
+            cp = mprStrTok(NULL, "+", &tok);
         }
     }
-    mprFree(authDetails);
-    if (ad->userName == 0 || ad->realm == 0 || ad->nonce == 0 || ad->uri == 0 || ad->password == 0) {
-        return MPR_ERR_BAD_ARGS;
+    
+    mprAssert(argind <= argc);
+    argv[argind] = 0;
+    *argcp = argc;
+    *argvp = argv;
+}
+
+
+#if BLD_WIN_LIKE || VXWORKS
+/*
+    If the program has a UNIX style "#!/program" string at the start of the file that program will be selected 
+    and the original program will be passed as the first arg to that program with argv[] appended after that. If 
+    the program is not found, this routine supports a safe intelligent search for the command. If all else fails, 
+    we just return in program the fileName we were passed in. script will be set if we are modifying the program 
+    to run and we have extracted the name of the file to run as a script.
+ */
+static void findExecutable(MaConn *conn, char **program, char **script, char **bangScript, char *fileName)
+{
+    MaRequest       *req;
+    MaResponse      *resp;
+    MaLocation      *location;
+    MprHash         *hp;
+    MprFile         *file;
+    cchar           *actionProgram, *ext, *cmdShell;
+    char            *tok, buf[MPR_MAX_FNAME + 1], *path;
+
+    req = conn->request;
+    resp = conn->response;
+    location = req->location;
+
+    *bangScript = 0;
+    *script = 0;
+    *program = 0;
+    path = 0;
+
+    actionProgram = maGetMimeActionProgram(conn->host, req->mimeType);
+    ext = resp->extension;
+
+    /*
+        If not found, go looking for the fileName with the extensions defined in appweb.conf. 
+        NOTE: we don't use PATH deliberately!!!
+     */
+    if (access(fileName, X_OK) < 0 /* && *ext == '\0' */) {
+        for (hp = 0; (hp = mprGetNextHash(location->extensions, hp)) != 0; ) {
+            path = mprStrcat(resp, -1, fileName, ".", hp->key, NULL);
+            if (access(path, X_OK) == 0) {
+                break;
+            }
+            mprFree(path);
+            path = 0;
+        }
+        if (hp) {
+            ext = hp->key;
+        } else {
+            path = fileName;
+        }
+
+    } else {
+        path = fileName;
     }
-    if (ad->qop && (ad->cnonce == 0 || ad->nc == 0)) {
-        return MPR_ERR_BAD_ARGS;
+    mprAssert(path && *path);
+
+#if BLD_WIN_LIKE
+    if (ext && (strcmp(ext, ".bat") == 0 || strcmp(ext, ".cmd") == 0)) {
+        /*
+            Let a mime action override COMSPEC
+         */
+        if (actionProgram) {
+            cmdShell = actionProgram;
+        } else {
+            cmdShell = getenv("COMSPEC");
+        }
+        if (cmdShell == 0) {
+            cmdShell = "cmd.exe";
+        }
+        *script = mprStrdup(resp, path);
+        *program = mprStrdup(resp, cmdShell);
+        return;
     }
-    if (ad->qop == 0) {
-        ad->qop = mprStrdup(req, "");
+#endif
+
+    if ((file = mprOpen(resp, path, O_RDONLY, 0)) != 0) {
+        if (mprRead(file, buf, MPR_MAX_FNAME) > 0) {
+            mprFree(file);
+            buf[MPR_MAX_FNAME] = '\0';
+            if (buf[0] == '#' && buf[1] == '!') {
+                cmdShell = mprStrTok(&buf[2], " \t\r\n", &tok);
+                if (cmdShell[0] != '/' && (cmdShell[0] != '\0' && cmdShell[1] != ':')) {
+                    /*
+                        If we can't access the command shell and the command is not an absolute path, 
+                        look in the same directory as the script.
+                     */
+                    if (mprPathExists(resp, cmdShell, X_OK)) {
+                        cmdShell = mprJoinPath(resp, mprGetPathDir(resp, path), cmdShell);
+                    }
+                }
+                if (actionProgram) {
+                    *program = mprStrdup(resp, actionProgram);
+                } else {
+                    *program = mprStrdup(resp, cmdShell);
+                }
+                *bangScript = mprStrdup(resp, path);
+                return;
+            }
+        } else {
+            mprFree(file);
+        }
     }
 
-    maSetRequestUser(conn, ad->userName);
-    return 0;
+    if (actionProgram) {
+        *program = mprStrdup(resp, actionProgram);
+        *bangScript = mprStrdup(resp, path);
+    } else {
+        *program = mprStrdup(resp, path);
+    }
+    return;
+}
+#endif
+ 
+
+/*
+    Get the next input token. The content buffer is advanced to the next token. This routine always returns a 
+    non-zero token. The empty string means the delimiter was not found.
+ */
+static char *getCgiToken(MprBuf *buf, cchar *delim)
+{
+    char    *token, *nextToken;
+    int     len;
+
+    len = mprGetBufLength(buf);
+    if (len == 0) {
+        return "";
+    }
+
+    token = mprGetBufStart(buf);
+    nextToken = mprStrnstr(mprGetBufStart(buf), delim, len);
+    if (nextToken) {
+        *nextToken = '\0';
+        len = (int) strlen(delim);
+        nextToken += len;
+        buf->start = nextToken;
+
+    } else {
+        buf->start = mprGetBufEnd(buf);
+    }
+    return token;
+}
+
+
+#if BLD_DEBUG
+/*
+    Trace output received from the cgi process
+ */
+static void traceCGIData(MprCmd *cmd, char *src, int size)
+{
+    char    dest[512];
+    int     index, i;
+
+    mprRawLog(cmd, 5, "@@@ CGI process wrote => \n");
+
+    for (index = 0; index < size; ) { 
+        for (i = 0; i < (sizeof(dest) - 1) && index < size; i++) {
+            dest[i] = src[index];
+            index++;
+        }
+        dest[i] = '\0';
+        mprRawLog(cmd, 5, "%s", dest);
+    }
+    mprRawLog(cmd, 5, "\n");
 }
 #endif
 
 
 #if BLD_FEATURE_CONFIG_PARSE
-/*
- *  Parse the appweb.conf directives for authorization
- */
-static int parseAuth(MaHttp *http, cchar *key, char *value, MaConfigState *state)
+static int parseCgi(MaHttp *http, cchar *key, char *value, MaConfigState *state)
 {
+    MaLocation  *location;
     MaServer    *server;
     MaHost      *host;
-    MaAuth      *auth;
-    MaAcl       acl;
-    char        *path, *names, *tok, *type, *aclSpec;
+    MaAlias     *alias;
+    MaDir       *parent;
+    char        *program, *mimeType, *prefix, *path;
 
-    server = state->server;
     host = state->host;
-    auth = state->auth;
+    server = state->server;
+    location = state->location;
 
-    if (mprStrcmpAnyCase(key, "AuthGroupFile") == 0) {
-        path = maMakePath(host, mprStrTrim(value, "\""));
-        if (maReadGroupFile(server, auth, path) < 0) {
-            mprError(http, "Can't open AuthGroupFile %s", path);
+    if (mprStrcmpAnyCase(key, "Action") == 0) {
+        if (maSplitConfigValue(http, &mimeType, &program, value, 1) < 0) {
             return MPR_ERR_BAD_SYNTAX;
         }
+        maSetMimeActionProgram(host, mimeType, program);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "ScriptAlias") == 0) {
+        if (maSplitConfigValue(server, &prefix, &path, value, 1) < 0 || path == 0 || prefix == 0) {
+            return MPR_ERR_BAD_SYNTAX;
+        }
+
+        /*
+            Create an alias and location with a cgiHandler and pathInfo processing
+         */
+        path = maMakePath(host, path);
+
+        if (maLookupDir(host, path) == 0) {
+            parent = mprGetFirstItem(host->dirs);
+            maCreateDir(host, path, parent);
+        }
+        alias = maCreateAlias(host, prefix, path, 0);
+        mprLog(server, 4, "ScriptAlias \"%s\" for \"%s\"", prefix, path);
         mprFree(path);
-        return 1;
 
-    } else if (mprStrcmpAnyCase(key, "AuthMethod") == 0) {
-        value = mprStrTrim(value, "\"");
-        if (mprStrcmpAnyCase(value, "pam") == 0) {
-            auth->method = MA_AUTH_METHOD_PAM;
-            return 1;
+        maInsertAlias(host, alias);
 
-        } else if (mprStrcmpAnyCase(value, "file") == 0) {
-            auth->method = MA_AUTH_METHOD_FILE;
-            return 1;
-
+        if ((location = maLookupLocation(host, prefix)) == 0) {
+            location = maCreateLocation(host, state->location);
+            maSetLocationAuth(location, state->dir->auth);
+            maSetLocationPrefix(location, prefix);
+            maAddLocation(host, location);
         } else {
-            return MPR_ERR_BAD_SYNTAX;
+            maSetLocationPrefix(location, prefix);
         }
-
-    } else if (mprStrcmpAnyCase(key, "AuthName") == 0) {
-        maSetAuthRealm(auth, mprStrTrim(value, "\""));
-        return 1;
-        
-    } else if (mprStrcmpAnyCase(key, "AuthType") == 0) {
-        value = mprStrTrim(value, "\"");
-        if (mprStrcmpAnyCase(value, "Basic") == 0) {
-            auth->type = MA_AUTH_BASIC;
-
-        } else if (mprStrcmpAnyCase(value, "None") == 0) {
-            auth->type = 0;
-
-#if BLD_FEATURE_AUTH_DIGEST
-        } else if (mprStrcmpAnyCase(value, "Digest") == 0) {
-            auth->type = MA_AUTH_DIGEST;
-#endif
-
-        } else {
-            mprError(http, "Unsupported authorization protocol");
-            return MPR_ERR_BAD_SYNTAX;
-        }
-        return 1;
-        
-    } else if (mprStrcmpAnyCase(key, "AuthUserFile") == 0) {
-        path = maMakePath(host, mprStrTrim(value, "\""));
-        if (maReadUserFile(server, auth, path) < 0) {
-            mprError(http, "Can't open AuthUserFile %s", path);
-            return MPR_ERR_BAD_SYNTAX;
-        }
-        mprFree(path);
-        return 1;
-
-#if BLD_FEATURE_AUTH_DIGEST
-    } else if (mprStrcmpAnyCase(key, "AuthDigestQop") == 0) {
-        value = mprStrTrim(value, "\"");
-        mprStrLower(value);
-        if (strcmp(value, "none") != 0 && strcmp(value, "auth") != 0 && strcmp(value, "auth-int") != 0) {
-            return MPR_ERR_BAD_SYNTAX;
-        }
-        maSetAuthQop(auth, value);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "AuthDigestAlgorithm") == 0) {
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "AuthDigestDomain") == 0) {
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "AuthDigestNonceLifetime") == 0) {
-        return 1;
-
-#endif
-    } else if (mprStrcmpAnyCase(key, "Require") == 0) {
-        if (maGetConfigValue(http, &type, value, &tok, 1) < 0) {
-            return MPR_ERR_BAD_SYNTAX;
-        }
-        if (mprStrcmpAnyCase(type, "acl") == 0) {
-            aclSpec = mprStrTrim(tok, "\"");
-            acl = maParseAcl(auth, aclSpec);
-            maSetRequiredAcl(auth, acl);
-
-        } else if (mprStrcmpAnyCase(type, "valid-user") == 0) {
-            maSetAuthAnyValidUser(auth);
-
-        } else {
-            names = mprStrTrim(tok, "\"");
-            if (mprStrcmpAnyCase(type, "user") == 0) {
-                maSetAuthRequiredUsers(auth, names);
-
-            } else if (mprStrcmpAnyCase(type, "group") == 0) {
-                maSetAuthRequiredGroups(auth, names);
-
-            } else {
-                mprError(http, "Bad Require syntax: %s", type);
-                return MPR_ERR_BAD_SYNTAX;
-            }
-        }
+        maSetHandler(http, host, location, "cgiHandler");
         return 1;
     }
     return 0;
@@ -6952,138 +7453,748 @@ static int parseAuth(MaHttp *http, cchar *key, char *value, MaConfigState *state
 
 
 /*
- *  Format an authentication response. This is typically a 401 response code.
+    Dynamic module initialization
  */
-static void formatAuthResponse(MaConn *conn, MaAuth *auth, int code, char *msg, char *logMsg)
-{
-    MaRequest       *req;
-#if BLD_FEATURE_AUTH_DIGEST
-    char            *qopClass, *nonceStr, *etag;
-#endif
-
-    req = conn->request;
-    if (logMsg == 0) {
-        logMsg = msg;
-    }
-
-    mprLog(conn, 3, "formatAuthResponse: code %d, %s\n", code, logMsg);
-
-    if (auth->type == MA_AUTH_BASIC) {
-        maSetHeader(conn, 0, "WWW-Authenticate", "Basic realm=\"%s\"", auth->requiredRealm);
-
-#if BLD_FEATURE_AUTH_DIGEST
-    } else if (auth->type == MA_AUTH_DIGEST) {
-
-        qopClass = auth->qop;
-
-        /*
-         *  Use the etag as our opaque string
-         */
-        etag = conn->response->etag;
-        if (etag == 0) {
-            etag = "";
-        }
-        if (etag[0] == '"') {
-            etag = mprStrdup(req, etag);
-            etag = mprStrTrim(etag, "\"");
-        }
-        mprCalcDigestNonce(req, &nonceStr, conn->host->secret, etag, auth->requiredRealm);
-
-        if (strcmp(qopClass, "auth") == 0) {
-            maSetHeader(conn, 0, "WWW-Authenticate", "Digest realm=\"%s\", domain=\"%s\", "
-                "qop=\"auth\", nonce=\"%s\", opaque=\"%s\", algorithm=\"MD5\", stale=\"FALSE\"", 
-                auth->requiredRealm, conn->host->name, nonceStr, etag);
-
-        } else if (strcmp(qopClass, "auth-int") == 0) {
-            maSetHeader(conn, 0, "WWW-Authenticate", "Digest realm=\"%s\", domain=\"%s\", "
-                "qop=\"auth\", nonce=\"%s\", opaque=\"%s\", algorithm=\"MD5\", stale=\"FALSE\"", 
-                auth->requiredRealm, conn->host->name, nonceStr, etag);
-
-        } else {
-            maSetHeader(conn, 0, "WWW-Authenticate", "Digest realm=\"%s\", nonce=\"%s\"", auth->requiredRealm, nonceStr);
-        }
-        mprFree(nonceStr);
-#endif
-    }
-
-    maFailRequest(conn, code, "Authentication Error: %s", msg);
-}
-
-
-void maSetAuthQop(MaAuth *auth, cchar *qop)
-{
-    if (mprGetParent(auth->qop) == auth) {
-        mprFree(auth->qop);
-    }
-    if (strcmp(qop, "auth") == 0 || strcmp(qop, "auth-int") == 0) {
-        auth->qop = mprStrdup(auth, qop);
-    } else {
-        auth->qop = mprStrdup(auth, "");
-    }
-}
-
-
-void maSetAuthRealm(MaAuth *auth, cchar *realm)
-{
-    if (mprGetParent(auth->requiredRealm) == auth) {
-        mprFree(auth->requiredRealm);
-    }
-    auth->requiredRealm = mprStrdup(auth, realm);
-}
-
-
-void maSetAuthRequiredGroups(MaAuth *auth, cchar *groups)
-{
-    if (mprGetParent(auth->requiredGroups) == auth) {
-        mprFree(auth->requiredGroups);
-    }
-    auth->requiredGroups = mprStrdup(auth, groups);
-    auth->flags |= MA_AUTH_REQUIRED;
-    auth->anyValidUser = 0;
-}
-
-
-void maSetAuthRequiredUsers(MaAuth *auth, cchar *users)
-{
-    if (mprGetParent(auth->requiredUsers) == auth) {
-        mprFree(auth->requiredUsers);
-    }
-    auth->requiredUsers = mprStrdup(auth, users);
-    auth->flags |= MA_AUTH_REQUIRED;
-    auth->anyValidUser = 0;
-}
-
-
-/*
- *  Loadable module initialization
- */
-MprModule *maAuthFilterInit(MaHttp *http, cchar *path)
+MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
 {
     MprModule   *module;
-    MaStage     *filter;
+    MaStage     *handler;
 
-    module = mprCreateModule(http, "authFilter", BLD_VERSION, NULL, NULL, NULL);
-    if (module == 0) {
+    if ((module = mprCreateModule(http, "cgiHandler", BLD_VERSION, NULL, NULL, NULL)) == NULL) {
         return 0;
     }
-    filter = maCreateFilter(http, "authFilter", MA_STAGE_ALL);
-    if (filter == 0) {
+    handler = maCreateHandler(http, "cgiHandler", 
+        MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_MISSING_EXT);
+    if (handler == 0) {
         mprFree(module);
         return 0;
     }
-    http->authFilter = filter;
-    filter->match = matchAuth; 
-    filter->parse = parseAuth; 
+    http->cgiHandler = handler;
+    handler->close = closeCgi; 
+    handler->start = startCgi; 
+    handler->incomingData = incomingCgiData; 
+    handler->run = runCgi; 
+    handler->parse = parseCgi; 
     return module;
 }
 
 
 #else
-MprModule *maAuthFilterInit(MaHttp *http, cchar *path)
+
+MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
 {
     return 0;
 }
-#endif /* BLD_FEATURE_AUTH */
+
+#endif /* BLD_FEATURE_CGI */
+
+/*
+    @copy   default
+    
+    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+    
+    This software is distributed under commercial and open source licenses.
+    You may use the GPL open source license described below or you may acquire 
+    a commercial license from Embedthis Software. You agree to be fully bound 
+    by the terms of either license. Consult the LICENSE.TXT distributed with 
+    this software for full details.
+    
+    This software is open source; you can redistribute it and/or modify it 
+    under the terms of the GNU General Public License as published by the 
+    Free Software Foundation; either version 2 of the License, or (at your 
+    option) any later version. See the GNU General Public License for more 
+    details at: http://www.embedthis.com/downloads/gplLicense.html
+    
+    This program is distributed WITHOUT ANY WARRANTY; without even the 
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+    
+    This GPL license does NOT permit incorporating this software into 
+    proprietary programs. If you are unable to comply with the GPL, you must
+    acquire a commercial license to use this software. Commercial licenses 
+    for this software and support services are available from Embedthis 
+    Software at http://www.embedthis.com 
+    
+    Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/handlers/cgiHandler.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/handlers/dirHandler.c"
+ */
+/************************************************************************/
+
+/*
+ *  dirHandler.c - Directory listing handler.
+ *
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+
+
+#if BLD_FEATURE_DIR
+/*
+ *  Handler configuration
+ */
+typedef struct Dir {
+    cchar           *defaultIcon;
+    MprList         *dirList;
+    bool            enabled;
+    MprList         *extList;
+    int             fancyIndexing;
+    bool            foldersFirst;
+    MprList         *ignoreList;
+    cchar           *pattern;
+    char            *sortField;
+    int             sortOrder;              /* 1 == ascending, -1 descending */
+} Dir;
+
+
+static void filterDirList(MaConn *conn, MprList *list);
+static int  match(cchar *pattern, cchar *file);
+static void outputFooter(MaQueue *q);
+static void outputHeader(MaQueue *q, cchar *dir, int nameSize);
+static void outputLine(MaQueue *q, MprDirEntry *ep, cchar *dir, int nameSize);
+static void parseQuery(MaConn *conn);
+static void parseWords(MprList *list, cchar *str);
+static void sortList(MaConn *conn, MprList *list);
+
+/*
+ *  Match if the url maps to a directory.
+ */
+static bool matchDir(MaConn *conn, MaStage *handler, cchar *url)
+{
+    MaResponse      *resp;
+    Dir             *dir;
+
+    resp = conn->response;
+    dir = handler->stageData;
+    
+    mprAssert(resp->filename);
+    mprAssert(resp->fileInfo.checked);
+
+    return dir->enabled && resp->fileInfo.isDir;
+}
+
+
+static void runDir(MaQueue *q)
+{
+    MaConn          *conn;
+    MaResponse      *resp;
+    MaRequest       *req;
+    MprList         *list;
+    MprDirEntry     *dp;
+    Dir             *dir;
+    cchar           *filename;
+    uint            nameSize;
+    int             next;
+
+    conn = q->conn;
+    req = conn->request;
+    resp = conn->response;
+    dir = q->stage->stageData;
+
+    filename = resp->filename;
+    mprAssert(filename);
+
+    maDontCacheResponse(conn);
+    maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
+    maPutForService(q, maCreateHeaderPacket(q), 0);
+
+    parseQuery(conn);
+
+    list = mprGetPathFiles(conn, filename, 1);
+    if (list == 0) {
+        maWrite(q, "<h2>Can't get file list</h2>\r\n");
+        outputFooter(q);
+        return;
+    }
+
+    if (dir->pattern) {
+        filterDirList(conn, list);
+    }
+
+    sortList(conn, list);
+
+    /*
+     *  Get max filename
+     */
+    nameSize = 0;
+    for (next = 0; (dp = mprGetNextItem(list, &next)) != 0; ) {
+        nameSize = max((int) strlen(dp->name), nameSize);
+    }
+    nameSize = max(nameSize, 22);
+
+    outputHeader(q, req->url, nameSize);
+    for (next = 0; (dp = mprGetNextItem(list, &next)) != 0; ) {
+        outputLine(q, dp, filename, nameSize);
+    }
+    outputFooter(q);
+
+    maPutForService(q, maCreateEndPacket(conn), 1);
+
+    mprFree(list);
+}
+ 
+
+static void parseQuery(MaConn *conn)
+{
+    MaRequest   *req;
+    MaResponse  *resp;
+    Dir         *dir;
+    char        *value, *query, *next, *tok;
+
+    req = conn->request;
+    resp = conn->response;
+    dir = resp->handler->stageData;
+    
+    query = mprStrdup(req, req->parsedUri->query);
+    if (query == 0) {
+        return;
+    }
+
+    tok = mprStrTok(query, ";&", &next);
+    while (tok) {
+        if ((value = strchr(tok, '=')) != 0) {
+            *value++ = '\0';
+            if (*tok == 'C') {                  /* Sort column */
+                mprFree(dir->sortField);
+                if (*value == 'N') {
+                    dir->sortField = "Name";
+                } else if (*value == 'M') {
+                    dir->sortField = "Date";
+                } else if (*value == 'S') {
+                    dir->sortField = "Size";
+                }
+                dir->sortField = mprStrdup(dir, dir->sortField);
+
+            } else if (*tok == 'O') {           /* Sort order */
+                if (*value == 'A') {
+                    dir->sortOrder = 1;
+                } else if (*value == 'D') {
+                    dir->sortOrder = -1;
+                }
+
+            } else if (*tok == 'F') {           /* Format */ 
+                if (*value == '0') {
+                    dir->fancyIndexing = 0;
+                } else if (*value == '1') {
+                    dir->fancyIndexing = 1;
+                } else if (*value == '2') {
+                    dir->fancyIndexing = 2;
+                }
+
+            } else if (*tok == 'P') {           /* Pattern */ 
+                dir->pattern = mprStrdup(dir, value);
+            }
+        }
+        tok = mprStrTok(next, ";&", &next);
+    }
+    
+    mprFree(query);
+}
+
+
+static void sortList(MaConn *conn, MprList *list)
+{
+    MaResponse      *resp;
+    MprDirEntry     *tmp, **items;
+    Dir             *dir;
+    int             count, i, j, rc;
+
+    resp = conn->response;
+    dir = resp->handler->stageData;
+    
+    if (dir->sortField == 0) {
+        return;
+    }
+
+    count = mprGetListCount(list);
+    items = (MprDirEntry**) list->items;
+    if (mprStrcmpAnyCase(dir->sortField, "Name") == 0) {
+        for (i = 1; i < count; i++) {
+            for (j = 0; j < i; j++) {
+                rc = strcmp(items[i]->name, items[j]->name);
+                if (dir->foldersFirst) {
+                    if (items[i]->isDir && !items[j]->isDir) {
+                        rc = -dir->sortOrder;
+                    } else if (items[j]->isDir && !items[i]->isDir) {
+                        rc = dir->sortOrder;
+                    } 
+                }
+                rc *= dir->sortOrder;
+                if (rc < 0) {
+                    tmp = items[i];
+                    items[i] = items[j];
+                    items[j] = tmp;
+                }
+            }
+        }
+
+    } else if (mprStrcmpAnyCase(dir->sortField, "Size") == 0) {
+        for (i = 1; i < count; i++) {
+            for (j = 0; j < i; j++) {
+                rc = (items[i]->size < items[j]->size) ? -1 : 1;
+                if (dir->foldersFirst) {
+                    if (items[i]->isDir && !items[j]->isDir) {
+                        rc = -dir->sortOrder;
+                    } else if (items[j]->isDir && !items[i]->isDir) {
+                        rc = dir->sortOrder;
+                    }
+                }
+                rc *= dir->sortOrder;
+                if (rc < 0) {
+                    tmp = items[i];
+                    items[i] = items[j];
+                    items[j] = tmp;
+                }
+            }
+        }
+
+    } else if (mprStrcmpAnyCase(dir->sortField, "Date") == 0) {
+        for (i = 1; i < count; i++) {
+            for (j = 0; j < i; j++) {
+                rc = (items[i]->lastModified < items[j]->lastModified) ? -1: 1;
+                if (dir->foldersFirst) {
+                    if (items[i]->isDir && !items[j]->isDir) {
+                        rc = -dir->sortOrder;
+                    } else if (items[j]->isDir && !items[i]->isDir) {
+                        rc = dir->sortOrder;
+                    }
+                }
+                rc *= dir->sortOrder;
+                if (rc < 0) {
+                    tmp = items[i];
+                    items[i] = items[j];
+                    items[j] = tmp;
+                }
+            }
+        }
+    }
+}
+
+
+static void outputHeader(MaQueue *q, cchar *path, int nameSize)
+{
+    Dir     *dir;
+    char    *parent, *parentSuffix;
+    int     reverseOrder, fancy, isRootDir, sep;
+
+    dir = q->stage->stageData;
+    
+    fancy = 1;
+
+    maWrite(q, "<!DOCTYPE HTML PUBLIC \"-/*W3C//DTD HTML 3.2 Final//EN\">\r\n");
+    maWrite(q, "<html>\r\n <head>\r\n  <title>Index of %s</title>\r\n", path);
+    maWrite(q, " </head>\r\n");
+    maWrite(q, "<body>\r\n");
+
+    maWrite(q, "<h1>Index of %s</h1>\r\n", path);
+
+    if (dir->sortOrder > 0) {
+        reverseOrder = 'D';
+    } else {
+        reverseOrder = 'A';
+    }
+
+    if (dir->fancyIndexing == 0) {
+        fancy = '0';
+    } else if (dir->fancyIndexing == 1) {
+        fancy = '1';
+    } else if (dir->fancyIndexing == 2) {
+        fancy = '2';
+    }
+
+    parent = mprGetPathDir(q, path);
+    sep = mprGetPathSeparator(q, parent);
+    if (parent[strlen(parent) - 1] != sep) {
+        parentSuffix = "/";
+    } else {
+        parentSuffix = "";
+    }
+
+    isRootDir = (strcmp(path, "/") == 0);
+
+    if (dir->fancyIndexing == 2) {
+        maWrite(q, "<table><tr><th><img src=\"/icons/blank.gif\" alt=\"[ICO]\" /></th>");
+
+        maWrite(q, "<th><a href=\"?C=N;O=%c;F=%c\">Name</a></th>", reverseOrder, fancy);
+        maWrite(q, "<th><a href=\"?C=M;O=%c;F=%c\">Last modified</a></th>", reverseOrder, fancy);
+        maWrite(q, "<th><a href=\"?C=S;O=%c;F=%c\">Size</a></th>", reverseOrder, fancy);
+        maWrite(q, "<th><a href=\"?C=D;O=%c;F=%c\">Description</a></th>\r\n", reverseOrder, fancy);
+
+        maWrite(q, "</tr><tr><th colspan=\"5\"><hr /></th></tr>\r\n");
+
+        if (! isRootDir) {
+            maWrite(q, "<tr><td valign=\"top\"><img src=\"/icons/back.gif\"");
+            maWrite(q, "alt=\"[DIR]\" /></td><td><a href=\"%s%s\">", parent, parentSuffix);
+            maWrite(q, "Parent Directory</a></td>");
+            maWrite(q, "<td align=\"right\">  - </td></tr>\r\n");
+        }
+
+    } else if (dir->fancyIndexing == 1) {
+        maWrite(q, "<pre><img src=\"/icons/space.gif\" alt=\"Icon\" /> ");
+
+        maWrite(q, "<a href=\"?C=N;O=%c;F=%c\">Name</a>%*s", reverseOrder, fancy, nameSize - 3, " ");
+        maWrite(q, "<a href=\"?C=M;O=%c;F=%c\">Last modified</a>       ", reverseOrder, fancy);
+        maWrite(q, "<a href=\"?C=S;O=%c;F=%c\">Size</a>               ", reverseOrder, fancy);
+        maWrite(q, "<a href=\"?C=D;O=%c;F=%c\">Description</a>\r\n", reverseOrder, fancy);
+
+        maWrite(q, "<hr />");
+
+        if (! isRootDir) {
+            maWrite(q, "<img src=\"/icons/parent.gif\" alt=\"[DIR]\" />");
+            maWrite(q, " <a href=\"%s%s\">Parent Directory</a>\r\n", parent, parentSuffix);
+        }
+
+    } else {
+        maWrite(q, "<ul>\n");
+        if (! isRootDir) {
+            maWrite(q, "<li><a href=\"%s%s\"> Parent Directory</a></li>\r\n", parent, parentSuffix);
+        }
+    }
+    mprFree(parent);
+}
+
+
+static void fmtNum(char *buf, int bufsize, int num, int divisor, char *suffix)
+{
+    int     whole, point;
+
+    whole = num / divisor;
+    point = (num % divisor) / (divisor / 10);
+
+    if (point == 0) {
+        mprSprintf(buf, bufsize, "%6d%s", whole, suffix);
+    } else {
+        mprSprintf(buf, bufsize, "%4d.%d%s", whole, point, suffix);
+    }
+}
+
+
+static void outputLine(MaQueue *q, MprDirEntry *ep, cchar *path, int nameSize)
+{
+    MprPath     info;
+    Dir         *dir;
+    MprTime     when;
+    MaHost      *host;
+    char        *newPath, sizeBuf[16], timeBuf[48], *icon;
+    struct tm   tm;
+    bool        isDir;
+    int         len;
+    cchar       *ext, *mimeType;
+    char        *dirSuffix;
+    char        *months[] = { 
+                    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" 
+                };
+
+    dir = q->stage->stageData;
+    if (ep->size >= (1024*1024*1024)) {
+        fmtNum(sizeBuf, sizeof(sizeBuf), (int) ep->size, 1024 * 1024 * 1024, "G");
+
+    } else if (ep->size >= (1024*1024)) {
+        fmtNum(sizeBuf, sizeof(sizeBuf), (int) ep->size, 1024 * 1024, "M");
+
+    } else if (ep->size >= 1024) {
+        fmtNum(sizeBuf, sizeof(sizeBuf), (int) ep->size, 1024, "K");
+
+    } else {
+        mprSprintf(sizeBuf, sizeof(sizeBuf), "%6d", (int) ep->size);
+    }
+
+    newPath = mprJoinPath(q, path, ep->name);
+
+    if (mprGetPathInfo(q, newPath, &info) < 0) {
+        when = mprGetTime(q);
+        isDir = 0;
+
+    } else {
+        isDir = info.isDir ? 1 : 0;
+        when = (MprTime) info.mtime * MPR_TICKS_PER_SEC;
+    }
+    mprFree(newPath);
+
+    if (isDir) {
+        icon = "folder";
+        dirSuffix = "/";
+    } else {
+        host = q->conn->host;
+        ext = mprGetPathExtension(q, ep->name);
+        if ((mimeType = maLookupMimeType(host, ext)) != 0) {
+            if (strcmp(ext, "es") == 0 || strcmp(ext, "ejs") == 0 || strcmp(ext, "php") == 0) {
+                icon = "text";
+            } else if (strstr(mimeType, "text") != 0) {
+                icon = "text";
+            } else {
+                icon = "compressed";
+            }
+        } else {
+            icon = "compressed";
+        }
+        dirSuffix = "";
+    }
+
+    mprDecodeLocalTime(q, &tm, when);
+
+    mprSprintf(timeBuf, sizeof(timeBuf), "%02d-%3s-%4d %02d:%02d",
+        tm.tm_mday, months[tm.tm_mon], tm.tm_year + 1900, tm.tm_hour,  tm.tm_min);
+
+    len = (int) strlen(ep->name) + (int) strlen(dirSuffix);
+
+    if (dir->fancyIndexing == 2) {
+
+        maWrite(q, "<tr><td valign=\"top\">");
+        maWrite(q, "<img src=\"/icons/%s.gif\" alt=\"[   ]\", /></td>", icon);
+        maWrite(q, "<td><a href=\"%s%s\">%s%s</a></td>", ep->name, dirSuffix, ep->name, dirSuffix);
+        maWrite(q, "<td>%s</td><td>%s</td></tr>\r\n", timeBuf, sizeBuf);
+
+    } else if (dir->fancyIndexing == 1) {
+
+        maWrite(q, "<img src=\"/icons/%s.gif\" alt=\"[   ]\", /> ", icon);
+        maWrite(q, "<a href=\"%s%s\">%s%s</a>%-*s %17s %4s\r\n", ep->name, dirSuffix, ep->name, dirSuffix, 
+            nameSize - len, "", timeBuf, sizeBuf);
+
+    } else {
+        maWrite(q, "<li><a href=\"%s%s\"> %s%s</a></li>\r\n", ep->name, dirSuffix, ep->name, dirSuffix);
+    }
+}
+
+
+static void outputFooter(MaQueue *q)
+{
+    MaConn      *conn;
+    MprSocket   *sock;
+    Dir         *dir;
+    
+    conn = q->conn;
+    dir = q->stage->stageData;
+    
+    if (dir->fancyIndexing == 2) {
+        maWrite(q, "<tr><th colspan=\"5\"><hr /></th></tr>\r\n</table>\r\n");
+        
+    } else if (dir->fancyIndexing == 1) {
+        maWrite(q, "<hr /></pre>\r\n");
+    } else {
+        maWrite(q, "</ul>\r\n");
+    }
+    
+    sock = conn->sock->listenSock;
+    maWrite(q, "<address>%s %s at %s Port %d</address>\r\n", BLD_NAME, BLD_VERSION, sock->ipAddr, sock->port);
+    maWrite(q, "</body></html>\r\n");
+}
+
+
+static void filterDirList(MaConn *conn, MprList *list)
+{
+    Dir             *dir;
+    MprDirEntry     *dp;
+    int             next;
+
+    dir = conn->response->handler->stageData;
+    
+    /*
+     *  Do pattern matching. Entries that don't match, free the name to mark
+     */
+    for (next = 0; (dp = mprGetNextItem(list, &next)) != 0; ) {
+        if (! match(dir->pattern, dp->name)) {
+            mprRemoveItem(list, dp);
+            mprFree(dp);
+            next--;
+        }
+    }
+}
+
+
+/*
+ *  Return true if the file matches the pattern. Supports '?' and '*'
+ */
+static int match(cchar *pattern, cchar *file)
+{
+    cchar   *pp, *fp;
+
+    if (pattern == 0 || *pattern == '\0') {
+        return 1;
+    }
+    if (file == 0 || *file == '\0') {
+        return 0;
+    }
+
+    for (pp = pattern, fp = file; *pp; ) {
+        if (*fp == '\0') {
+            if (*pp == '*' && pp[1] == '\0') {
+                /* Trailing wild card */
+                return 1;
+            }
+            return 0;
+        }
+
+        if (*pp == '*') {
+            if (match(&pp[1], &fp[0])) {
+                return 1;
+            }
+            fp++;
+            continue;
+
+        } else if (*pp == '?' || *pp == *fp) {
+            fp++;
+
+        } else {
+            return 0;
+        }
+        pp++;
+    }
+    if (*fp == '\0') {
+        /* Match */
+        return 1;
+    }
+    return 0;
+}
+
+
+#if BLD_FEATURE_CONFIG_PARSE
+static int parseDir(MaHttp *http, cchar *key, char *value, MaConfigState *state)
+{
+    MaStage     *handler;
+    Dir         *dir;
+    
+    char    *extensions, *option, *nextTok, *junk;
+
+    handler = maLookupStage(http, "dirHandler");
+    dir = handler->stageData;
+    mprAssert(dir);
+    
+    if (mprStrcmpAnyCase(key, "AddIcon") == 0) {
+        /*  AddIcon file ext ext ext */
+        /*  Not yet supported */
+        mprStrTok(value, " \t", &extensions);
+        parseWords(dir->extList, extensions);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "DefaultIcon") == 0) {
+        /*  DefaultIcon file */
+        /*  Not yet supported */
+        dir->defaultIcon = mprStrTok(value, " \t", &junk);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "IndexOrder") == 0) {
+        /*  IndexOrder ascending|descending name|date|size */
+        mprFree(dir->sortField);
+        dir->sortField = 0;
+        option = mprStrTok(value, " \t", &dir->sortField);
+        if (mprStrcmpAnyCase(option, "ascending") == 0) {
+            dir->sortOrder = 1;
+        } else {
+            dir->sortOrder = -1;
+        }
+        if (dir->sortField) {
+            dir->sortField = mprStrdup(dir, dir->sortField);
+        }
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "IndexIgnore") == 0) {
+        /*  IndexIgnore pat ... */
+        /*  Not yet supported */
+        parseWords(dir->ignoreList, value);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "IndexOptions") == 0) {
+        /*  IndexOptions FancyIndexing|FoldersFirst ... (set of options) */
+        option = mprStrTok(value, " \t", &nextTok);
+        while (option) {
+            if (mprStrcmpAnyCase(option, "FancyIndexing") == 0) {
+                dir->fancyIndexing = 1;
+            } else if (mprStrcmpAnyCase(option, "HTMLTable") == 0) {
+                dir->fancyIndexing = 2;
+            } else if (mprStrcmpAnyCase(option, "FoldersFirst") == 0) {
+                dir->foldersFirst = 1;
+            }
+            option = mprStrTok(nextTok, " \t", &nextTok);
+        }
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "Options") == 0) {
+        /*  Options Indexes */
+        option = mprStrTok(value, " \t", &nextTok);
+        while (option) {
+            if (mprStrcmpAnyCase(option, "Indexes") == 0) {
+                dir->enabled = 1;
+            }
+            option = mprStrTok(nextTok, " \t", &nextTok);
+        }
+        return 1;
+    }
+    return 0;
+}
+#endif
+
+
+static void parseWords(MprList *list, cchar *str)
+{
+    char    *word, *tok, *strTok;
+
+    mprAssert(str);
+    if (str == 0 || *str == '\0') {
+        return;
+    }
+
+    strTok = mprStrdup(list, str);
+    word = mprStrTok(strTok, " \t\r\n", &tok);
+    while (word) {
+        mprAddItem(list, word);
+        word = mprStrTok(0, " \t\r\n", &tok);
+    }
+}
+
+
+/*
+ *  Dynamic module initialization
+ */
+MprModule *maDirHandlerInit(MaHttp *http, cchar *path)
+{
+    MprModule   *module;
+    MaStage     *handler;
+    Dir         *dir;
+
+    module = mprCreateModule(http, "dirHandler", BLD_VERSION, NULL, NULL, NULL);
+    if (module == 0) {
+        return 0;
+    }
+    handler = maCreateHandler(http, "dirHandler", MA_STAGE_GET | MA_STAGE_HEAD);
+    if (handler == 0) {
+        mprFree(module);
+        return 0;
+    }
+    handler->match = matchDir; 
+    handler->run = runDir; 
+    handler->parse = parseDir; 
+    handler->stageData = dir = mprAllocObjZeroed(handler, Dir);
+    dir->sortOrder = 1;
+    http->dirHandler = handler;
+    return module;
+}
+
+#else
+
+MprModule *maDirHandlerInit(MaHttp *http, cchar *path)
+{
+    return 0;
+}
+#endif /* BLD_FEATURE_DIR */
+
 
 /*
  *  @copy   default
@@ -7122,7 +8233,1657 @@ MprModule *maAuthFilterInit(MaHttp *http, cchar *path)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/filters/authFilter.c"
+ *  End of file "../src/http/handlers/dirHandler.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/handlers/egiHandler.c"
+ */
+/************************************************************************/
+
+/*
+ *  egiHandler.c -- Embedded Gateway Interface (EGI) handler. Fast in-process replacement for CGI.
+ *
+ *  The EGI handler implements a very fast in-process CGI scheme.
+ *
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+
+
+#if BLD_FEATURE_EGI
+#if BLD_DEBUG
+/*
+ *  Non-production in-line test code
+ */
+#define EGI_TEST 1
+
+static int  egiTestInit(MaHttp *http, cchar *path);
+static int  getVars(MaQueue *q, char ***keys, char *buf, int len);
+static void printFormVars(MaQueue *q);
+static void printRequestHeaders(MaQueue *q);
+static void printQueryData(MaQueue *q);
+static void printBodyData(MaQueue *q);
+#endif
+
+/*
+ *  This runs when all input data has been received. The egi form must write all the data.
+ *  It currently does not support forms that return before writing all the data.
+ */
+static void runEgi(MaQueue *q)
+{
+    MaConn          *conn;
+    MaRequest       *req;
+    MaEgiForm       *form;
+    MaEgi           *egi;
+
+    conn = q->conn;
+    req = conn->request;
+    egi = (MaEgi*) q->stage->stageData;
+    
+    maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
+    maDontCacheResponse(conn);
+    maPutForService(q, maCreateHeaderPacket(q), 0);
+
+    form = (MaEgiForm*) mprLookupHash(egi->forms, req->url);
+    if (form == 0) {
+        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Egi Form: \"%s\" is not defined", req->url);
+    } else {
+        (*form)(q);
+    }
+    maPutForService(q, maCreateEndPacket(q), 1);
+}
+
+
+/*
+ *  User API to define a form
+ */
+int maDefineEgiForm(MaHttp *http, cchar *name, MaEgiForm *form)
+{
+    MaEgi       *egi;
+    MaStage     *handler;
+
+    handler = http->egiHandler;
+    if (handler) {
+        egi = (MaEgi*) handler->stageData;
+        mprAddHash(egi->forms, name, form);
+    }
+    return 0;
+}
+
+
+/*
+ *  Dynamic module initialization
+ */
+MprModule *maEgiHandlerInit(MaHttp *http, cchar *path)
+{
+    MprModule   *module;
+    MaStage     *handler;
+    MaEgi       *egi;
+
+    module = mprCreateModule(http, "egiHandler", BLD_VERSION, NULL, NULL, NULL);
+    if (module == 0) {
+        return 0;
+    }
+    handler = maCreateHandler(http, "egiHandler", 
+        MA_STAGE_GET | MA_STAGE_HEAD | MA_STAGE_POST | MA_STAGE_PUT | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_VIRTUAL);
+    if (handler == 0) {
+        mprFree(module);
+        return 0;
+    }
+    http->egiHandler = handler;
+
+    handler->run = runEgi; 
+    handler->stageData = egi = mprAllocObjZeroed(handler, MaEgi);
+    egi->forms = mprCreateHash(egi, MA_EGI_HASH_SIZE);
+#if EGI_TEST
+    egiTestInit(http, path);
+#endif
+    return module;
+}
+
+
+/*
+ *  This code is never in release product.
+ */
+
+#if EGI_TEST
+
+#if UNUSED
+static cchar *cback(MaConn *conn, int *code, cchar *targetUri)
+{
+    *code = 302;
+    // return mprAsprintf(conn, -1, "https://www.embedthis.com/vpn");
+    return mprAsprintf(conn, -1, "/vpn");
+}
+#endif
+
+static void simpleTest(MaQueue *q)
+{
+    MaHttp          *http;
+    MaServer        *server;
+    MaListen        *listen;
+    MaHostAddress   *address;
+
+    http = mprGetMpr(q)->appwebHttpService;
+    server = http->defaultServer;
+    listen = mprGetFirstItem(server->listens);
+    maStopListening(listen);
+
+    if ((address = maLookupHostAddress(server, listen->ipAddr, listen->port)) != 0) {
+        mprRemoveItem(server->hostAddresses, address);
+    }
+    listen->port = 5555;
+
+    address = maCreateHostAddress(server, listen->ipAddr, listen->port);
+    mprAddItem(server->hostAddresses, address);
+    maInsertVirtualHost(address, server->defaultHost);
+
+    maStartListening(listen);
+
+#if UNUSED
+    maSetRedirectCallback(q->conn, cback);
+    maRedirect(q->conn, 302, "/abc/anything");
+#endif
+    maWrite(q, "Hello %s\r\n", maGetFormVar(q->conn, "name", "unknown"));
+}
+
+
+static void bigTest(MaQueue *q)
+{
+    int     i;
+
+    for (i = 0; i < 200; i++) {
+        maWrite(q, "line %04d 012345678901234567890123456789012345678901234567890123456789\r\n", i);
+    }
+}
+
+
+static void exitApp(MaQueue *q)
+{
+    mprLog(q, 0, "Instructed to exit ...");
+    mprTerminate(q, 1);
+}
+
+
+static void printVars(MaQueue *q)
+{
+    MaConn      *conn;
+    MaResponse  *resp;
+    MaRequest   *req;
+    char        *sw;
+    char        *newLocation;
+    int         responseStatus;
+
+    conn = q->conn;
+    resp = conn->response;
+    req = conn->request;
+    newLocation = 0;
+    responseStatus = 0;
+    sw = 0;
+
+    /*
+     *  Parse the switches
+     */
+    if (req->parsedUri->query) {
+        sw = (char*) strstr(req->parsedUri->query, "SWITCHES=");
+        if (sw) {
+            sw = mprUrlDecode(resp, &sw[9]);
+            if (*sw == '-') {
+                if (sw[1] == 'l') {
+                    newLocation = sw + 3;
+                } else if (sw[1] == 's') {
+                    responseStatus = atoi(sw + 3);
+                }
+            }
+        }
+    }
+
+    maSetResponseCode(conn, 200);
+    maSetResponseMimeType(conn, "text/html");
+    maDontCacheResponse(conn);
+
+    /*
+     *  Test writing headers. The Server header overwrote the "Server" header
+     *
+     *  maSetHeader(conn, "MyCustomHeader", "true");
+     *  maSetHeader(conn, "Server", "private");
+     */
+
+    if (maGetCookies(conn) == 0) {
+        maSetCookie(conn, "appwebTest", "Testing can be fun", "/", NULL, 43200, 0);
+    }
+
+    if (newLocation) {
+        maRedirect(conn, 302, newLocation);
+
+    } else if (responseStatus) {
+        maFailRequest(conn, responseStatus, "Custom Status");
+
+    } else {
+        maWrite(q, "<HTML><TITLE>egiProgram: EGI Output</TITLE><BODY>\r\n");
+
+        printRequestHeaders(q);
+        printFormVars(q);
+        printQueryData(q);
+        printBodyData(q);
+
+        maWrite(q, "</BODY></HTML>\r\n");
+    }
+    if (sw) {
+        mprFree(sw);
+    }
+}
+
+
+static void printRequestHeaders(MaQueue *q)
+{
+    MprHashTable    *env;
+    MprHash         *hp;
+
+    maWrite(q, "<H2>Request Headers</H2>\r\n");
+
+    env = q->conn->request->headers;
+
+    for (hp = 0; (hp = mprGetNextHash(env, hp)) != 0; ) {
+        maWrite(q, "<P>%s=%s</P>\r\n", hp->key, hp->data ? hp->data: "");
+    }
+    maWrite(q, "\r\n");
+}
+
+
+static void printFormVars(MaQueue *q)
+{
+    MprHashTable    *env;
+    MprHash         *hp;
+
+    maWrite(q, "<H2>Request Form Variables</H2>\r\n");
+
+    env = q->conn->request->formVars;
+
+    for (hp = 0; (hp = mprGetNextHash(env, hp)) != 0; ) {
+        maWrite(q, "<P>%s=%s</P>\r\n", hp->key, hp->data ? hp->data: "");
+    }
+    maWrite(q, "\r\n");
+}
+
+
+static void printQueryData(MaQueue *q)
+{
+    MaRequest   *req;
+    char        buf[MPR_MAX_STRING], **keys, *value;
+    int         i, numKeys;
+
+    req = q->conn->request;
+    if (req->parsedUri->query == 0) {
+        return;
+    }
+    mprStrcpy(buf, sizeof(buf), req->parsedUri->query);
+    numKeys = getVars(q, &keys, buf, (int) strlen(buf));
+
+    if (numKeys == 0) {
+        maWrite(q, "<H2>No Query Data Found</H2>\r\n");
+    } else {
+        maWrite(q, "<H2>Decoded Query Data Variables</H2>\r\n");
+        for (i = 0; i < (numKeys * 2); i += 2) {
+            value = keys[i+1];
+            maWrite(q, "<p>QVAR %s=%s</p>\r\n", keys[i], value ? value: "");
+        }
+    }
+    maWrite(q, "\r\n");
+    mprFree(keys);
+}
+
+
+static void printBodyData(MaQueue *q)
+{
+    MprBuf  *buf;
+    char    **keys, *value;
+    int     i, numKeys;
+    
+    if (q->pair == 0 || q->pair->first == 0) {
+        return;
+    }
+    
+    buf = q->pair->first->content;
+    mprAddNullToBuf(buf);
+    
+    numKeys = getVars(q, &keys, mprGetBufStart(buf), mprGetBufLength(buf));
+
+    if (numKeys == 0) {
+        maWrite(q, "<H2>No Body Data Found</H2>\r\n");
+    } else {
+        maWrite(q, "<H2>Decoded Body Data</H2>\r\n");
+        for (i = 0; i < (numKeys * 2); i += 2) {
+            value = keys[i+1];
+            maWrite(q, "<p>PVAR %s=%s</p>\r\n", keys[i], value ? value: "");
+        }
+    }
+    maWrite(q, "\r\n");
+    mprFree(keys);
+}
+
+
+static int getVars(MaQueue *q, char ***keys, char *buf, int len)
+{
+    char**  keyList;
+    char    *eq, *cp, *pp, *tok;
+    int     i, keyCount;
+
+    *keys = 0;
+
+    /*
+     *  Change all plus signs back to spaces
+     */
+    keyCount = (len > 0) ? 1 : 0;
+    for (cp = buf; cp < &buf[len]; cp++) {
+        if (*cp == '+') {
+            *cp = ' ';
+        } else if (*cp == '&' && (cp > buf && cp < &buf[len - 1])) {
+            keyCount++;
+        }
+    }
+
+    if (keyCount == 0) {
+        return 0;
+    }
+
+    /*
+     *  Crack the input into name/value pairs 
+     */
+    keyList = (char**) mprAlloc(q, (keyCount * 2) * (int) sizeof(char**));
+
+    i = 0;
+    tok = 0;
+    for (pp = mprStrTok(buf, "&", &tok); pp; pp = mprStrTok(0, "&", &tok)) {
+        if ((eq = strchr(pp, '=')) != 0) {
+            *eq++ = '\0';
+            pp = mprUrlDecode(q, pp);
+            eq = mprUrlDecode(q, eq);
+        } else {
+            pp = mprUrlDecode(q, pp);
+            eq = 0;
+        }
+        if (i < (keyCount * 2)) {
+            keyList[i++] = pp;
+            keyList[i++] = eq;
+        }
+    }
+    *keys = keyList;
+    return keyCount;
+}
+
+
+static void upload(MaQueue *q)
+{
+    MaConn      *conn;
+    char        *sw;
+    char        *newLocation;
+    int         responseStatus;
+
+    conn = q->conn;
+    newLocation = 0;
+    responseStatus = 0;
+
+    sw = (char*) strstr(maGetFormVar(conn, "QUERY_STRING", ""), "SWITCHES=");
+    if (sw) {
+        sw = mprUrlDecode(sw, &sw[9]);
+        if (*sw == '-') {
+            if (sw[1] == 'l') {
+                newLocation = sw + 3;
+            } else if (sw[1] == 's') {
+                responseStatus = atoi(sw + 3);
+            }
+        }
+    }
+
+    maSetResponseCode(conn, 200);
+    maSetResponseMimeType(conn, "text/html");
+    maDontCacheResponse(conn);
+
+    /*
+     *  Test writing headers. The Server header overwrote the "Server" header
+     *
+     *  maSetHeader(conn, "MyCustomHeader: true");
+     *  maSetHeader(conn, "Server: private");
+     */
+
+    if (maGetCookies(conn) == 0) {
+        maSetCookie(conn, "appwebTest", "Testing can be fun", "/", NULL, 43200, 0);
+    }
+
+    if (newLocation) {
+        maRedirect(conn, 302, newLocation);
+
+    } else if (responseStatus) {
+        maFailRequest(conn, responseStatus, "Custom Status");
+
+    } else {
+        maWrite(q, "<HTML><TITLE>egiProgram: EGI Output</TITLE><BODY>\r\n");
+
+        printRequestHeaders(q);
+        printQueryData(q);
+        printBodyData(q);
+
+        maWrite(q, "</BODY></HTML>\r\n");
+    }
+    if (sw) {
+        mprFree(sw);
+    }
+}
+
+
+static int egiTestInit(MaHttp *http, cchar *path)
+{
+    /*
+     *  Five instances of the same program. Location blocks must be defined in appweb.conf to test these.
+     */
+    maDefineEgiForm(http, "/egi/exit", exitApp);
+    maDefineEgiForm(http, "/egi/egiProgram", printVars);
+    maDefineEgiForm(http, "/egi/egiProgram.egi", printVars);
+    maDefineEgiForm(http, "/egi/egi Program.egi", printVars);
+    maDefineEgiForm(http, "/egiProgram.egi", printVars);
+    maDefineEgiForm(http, "/MyInProcScripts/egiProgram.egi", printVars);
+    maDefineEgiForm(http, "/myEgi/egiProgram.egi", printVars);
+    maDefineEgiForm(http, "/myEgi/egiProgram", printVars);
+    maDefineEgiForm(http, "/upload/upload.egi", upload);
+    maDefineEgiForm(http, "/egi/test", simpleTest);
+    maDefineEgiForm(http, "/test.egi", simpleTest);
+    maDefineEgiForm(http, "/big.egi", bigTest);
+
+    return 0;
+}
+#endif /* EGI_TEST */
+
+
+#else
+
+MprModule *maEgiHandlerInit(MaHttp *http, cchar *path)
+{
+    return 0;
+}
+
+#endif /* BLD_FEATURE_EGI */
+
+
+/*
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/handlers/egiHandler.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/handlers/fileHandler.c"
+ */
+/************************************************************************/
+
+/*
+ *  fileHandler.c -- Static file content handler
+ *
+ *  This handler manages static file based content such as HTML, GIF /or JPEG pages. It supports all methods including:
+ *  GET, PUT, DELETE, OPTIONS and TRACE.
+ *
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+
+
+#if BLD_FEATURE_FILE
+
+
+static void handleDeleteRequest(MaQueue *q);
+static int  readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size);
+static void handlePutRequest(MaQueue *q);
+
+/*
+ *  Initialize a handler instance for the file handler.
+ */
+static void openFile(MaQueue *q)
+{
+    MaRequest       *req;
+    MaResponse      *resp;
+    MaLocation      *location;
+    MaConn          *conn;
+    char            *date;
+
+    conn = q->conn;
+    resp = conn->response;
+    req = conn->request;
+    location = req->location;
+
+    switch (req->method) {
+    case MA_REQ_GET:
+    case MA_REQ_HEAD:
+    case MA_REQ_POST:
+        if (resp->fileInfo.valid && resp->fileInfo.mtime) {
+            date = maGetDateString(conn->arena, &resp->fileInfo);
+            maSetHeader(conn, 0, "Last-Modified", date);
+            mprFree(date);
+        }
+        if (maContentNotModified(conn)) {
+            maSetResponseCode(conn, MPR_HTTP_CODE_NOT_MODIFIED);
+            maOmitResponseBody(conn);
+        } else {
+            maSetEntityLength(conn, resp->fileInfo.size);
+        }
+        
+        if (!resp->fileInfo.isReg && !resp->fileInfo.isLink) {
+            maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't locate document: %s", req->url);
+            
+        } else if (!(resp->connector == conn->http->sendConnector)) {
+            /*
+             *  Open the file if a body must be sent with the response. The file will be automatically closed when 
+             *  the response is freed. Cool eh?
+             */
+            resp->file = mprOpen(resp, resp->filename, O_RDONLY | O_BINARY, 0);
+            if (resp->file == 0) {
+                maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't open document: %s", resp->filename);
+            }
+        }
+        break;
+                
+    case MA_REQ_PUT:
+    case MA_REQ_DELETE:
+        if (location->flags & MA_LOC_PUT_DELETE) {
+            maOmitResponseBody(conn);
+            break;
+        }
+        /* Method not supported - fall through */
+            
+    default:
+        maFailRequest(q->conn, MPR_HTTP_CODE_BAD_METHOD, 
+            "Method %s not supported by file handler at this location %s", req->methodName, location->prefix);
+        break;
+    }
+}
+
+
+/*
+    Called after auth has run
+ */
+static void startFile(MaQueue *q)
+{
+    MaRequest       *req;
+    MaLocation      *location;
+    MaConn          *conn;
+
+    conn = q->conn;
+    req = conn->request;
+    location = req->location;
+
+    if (conn->requestFailed) {
+        return;
+    }
+    switch (req->method) {
+    case MA_REQ_PUT:
+    case MA_REQ_DELETE:
+        if (location->flags & MA_LOC_PUT_DELETE) {
+            if (req->method == MA_REQ_PUT) {
+                handlePutRequest(q);
+            } else {
+                handleDeleteRequest(q);
+            }
+            break;
+        }
+    }
+}
+
+
+static void runFile(MaQueue *q)
+{
+    MaConn          *conn;
+    MaRequest       *req;
+    MaResponse      *resp;
+    MaPacket        *packet;
+
+    conn = q->conn;
+    req = conn->request;
+    resp = conn->response;
+    
+    maPutForService(q, maCreateHeaderPacket(q), 0);
+   
+    if (!(resp->flags & MA_RESP_NO_BODY) || req->method & MA_REQ_HEAD) {
+        /*
+         *  Create a single data packet based on the entity length.
+         */
+        packet = maCreateEntityPacket(q, 0, resp->entityLength, readFileData);
+        if (!req->ranges) {
+            resp->length = resp->entityLength;
+        }
+        maPutForService(q, packet, 0);
+    }
+
+    /*
+     *  Append end-of-data packet. Signifies end of stream.
+     */
+    maPutForService(q, maCreateEndPacket(q), 1);
+}
+
+
+/*  
+    Return true if the next queue will accept this packet. If not, then disable the queue's service procedure.
+    This may split the packet if it exceeds the downstreams maximum packet size.
+ */
+static int prepPacket(MaQueue *q, MaPacket *packet)
+{
+    MaConn      *conn;
+    MaResponse  *resp;
+    MaQueue     *nextQ;
+    int         size, nbytes;
+
+    conn = q->conn;
+    resp = conn->response;
+    nextQ = q->nextQ;
+
+    if (packet->esize > nextQ->packetSize) {
+        maPutBack(q, maSplitPacket(resp, packet, nextQ->packetSize));
+        size = nextQ->packetSize;
+    } else {
+        size = (int) packet->esize;
+    }
+    if ((size + nextQ->count) > nextQ->max) {
+        /*  
+            The downstream queue is full, so disable the queue and mark the downstream queue as full and service 
+            Will re-enable via a writable event on the connection.
+         */
+        mprLog(q, 7, "Disable queue %s", q->owner);
+        maDisableQueue(q);
+        nextQ->flags |= MA_QUEUE_FULL;
+        if (!(nextQ->flags & MA_QUEUE_DISABLED)) {
+            maScheduleQueue(nextQ);
+        }
+        return 0;
+    }
+    nbytes = readFileData(q, packet, q->ioPos, size);
+    if (nbytes > 0) {
+        q->ioPos += nbytes;
+    }
+    return nbytes;
+}
+
+
+/*
+ *  The service routine will be called when all incoming data has been received. This routine may flow control if the 
+ *  downstream stage cannot accept all the file data. It will then be re-called as required to send more data.
+ */
+static void outgoingFileService(MaQueue *q)
+{
+    MaConn      *conn;
+    MaRequest   *req;
+    MaResponse  *resp;
+    MaPacket    *packet;
+    bool        usingSend;
+    int         len;
+
+    conn = q->conn;
+    req = conn->request;
+    resp = conn->response;
+    usingSend = resp->connector == conn->http->sendConnector;
+
+    mprLog(q, 7, "\noutgoingFileService");
+
+    for (packet = maGet(q); packet; packet = maGet(q)) {
+        if (!req->ranges && !usingSend && packet->flags & MA_PACKET_DATA) {
+            if ((len = prepPacket(q, packet)) <= 0) {
+                if (len < 0) {
+                    return;
+                }
+                maPutBack(q, packet);
+                return;
+            }
+        }
+        maPutNext(q, packet);
+    }
+    mprLog(q, 7, "outgoingFileService complete");
+}
+
+
+static void incomingFileData(MaQueue *q, MaPacket *packet)
+{
+    MaConn      *conn;
+    MaResponse  *resp;
+    MaRequest   *req;
+    MaRange     *range;
+    MprBuf      *buf;
+    MprFile     *file;
+    int         len;
+
+    conn = q->conn;
+    resp = conn->response;
+    req = conn->request;
+
+    file = (MprFile*) q->queueData;
+    if (file == 0) {
+        /* 
+         *  Not a PUT so just ignore the incoming data.
+         */
+        maFreePacket(q, packet);
+        return;
+    }
+    if (maGetPacketLength(packet) == 0) {
+        /*
+         *  End of input
+         */
+        mprFree(file);
+        q->queueData = 0;
+        return;
+    }
+    buf = packet->content;
+    len = mprGetBufLength(buf);
+    mprAssert(len > 0);
+
+    range = req->inputRange;
+    if (range && mprSeek(file, SEEK_SET, range->start) != range->start) {
+        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Can't seek to range start to %d", range->start);
+
+    } else if (mprWrite(file, mprGetBufStart(buf), len) != len) {
+        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Can't PUT to %s", resp->filename);
+    }
+    maFreePacket(q, packet);
+}
+
+
+/*
+ *  Populate a packet with file data
+ */
+static int readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size)
+{
+    MaConn      *conn;
+    MaResponse  *resp;
+    int         nbytes;
+
+    conn = q->conn;
+    resp = conn->response;
+    
+    if (packet->content == 0 && (packet->content = mprCreateBuf(packet, size, -1)) == 0) {
+        return MPR_ERR_NO_MEMORY;
+    }
+    mprLog(q, 7, "readFileData size %Ld, pos %Ld", size, pos);
+    
+    if (pos >= 0) {
+        mprSeek(resp->file, SEEK_SET, pos);
+    }
+    if ((nbytes = mprRead(resp->file, mprGetBufStart(packet->content), size)) != size) {
+        /*
+         *  As we may have sent some data already to the client, the only thing we can do is abort and hope the client 
+         *  notices the short data.
+         */
+        maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't read file %s", resp->filename);
+        return MPR_ERR_CANT_READ;
+    }
+    mprAdjustBufEnd(packet->content, nbytes);
+    packet->esize -= nbytes;
+    mprAssert(packet->esize == 0);
+    return nbytes;
+}
+
+
+/*
+ *  This is called to setup for a HTTP PUT request. It is called before receiving the post data via incomingFileData
+ */
+static void handlePutRequest(MaQueue *q)
+{
+    MaConn          *conn;
+    MaRequest       *req;
+    MaResponse      *resp;
+    MprFile         *file;
+    char            *path;
+
+    mprAssert(q->pair->queueData == 0);
+
+    conn = q->conn;
+    req = conn->request;
+    resp = conn->response;
+    path = resp->filename;
+
+    if (req->ranges) {
+        /*
+         *  Open an existing file with fall-back to create
+         */
+        file = mprOpen(q, path, O_BINARY | O_WRONLY, 0644);
+        if (file == 0) {
+            file = mprOpen(q, path, O_CREAT | O_TRUNC | O_BINARY | O_WRONLY, 0644);
+            if (file == 0) {
+                maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Can't create the put URI");
+                return;
+            }
+        } else {
+            mprSeek(file, SEEK_SET, 0);
+        }
+    } else {
+        file = mprOpen(q, path, O_CREAT | O_TRUNC | O_BINARY | O_WRONLY, 0644);
+        if (file == 0) {
+            maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Can't create the put URI");
+            return;
+        }
+    }
+    maSetResponseCode(conn, resp->fileInfo.isReg ? MPR_HTTP_CODE_NO_CONTENT : MPR_HTTP_CODE_CREATED);
+    q->pair->queueData = (void*) file;
+}
+
+
+/*
+ *  Immediate processing of delete requests
+ */
+static void handleDeleteRequest(MaQueue *q)
+{
+    MaConn      *conn;
+    char        *path;
+
+    conn = q->conn;
+    path = conn->response->filename;
+
+    if (!conn->response->fileInfo.isReg) {
+        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "URI not found");
+        return;
+    }
+    if (mprDeletePath(q, path) < 0) {
+        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't remove URI");
+        return;
+    }
+    maSetResponseCode(conn, MPR_HTTP_CODE_NO_CONTENT);
+}
+
+
+/*
+ *  Dynamic module initialization
+ */
+MprModule *maFileHandlerInit(MaHttp *http, cchar *path)
+{
+    MprModule   *module;
+    MaStage     *handler;
+
+    module = mprCreateModule(http, "fileHandler", BLD_VERSION, NULL, NULL, NULL);
+    if (module == 0) {
+        return 0;
+    }
+    handler = maCreateHandler(http, "fileHandler", 
+        MA_STAGE_GET | MA_STAGE_HEAD | MA_STAGE_POST | MA_STAGE_PUT | MA_STAGE_DELETE | MA_STAGE_VERIFY_ENTITY);
+    if (handler == 0) {
+        mprFree(module);
+        return 0;
+    }
+    handler->open = openFile;
+    handler->start = startFile;
+    handler->run = runFile;
+    handler->outgoingService = outgoingFileService;
+    handler->incomingData = incomingFileData;
+    http->fileHandler = handler;
+    return module;
+}
+
+
+#else
+
+MprModule *maFileHandlerInit(MaHttp *http, cchar *path)
+{
+    return 0;
+}
+#endif /* BLD_FEATURE_FILE */
+
+/*
+ *  @copy   default
+ *
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire
+ *  a commercial license from Embedthis Software. You agree to be fully bound
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with
+ *  this software for full details.
+ *
+ *  This software is open source; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version. See the GNU General Public License for more
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ *  This GPL license does NOT permit incorporating this software into
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses
+ *  for this software and support services are available from Embedthis
+ *  Software at http://www.embedthis.com
+ *
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/handlers/fileHandler.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/handlers/passHandler.c"
+ */
+/************************************************************************/
+
+/*
+ *  passHandler.c -- Pass through handler
+ *
+ *  This handler simply relays all content onto a connector. It is used to convey errors.
+ *
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+
+
+
+static void runPass(MaQueue *q)
+{
+    maPutForService(q, maCreateHeaderPacket(q), 0);
+    maPutForService(q, maCreateEndPacket(q), 1);
+}
+
+
+static void incomingPassData(MaQueue *q, MaPacket *packet)
+{
+    maFreePacket(q, packet);
+}
+
+
+int maOpenPassHandler(MaHttp *http)
+{
+    MaStage     *stage;
+
+    stage = maCreateHandler(http, "passHandler", MA_STAGE_ALL | MA_STAGE_VIRTUAL);
+    if (stage == 0) {
+        return MPR_ERR_CANT_CREATE;
+    }
+    stage->run = runPass;
+    stage->incomingData = incomingPassData;
+    http->passHandler = stage;
+
+    return 0;
+}
+
+
+/*
+ *  @copy   default
+ *
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire
+ *  a commercial license from Embedthis Software. You agree to be fully bound
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with
+ *  this software for full details.
+ *
+ *  This software is open source; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version. See the GNU General Public License for more
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ *  This GPL license does NOT permit incorporating this software into
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses
+ *  for this software and support services are available from Embedthis
+ *  Software at http://www.embedthis.com
+ *
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/handlers/passHandler.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/handlers/phpHandler.c"
+ */
+/************************************************************************/
+
+/*
+    phpHandler.c - Appweb PHP handler
+  
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+
+
+#if BLD_FEATURE_PHP
+
+#if BLD_WIN_LIKE
+    /*
+     *  Workaround for VS 2005 and PHP headers. Need to include before PHP headers include it.
+     */
+    #if _MSC_VER >= 1400
+        #include    <sys/utime.h>
+    #endif
+    #undef  WIN32
+    #define WIN32 1
+    #define WINNT 1
+    #define TIME_H
+    #undef _WIN32_WINNT
+    #undef chdir
+    #undef popen
+    #undef pclose
+    #define PHP_WIN32 1
+    #define ZEND_WIN32 1
+    #define ZTS 1
+#endif
+    #undef ulong
+    #undef HAVE_SOCKLEN_T
+
+    /*
+     *  Indent headers to side-step make depend if PHP is not enabled
+     */
+    #include <main/php.h>
+    #include <main/php_globals.h>
+    #include <main/php_variables.h>
+    #include <Zend/zend_modules.h>
+    #include <main/SAPI.h>
+#ifdef PHP_WIN32
+    #include <win32/time.h>
+    #include <win32/signal.h>
+    #include <process.h>
+#else
+    #include <main/build-defs.h>
+#endif
+    #include <Zend/zend.h>
+    #include <Zend/zend_extensions.h>
+    #include <main/php_ini.h>
+    #include <main/php_globals.h>
+    #include <main/php_main.h>
+#if ZTS
+    #include <TSRM/TSRM.h>
+#endif
+
+
+typedef struct MaPhp {
+    zval    *var_array;             /* Track var array */
+} MaPhp;
+
+
+static void flushOutput(void *context);
+static void logMessage(char *message);
+static int  initializePhp(MaHttp *http);
+static char *readCookies(TSRMLS_D);
+static int  readPostData(char *buffer, uint len TSRMLS_DC);
+static void registerServerVars(zval *varArray TSRMLS_DC);
+static int  startup(sapi_module_struct *sapiModule);
+static int  sendHeaders(sapi_headers_struct *sapiHeaders TSRMLS_DC);
+static int  writeBlock(cchar *str, uint len TSRMLS_DC);
+
+#if PHP_MAJOR_VERSION >=5 && PHP_MINOR_VERSION >= 3
+static int  writeHeader(sapi_header_struct *sapiHeader, sapi_header_op_enum op, sapi_headers_struct *sapiHeaders TSRMLS_DC);
+#else
+static int  writeHeader(sapi_header_struct *sapiHeader, sapi_headers_struct *sapiHeaders TSRMLS_DC);
+#endif
+
+/*
+ *  PHP Module Interface
+ */
+static sapi_module_struct phpSapiBlock = {
+    BLD_PRODUCT,                    /* Sapi name */
+    BLD_NAME,                       /* Full name */
+    startup,                        /* Start routine */
+    php_module_shutdown_wrapper,    /* Stop routine  */
+    0,                              /* Activate */
+    0,                              /* Deactivate */
+    writeBlock,                     /* Write */
+    flushOutput,                    /* Flush */
+    0,                              /* Getuid */
+    0,                              /* Getenv */
+    php_error,                      /* Errors */
+    writeHeader,                    /* Write headers */
+    sendHeaders,                    /* Send headers */
+    0,                              /* Send single header */
+    readPostData,                   /* Read body data */
+    readCookies,                    /* Read session cookies */
+    registerServerVars,             /* Define request variables */
+    logMessage,                     /* Emit a log message */
+    NULL,                           /* Override for the php.ini */
+    0,                              /* Block */
+    0,                              /* Unblock */
+    STANDARD_SAPI_MODULE_PROPERTIES
+};
+
+
+static void openPhp(MaQueue *q)
+{
+    MaRequest       *req;
+    MaResponse      *resp;
+    MaConn          *conn;
+
+    conn = q->conn;
+    if (!q->stage->stageData) {
+        if (initializePhp(conn->http) < 0) {
+            maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "PHP initialization failed");
+        }
+        q->stage->stageData = (void*) 1;
+    }
+    resp = conn->response;
+    req = conn->request;
+
+    switch (req->method) {
+    case MA_REQ_GET:
+    case MA_REQ_HEAD:
+    case MA_REQ_POST:
+    case MA_REQ_PUT:
+        q->queueData = mprAllocObjZeroed(resp, MaPhp);
+        maDontCacheResponse(conn);
+        maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
+        break;
+                
+    case MA_REQ_DELETE:
+    default:
+        maFailRequest(q->conn, MPR_HTTP_CODE_BAD_METHOD, "Method not supported by file handler: %s", req->methodName);
+        break;
+    }
+}
+
+
+static void runPhp(MaQueue *q)
+{
+    MaConn              *conn;
+    MaRequest           *req;
+    MaResponse          *resp;
+    MaPhp               *php;
+    FILE                *fp;
+    char                shebang[MPR_MAX_STRING];
+    zend_file_handle    file_handle;
+
+    TSRMLS_FETCH();
+
+    conn = q->conn;
+    req = conn->request;
+    resp = conn->response;
+    php = q->queueData;
+
+    maPutForService(q, maCreateHeaderPacket(q), 0);
+
+    /*
+     *  Set the request context
+     */
+    zend_first_try {
+        php->var_array = 0;
+        SG(server_context) = conn;
+        if (req->user) {
+            SG(request_info).auth_user = estrdup(req->user);
+        }
+        if (req->password) {
+            SG(request_info).auth_password = estrdup(req->password);
+        }
+        if (req->authType && req->authDetails) {
+            SG(request_info).auth_digest = estrdup(mprAsprintf(req, -1, "%s %s", req->authType, req->authDetails));
+        }
+        SG(request_info).auth_password = req->password;
+        SG(request_info).content_type = req->mimeType;
+        SG(request_info).content_length = req->length;
+        SG(sapi_headers).http_response_code = MPR_HTTP_CODE_OK;
+        SG(request_info).path_translated = resp->filename;
+        SG(request_info).query_string = req->parsedUri->query;
+        SG(request_info).request_method = req->methodName;
+        SG(request_info).request_uri = req->url;
+
+        /*
+         *  Workaround on MAC OS X where the SIGPROF is given to the wrong thread
+         */
+        PG(max_input_time) = -1;
+        EG(timeout_seconds) = 0;
+
+        /* The readPostData callback may be invoked during startup */
+        php_request_startup(TSRMLS_C);
+        CG(zend_lineno) = 0;
+
+    } zend_catch {
+        mprError(q, "Can't start PHP request");
+        zend_try {
+            php_request_shutdown(0);
+        } zend_end_try();
+        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "PHP initialization failed");
+        return;
+    } zend_end_try();
+
+
+    /*
+     *  Execute the script file
+     */
+    file_handle.filename = resp->filename;
+    file_handle.free_filename = 0;
+    file_handle.opened_path = 0;
+
+#if LOAD_FROM_FILE
+    file_handle.type = ZEND_HANDLE_FILENAME;
+#else
+    file_handle.type = ZEND_HANDLE_FP;
+    if ((fp = fopen(resp->filename, "r")) == NULL) {
+        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR,  "PHP can't open script");
+        return;
+    }
+    /*
+        Check for shebang and skip
+     */
+    file_handle.handle.fp = fp;
+    shebang[0] = '\0';
+    if (fgets(shebang, sizeof(shebang), file_handle.handle.fp) != 0) {
+        if (shebang[0] != '#' || shebang[1] != '!') {
+            fseek(fp, 0L, SEEK_SET);
+        }
+    }
+#endif
+
+    zend_try {
+        php_execute_script(&file_handle TSRMLS_CC);
+        if (!SG(headers_sent)) {
+            sapi_send_headers(TSRMLS_C);
+        }
+    } zend_catch {
+        php_request_shutdown(0);
+        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR,  "PHP script execution failed");
+        return;
+    } zend_end_try();
+
+    zend_try {
+        php_request_shutdown(0);
+    } zend_end_try();
+
+    maPutForService(q, maCreateEndPacket(q), 1);
+}
+
+/*
+ *
+ *  Flush write data back to the client
+ */
+static void flushOutput(void *server_context)
+{
+    MaConn      *conn;
+
+    conn = (MaConn*) server_context;
+    if (conn) {
+        maServiceQueues(conn);
+    }
+}
+
+
+static int writeBlock(cchar *str, uint len TSRMLS_DC)
+{
+    MaConn      *conn;
+    int         written;
+
+    conn = (MaConn*) SG(server_context);
+    if (conn == 0) {
+        return -1;
+    }
+    written = maWriteBlock(conn->response->queue[MA_QUEUE_SEND].nextQ, str, len, 1);
+    mprLog(mprGetMpr(0), 6, "php: write %d", written);
+    if (written <= 0) {
+        php_handle_aborted_connection();
+    }
+    return written;
+}
+
+
+static void registerServerVars(zval *track_vars_array TSRMLS_DC)
+{
+    MaConn      *conn;
+    MaPhp       *php;
+    MaRequest    *req;
+    MprHash      *hp;
+
+    conn = (MaConn*) SG(server_context);
+    if (conn == 0) {
+        return;
+    }
+    php_import_environment_variables(track_vars_array TSRMLS_CC);
+
+    if (SG(request_info).request_uri) {
+        php_register_variable("PHP_SELF", SG(request_info).request_uri,  track_vars_array TSRMLS_CC);
+    }
+    if ((php = maGetHandlerQueueData(conn)) == 0) {
+        return;
+    }
+    php->var_array = track_vars_array;
+
+    /*
+        Define header variables
+     */
+    zend_try {
+        req = conn->request;
+        hp = mprGetFirstHash(req->headers);
+        while (hp) {
+            if (hp->data) {
+                php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
+                mprLog(conn, 6, "php: header var %s = %s", hp->key, hp->data);
+
+            }
+            hp = mprGetNextHash(req->headers, hp);
+        }
+        hp = mprGetFirstHash(req->formVars);
+        while (hp) {
+            if (hp->data) {
+                php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
+                mprLog(conn, 6, "php: form var %s = %s", hp->key, hp->data);
+            }
+            hp = mprGetNextHash(req->formVars, hp);
+        }
+    } zend_end_try();
+}
+
+
+static void logMessage(char *message)
+{
+    mprLog(mprGetMpr(0), 0, "phpModule: %s", message);
+}
+
+
+static char *readCookies(TSRMLS_D)
+{
+    MaConn      *conn;
+
+    conn = (MaConn*) SG(server_context);
+    return conn->request->cookie;
+}
+
+
+static int sendHeaders(sapi_headers_struct *phpHeaders TSRMLS_DC)
+{
+    MaConn      *conn;
+
+    conn = (MaConn*) SG(server_context);
+    maSetResponseCode(conn, phpHeaders->http_response_code);
+    maSetResponseMimeType(conn, phpHeaders->mimetype);
+    mprLog(mprGetMpr(0), 6, "php: send headers");
+    return SAPI_HEADER_SENT_SUCCESSFULLY;
+}
+
+
+#if PHP_MAJOR_VERSION >=5 && PHP_MINOR_VERSION >= 3
+static int writeHeader(sapi_header_struct *sapiHeader, sapi_header_op_enum op, sapi_headers_struct *sapiHeaders TSRMLS_DC)
+#else
+static int writeHeader(sapi_header_struct *sapiHeader, sapi_headers_struct *sapi_headers TSRMLS_DC)
+#endif
+{
+    MaConn      *conn;
+    MaResponse  *resp;
+    char        *key, *value;
+
+    conn = (MaConn*) SG(server_context);
+    resp = conn->response;
+
+    key = mprStrdup(resp, sapiHeader->header);
+    if ((value = strchr(key, ':')) == 0) {
+        return -1;
+    }
+    *value++ = '\0';
+    while (!isalnum(*value) && *value) {
+        value++;
+    }
+#if PHP_MAJOR_VERSION >=5 && PHP_MINOR_VERSION >= 3
+    switch(op) {
+        case SAPI_HEADER_DELETE_ALL:
+            return 0;
+
+        case SAPI_HEADER_DELETE:
+            return 0;
+
+        case SAPI_HEADER_REPLACE:
+            maSetHeader(conn, 0, key, value);
+            return SAPI_HEADER_ADD;
+
+        case SAPI_HEADER_ADD:
+            maSetHeader(conn, 1, key, value);
+            return SAPI_HEADER_ADD;
+
+        default:
+            return 0;
+    }
+#else
+{
+    bool        allowMultiple;
+    allowMultiple = !sapiHeader->replace;
+    maSetHeader(conn, allowMultiple, key, value);
+    return SAPI_HEADER_ADD;
+}
+#endif
+}
+
+
+static int readPostData(char *buffer, uint bufsize TSRMLS_DC)
+{
+    MaConn      *conn;
+    MaQueue     *q;
+    MprBuf      *content;
+    int         len, nbytes;
+
+    conn = (MaConn*) SG(server_context);
+    q = conn->response->queue[MA_QUEUE_RECEIVE].prevQ;
+    if (q->first == 0) {
+        return 0;
+    }
+    content = q->first->content;
+    len = min(mprGetBufLength(content), (int) bufsize);
+    if (len > 0) {
+        nbytes = mprMemcpy(buffer, len, mprGetBufStart(content), len);
+        mprAssert(nbytes == len);
+        mprAdjustBufStart(content, len);
+    }
+    mprLog(mprGetMpr(0), 6, "php: read post data %d remaining %d", len, mprGetBufLength(content));
+    return len;
+}
+
+
+static int startup(sapi_module_struct *sapi_module)
+{
+    return php_module_startup(sapi_module, 0, 0);
+}
+
+
+/*
+ *  Initialze the php module
+ */
+static int initializePhp(MaHttp *http)
+{
+#if ZTS
+    void                    ***tsrm_ls;
+    php_core_globals        *core_globals;
+    sapi_globals_struct     *sapi_globals;
+    zend_llist              global_vars;
+    zend_compiler_globals   *compiler_globals;
+    zend_executor_globals   *executor_globals;
+
+    tsrm_startup(128, 1, 0, 0);
+    compiler_globals = (zend_compiler_globals*)  ts_resource(compiler_globals_id);
+    executor_globals = (zend_executor_globals*)  ts_resource(executor_globals_id);
+    core_globals = (php_core_globals*) ts_resource(core_globals_id);
+    sapi_globals = (sapi_globals_struct*) ts_resource(sapi_globals_id);
+    tsrm_ls = (void***) ts_resource(0);
+#endif
+
+    mprLog(http, 2, "php: initialize php library");
+#ifdef BLD_FEATURE_PHP_INI
+    phpSapiBlock.php_ini_path_override = BLD_FEATURE_PHP_INI;
+#else
+    phpSapiBlock.php_ini_path_override = http->defaultServer->serverRoot;
+#endif
+    sapi_startup(&phpSapiBlock);
+    if (php_module_startup(&phpSapiBlock, 0, 0) == FAILURE) {
+        mprError(http, "PHP did not initialize");
+        return MPR_ERR_CANT_INITIALIZE;
+    }
+#if ZTS
+    zend_llist_init(&global_vars, sizeof(char *), 0, 0);
+#endif
+
+#if UNUSED
+    SG(options) |= SAPI_OPTION_NO_CHDIR;
+#endif
+    zend_alter_ini_entry("register_argc_argv", 19, "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+    zend_alter_ini_entry("html_errors", 12, "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+    zend_alter_ini_entry("implicit_flush", 15, "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
+    return 0;
+}
+
+
+static int finalizePhp(MprModule *mp)
+{
+    MaHttp      *http;
+    MaStage     *stage;
+
+    TSRMLS_FETCH();
+
+    mprLog(mp, 4, "php: Finalize library before unloading");
+
+    php_module_shutdown(TSRMLS_C);
+    sapi_shutdown();
+#if ZTS
+    tsrm_shutdown();
+#endif
+    http = mprGetMpr(mp)->appwebHttpService;
+    if ((stage = maLookupStage(http, "phpHandler")) != 0) {
+        stage->stageData = 0;
+    }
+    return 0;
+}
+
+
+/*
+ *  Dynamic module initialization
+ */
+MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
+{
+    MprModule   *module;
+    MaStage     *handler;
+
+    if ((module = mprCreateModule(http, "phpHandler", BLD_VERSION, http, NULL, finalizePhp)) == 0) {
+        return 0;
+    }
+    module->path = mprStrdup(module, path);
+
+    if ((handler = maLookupStage(http, "phpHandler")) == 0) {
+        handler = maCreateHandler(http, "phpHandler", 
+            MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | 
+            MA_STAGE_MISSING_EXT);
+        if (handler == 0) {
+            mprFree(module);
+            return 0;
+        }
+    }
+    http->phpHandler = handler;
+    handler->open = openPhp;
+    handler->run = runPhp;
+    handler->module = module;
+    mprFree(handler->path);
+    handler->path = mprStrdup(handler, path);
+    return module;
+}
+
+
+#else
+MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
+{
+    return 0;
+}
+
+#endif /* BLD_FEATURE_PHP */
+
+/*
+    @copy   default
+  
+    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+  
+    This software is distributed under commercial and open source licenses.
+    You may use the GPL open source license described below or you may acquire
+    a commercial license from Embedthis Software. You agree to be fully bound
+    by the terms of either license. Consult the LICENSE.TXT distributed with
+    this software for full details.
+  
+    This software is open source; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or (at your
+    option) any later version. See the GNU General Public License for more
+    details at: http://www.embedthis.com/downloads/gplLicense.html
+  
+    This program is distributed WITHOUT ANY WARRANTY; without even the
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  
+    This GPL license does NOT permit incorporating this software into
+    proprietary programs. If you are unable to comply with the GPL, you must
+    acquire a commercial license to use this software. Commercial licenses
+    for this software and support services are available from Embedthis
+    Software at http://www.embedthis.com
+  
+    Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/handlers/phpHandler.c"
  */
 /************************************************************************/
 
@@ -8022,842 +10783,84 @@ MaHost *maLookupVirtualHost(MaHostAddress *hostAddress, cchar *hostStr)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/server.c"
+ *  Start of file "../src/http/link.c"
  */
 /************************************************************************/
 
 /*
- *  server.c -- Server Class to manage a single server
+ *  link.c -- Link in static modules and initialize.
  *
- *  An instance of the MaServer Class may be created for each http.conf file. Each server can manage multiple hosts
- *  (standard, virtual or SSL). This file parses the http.conf file and creates all the necessary MaHost, MaDir and
- *  MaLocation objects to manage the server's operation.
- *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ *  Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 
 
+#if BLD_FEATURE_STATIC || (!BLD_APPWEB_PRODUCT && BLD_APPWEB_BUILTIN)
 
-#if BLD_UNIX_LIKE
-static int allDigits(cchar *s);
+static MprModule *staticModules[64];        /* List of static modules */
+static int maxStaticModules;                /* Max static modules */
+
+
+void maLoadStaticModules(MaHttp *http)
+{
+    int     index = 0;
+
+    staticModules[index] = 0;
+
+#if BLD_FEATURE_AUTH
+    staticModules[index++] = maAuthFilterInit(http, NULL);
 #endif
-static void initLimits(MaHttp *http);
-static int  httpDestructor(MaHttp *http);
-
-/*
- *  Create a web server described by a config file. 
- */
-MaHttp *maCreateWebServer(cchar *configFile)
-{
-    Mpr         *mpr;
-    MaHttp      *http;
-    MaServer    *server;
-
-    /*
-     *  Initialize and start the portable runtime services.
-     */
-    if ((mpr = mprCreate(0, NULL, NULL)) == 0) {
-        mprError(mpr, "Can't create the web server runtime");
-        return 0;
-    }
-    if (mprStart(mpr, 0) < 0) {
-        mprError(mpr, "Can't start the web server runtime");
-        return 0;
-    }
-    http = maCreateHttp(mpr);
-    if ((server = maCreateServer(http, configFile, NULL, NULL, -1)) == 0) {
-        mprError(mpr, "Can't create the web server");
-        return 0;
-    }
-    if (maParseConfig(server, configFile) < 0) {
-        mprError(mpr, "Can't parse the config file %s", configFile);
-        return 0;
-    }
-    return http;
-}
-
-
-/*
- *  Service requests for a web server.
- */
-int maServiceWebServer(MaHttp *http)
-{
-    if (maStartHttp(http) < 0) {
-        mprError(http, "Can't start the web server");
-        return MPR_ERR_CANT_CREATE;
-    }
-    mprServiceEvents(mprGetDispatcher(http), -1, MPR_SERVICE_EVENTS | MPR_SERVICE_IO);
-    maStopHttp(http);
-    return 0;
-}
-
-
-/*
- *  Run a web server using a config file. 
- */
-int maRunWebServer(cchar *configFile)
-{
-    MaHttp      *http;
-
-    if ((http = maCreateWebServer(configFile)) == 0) {
-        return MPR_ERR_CANT_CREATE;
-    }
-    return maServiceWebServer(http);
-}
-
-
-int maRunSimpleWebServer(cchar *ipAddr, int port, cchar *docRoot)
-{
-    Mpr         *mpr;
-    MaHttp      *http;
-    MaServer    *server;
-
-    /*
-     *  Initialize and start the portable runtime services.
-     */
-    if ((mpr = mprCreate(0, NULL, NULL)) == 0) {
-        mprError(mpr, "Can't create the web server runtime");
-        return MPR_ERR_CANT_CREATE;
-    }
-    if (mprStart(mpr, 0) < 0) {
-        mprError(mpr, "Can't start the web server runtime");
-        return MPR_ERR_CANT_INITIALIZE;
-    }
-
-    /*
-     *  Create the HTTP object.
-     */
-    if ((http = maCreateHttp(mpr)) == 0) {
-        mprError(mpr, "Can't create the web server http services");
-        return MPR_ERR_CANT_INITIALIZE;
-    }
-
-    /*
-     *  Create and start the HTTP server. Give the server a name of "default" and define "." as 
-     *  the default serverRoot, ie. the directory with the server configuration files.
-     */
-    server = maCreateServer(http, ipAddr, ".", ipAddr, port);
-    if (server == 0) {
-        mprError(mpr, "Can't create the web server");
-        return MPR_ERR_CANT_CREATE;
-    }
-    maSetDocumentRoot(server->defaultHost, docRoot);
-    
-    if (maStartHttp(http) < 0) {
-        mprError(mpr, "Can't start the web server");
-        return MPR_ERR_CANT_CREATE;
-    }
-    mprServiceEvents(mprGetDispatcher(mpr), -1, MPR_SERVICE_EVENTS | MPR_SERVICE_IO);
-    maStopHttp(http);
-    mprFree(mpr);
-    return 0;
-}
-
-
-MaHttp *maCreateHttp(MprCtx ctx)
-{
-    MaHttp      *http;
-
-    http = mprAllocObjWithDestructorZeroed(ctx, MaHttp, httpDestructor);
-    if (http == 0) {
-        return 0;
-    }
-    mprGetMpr(ctx)->appwebHttpService = http;
-    http->servers = mprCreateList(http);
-    http->stages = mprCreateHash(http, 0);
-
-#if BLD_FEATURE_MULTITHREAD
-    http->mutex = mprCreateLock(http);
+#if BLD_FEATURE_CGI
+    staticModules[index++] = maCgiHandlerInit(http, NULL);
 #endif
+#if BLD_FEATURE_CHUNK
+    staticModules[index++] = maChunkFilterInit(http, NULL);
+#endif
+#if BLD_FEATURE_DIR
+    staticModules[index++] = maDirHandlerInit(http, NULL);
+#endif
+#if BLD_FEATURE_EJS
+    staticModules[index++] = maEjsHandlerInit(http, NULL);
+#endif
+#if BLD_FEATURE_FILE
+    staticModules[index++] = maFileHandlerInit(http, NULL);
+#endif
+#if BLD_FEATURE_EGI
+    staticModules[index++] = maEgiHandlerInit(http, NULL);
+#endif
+#if BLD_FEATURE_SSL
+    staticModules[index++] = maSslModuleInit(http, NULL);
+#endif
+#if BLD_FEATURE_PHP
+    staticModules[index++] = maPhpHandlerInit(http, NULL);
+#endif
+#if BLD_FEATURE_RANGE
+    staticModules[index++] = maRangeFilterInit(http, NULL);
+#endif
+#if BLD_FEATURE_UPLOAD
+    staticModules[index++] = maUploadFilterInit(http, NULL);
+#endif
+#ifdef BLD_STATIC_MODULE
+    staticModules[index++] = BLD_STATIC_MODULE(http, NULL);
+#endif
+    maxStaticModules = index;
+}
 
-    initLimits(http);
 
-#if BLD_UNIX_LIKE
+void maUnloadStaticModules(MaHttp *http)
 {
-    struct passwd   *pp;
-    struct group    *gp;
+    int     i;
 
-    http->uid = getuid();
-    if ((pp = getpwuid(http->uid)) == 0) {
-        mprError(http, "Can't read user credentials: %d. Check your /etc/passwd file.", http->uid);
-    } else {
-        http->username = mprStrdup(http, pp->pw_name);
-    }
-
-    http->gid = getgid();
-    if ((gp = getgrgid(http->gid)) == 0) {
-        mprError(http, "Can't read group credentials: %d. Check your /etc/group file", http->gid);
-    } else {
-        http->groupname = mprStrdup(http, gp->gr_name);
+    for (i = 0; i < maxStaticModules; i++) {
+        mprUnloadModule(staticModules[i]);
     }
 }
+
 #else
-    http->uid = http->gid = -1;
-#endif
+void maLoadStaticModules(MaHttp *http) {}
+void maUnloadStaticModules(MaHttp *http) {}
 
-#if BLD_FEATURE_SEND
-    maOpenSendConnector(http);
-#endif
-#if BLD_FEATURE_NET
-    maOpenNetConnector(http);
-#endif
-    maOpenPassHandler(http);
-    return http;
-}
-
-
-static int httpDestructor(MaHttp *http)
-{
-    maUnloadStaticModules(http);
-    return 0;
-}
-
-
-void maAddServer(MaHttp *http, MaServer *server)
-{
-    mprAddItem(http->servers, server);
-}
-
-
-void maSetDefaultServer(MaHttp *http, MaServer *server)
-{
-    http->defaultServer = server;
-}
-
-
-MaServer *maLookupServer(MaHttp *http, cchar *name)
-{
-    MaServer    *server;
-    int         next;
-
-    for (next = 0; (server = mprGetNextItem(http->servers, &next)) != 0; ) {
-        if (strcmp(server->name, name) == 0) {
-            return server;
-        }
-    }
-    return 0;
-}
-
-
-void maRegisterStage(MaHttp *http, MaStage *stage)
-{
-    mprAddHash(http->stages, stage->name, stage);
-}
-
-
-MaStage *maLookupStage(MaHttp *http, cchar *name)
-{
-    return (MaStage*) mprLookupHash(http->stages, name);
-}
-
-
-void *maLookupStageData(MaHttp *http, cchar *name)
-{
-    MaStage     *stage;
-
-    stage = (MaStage*) mprLookupHash(http->stages, name);
-    return stage->stageData;
-}
-
-
-#if BLD_FEATURE_CMD
-void maSetForkCallback(MaHttp *http, MprForkCallback callback, void *data)
-{
-    http->forkCallback = callback;
-    http->forkData = data;
-}
-#endif
-
-
-int maStartHttp(MaHttp *http)
-{
-    MaServer    *server;
-    int         next;
-
-    /*
-     *  Start servers (and hosts)
-     */
-    for (next = 0; (server = mprGetNextItem(http->servers, &next)) != 0; ) {
-        if (maStartServer(server) < 0) {
-            return MPR_ERR_CANT_INITIALIZE;
-        }
-    }
-
-    return 0;
-}
-
-
-int maStopHttp(MaHttp *http)
-{
-    MaServer    *server;
-    int         next;
-
-    for (next = 0; (server = mprGetNextItem(http->servers, &next)) != 0; ) {
-        maStopServer(server);
-    }
-    return 0;
-}
-
-
-int maSetHttpUser(MaHttp *http, cchar *newUser)
-{
-#if BLD_UNIX_LIKE
-    struct passwd   *pp;
-
-    if (allDigits(newUser)) {
-        http->uid = atoi(newUser);
-        if ((pp = getpwuid(http->uid)) == 0) {
-            mprError(http, "Bad user id: %d", http->uid);
-            return MPR_ERR_CANT_ACCESS;
-        }
-        newUser = pp->pw_name;
-
-    } else {
-        if ((pp = getpwnam(newUser)) == 0) {
-            mprError(http, "Bad user name: %s", newUser);
-            return MPR_ERR_CANT_ACCESS;
-        }
-        http->uid = pp->pw_uid;
-    }
-#endif
-
-    mprFree(http->username);
-    http->username = mprStrdup(http, newUser);
-
-    return 0;
-}
-
-
-int maSetHttpGroup(MaHttp *http, cchar *newGroup)
-{
-#if BLD_UNIX_LIKE
-    struct group    *gp;
-
-    if (allDigits(newGroup)) {
-        http->gid = atoi(newGroup);
-        if ((gp = getgrgid(http->gid)) == 0) {
-            mprError(http, "Bad group id: %d", http->gid);
-            return MPR_ERR_CANT_ACCESS;
-        }
-        newGroup = gp->gr_name;
-
-    } else {
-        if ((gp = getgrnam(newGroup)) == 0) {
-            mprError(http, "Bad group name: %s", newGroup);
-            return MPR_ERR_CANT_ACCESS;
-        }
-        http->gid = gp->gr_gid;
-    }
-#endif
-
-    mprFree(http->groupname);
-    http->groupname = mprStrdup(http, newGroup);
-
-    return 0;
-}
-
-
-int maApplyChangedUser(MaHttp *http)
-{
-#if BLD_UNIX_LIKE
-    if (http->uid >= 0) {
-        if ((setuid(http->uid)) != 0) {
-            mprError(http, "Can't change user to: %s: %d\n"
-                "WARNING: This is a major security exposure", http->username, http->uid);
-#if LINUX && PR_SET_DUMPABLE
-        } else {
-            prctl(PR_SET_DUMPABLE, 1);
-#endif
-        }
-    }
-#endif
-    return 0;
-}
-
-
-int maApplyChangedGroup(MaHttp *http)
-{
-#if BLD_UNIX_LIKE
-    if (http->gid >= 0) {
-        if (setgid(http->gid) != 0) {
-            mprError(http, "Can't change group to %s: %d\n"
-                "WARNING: This is a major security exposure", http->groupname, http->gid);
-#if LINUX && PR_SET_DUMPABLE
-        } else {
-            prctl(PR_SET_DUMPABLE, 1);
-#endif
-        }
-    }
-#endif
-    return 0;
-}
-
-
-void maSetListenCallback(MaHttp *http, MaListenCallback fn)
-{
-    http->listenCallback = fn;
-}
-
-
-/*
- *  Load a module. Returns 0 if the modules is successfully loaded either statically or dynamically.
- */
-MprModule *maLoadModule(MaHttp *http, cchar *name, cchar *libname)
-{
-    MprModule   *module;
-    char        entryPoint[MPR_MAX_FNAME];
-    char        *path;
-
-    path = 0;
-
-    module = mprLookupModule(http, name);
-    if (module) {
-        mprLog(http, MPR_CONFIG, "Activating module (Builtin) %s", name);
-        return module;
-    }
-    mprSprintf(entryPoint, sizeof(entryPoint), "ma%sInit", name);
-    entryPoint[2] = toupper((int) entryPoint[2]);
-
-    if (libname == 0) {
-        path = mprStrcat(http, -1, "mod_", name, BLD_SHOBJ, NULL);
-    }
-    if ((module = mprLoadModule(http, (libname) ? libname: path, entryPoint)) == 0) {
-        return 0;
-    }
-    mprLog(http, MPR_CONFIG, "Activating module (Loadable) %s", name);
-    return module;
-}
-
-
-int maUnloadModule(MaHttp *http, cchar *name)
-{
-    MprModule   *module;
-    MaStage     *stage;
-
-    if ((module = mprLookupModule(http, name)) == 0) {
-        return MPR_ERR_CANT_ACCESS;
-    }
-    if (module->timeout) {
-        if ((stage = maLookupStage(http, name)) != 0) {
-            stage->flags |= MA_STAGE_UNLOADED;
-        }
-        mprUnloadModule(module);
-    }
-    return 0;
-}
-
-
-static void initLimits(MaHttp *http)
-{
-    MaLimits    *limits;
-
-    limits = &http->limits;
-
-    limits->maxBody = MA_MAX_BODY;
-    limits->maxChunkSize = MA_MAX_CHUNK_SIZE;
-    limits->maxResponseBody = MA_MAX_RESPONSE_BODY;
-    limits->maxStageBuffer = MA_MAX_STAGE_BUFFER;
-    limits->maxNumHeaders = MA_MAX_NUM_HEADERS;
-    limits->maxHeader = MA_MAX_HEADERS;
-    limits->maxUrl = MPR_MAX_URL;
-    limits->maxUploadSize = MA_MAX_UPLOAD_SIZE;
-    limits->maxThreads = MA_DEFAULT_MAX_THREADS;
-    limits->minThreads = 0;
-
-    /*
-     *  Zero means use O/S defaults
-     */
-    limits->threadStackSize = 0;
-}
-
-
-/*
- *  Create a new server. There is typically only one server with one or more (virtual) hosts.
- */
-MaServer *maCreateServer(MaHttp *http, cchar *name, cchar *root, cchar *ipAddr, int port)
-{
-    MaServer        *server;
-    MaHostAddress   *hostAddress;
-    MaListen        *listen;
-    static int      staticModulesLoaded = 0;
-
-    mprAssert(http);
-    mprAssert(name && *name);
-
-    server = mprAllocObjZeroed(http, MaServer);
-    if (server == 0) {
-        return 0;
-    }
-
-    server->hosts = mprCreateList(server);
-    server->listens = mprCreateList(server);
-    server->hostAddresses = mprCreateList(server);
-    server->name = mprStrdup(server, name);
-    server->http = http;
-
-    maAddServer(http, server);
-    maSetServerRoot(server, root);
-
-    if (ipAddr && port > 0) {
-        listen = maCreateListen(server, ipAddr, port, 0);
-        maAddListen(server, listen);
-
-        hostAddress = maCreateHostAddress(server, ipAddr, port);
-        mprAddItem(server->hostAddresses, hostAddress);
-    }
-    maSetDefaultServer(http, server);
-    if (!staticModulesLoaded) {
-        staticModulesLoaded = 1;
-        maLoadStaticModules(http);
-    }
-    return server;
-}
-
-
-int maStartServer(MaServer *server)
-{
-    MaHost      *host;
-    MaListen    *listen;
-    int         next, count, warned;
-
-    /*
-     *  Start the hosts
-     */
-    for (next = 0; (host = mprGetNextItem(server->hosts, &next)) != 0; ) {
-        mprLog(server, 1, "Starting host named: \"%s\"", host->name);
-        if (maStartHost(host) < 0) {
-            return MPR_ERR_CANT_INITIALIZE;
-        }
-    }
-
-    /*
-     *  Listen to all required ipAddr:ports
-     */
-    warned = 0;
-    count = 0;
-    for (next = 0; (listen = mprGetNextItem(server->listens, &next)) != 0; ) {
-        if (maStartListening(listen) < 0) {
-            mprError(server, "Can't listen for HTTP on %s:%d", listen->ipAddr, listen->port);
-            warned++;
-            break;
-
-        } else {
-            count++;
-        }
-    }
-
-    if (count == 0) {
-        if (! warned) {
-            mprError(server, "Server is not listening on any addresses");
-        }
-        return MPR_ERR_CANT_OPEN;
-    }
-
-    /*
-     *  Now change user and group to the desired identities (user must be last)
-     */
-    if (maApplyChangedGroup(server->http) < 0 || maApplyChangedUser(server->http) < 0) {
-        return MPR_ERR_CANT_COMPLETE;
-    }
-
-    return 0;
-}
-
-
-/*
- *  Stop the server and stop listening on all ports
- */
-int maStopServer(MaServer *server)
-{
-    MaHost      *host;
-    MaListen    *listen;
-    int         next;
-
-    for (next = 0; (listen = mprGetNextItem(server->listens, &next)) != 0; ) {
-        maStopListening(listen);
-    }
-    for (next = 0; (host = mprGetNextItem(server->hosts, &next)) != 0; ) {
-        maStopHost(host);
-    }
-    return 0;
-}
-
-
-void maAddHost(MaServer *server, MaHost *host)
-{
-    mprAddItem(server->hosts, host);
-}
-
-
-void maAddListen(MaServer *server, MaListen *listen)
-{
-    mprAddItem(server->listens, listen);
-}
-
-
-MaHost *maLookupHost(MaServer *server, cchar *name)
-{
-    MaHost  *host;
-    int     next;
-
-    for (next = 0; (host = mprGetNextItem(server->hosts, &next)) != 0; ) {
-        if (strcmp(host->name, name) == 0) {
-            return host;
-        }
-    }
-    return 0;
-}
-
-
-/*
- *  Lookup a host address. If ipAddr is null or port is -1, then those elements are wild.
- */
-MaHostAddress *maLookupHostAddress(MaServer *server, cchar *ipAddr, int port)
-{
-    MaHostAddress   *address;
-    int             next;
-
-    for (next = 0; (address = mprGetNextItem(server->hostAddresses, &next)) != 0; ) {
-        if (address->port < 0 || port < 0 || address->port == port) {
-            if (ipAddr == 0 || address->ipAddr == 0 || strcmp(address->ipAddr, ipAddr) == 0) {
-                return address;
-            }
-        }
-    }
-    return 0;
-}
-
-
-/*
- *  Create the host addresses for a host. Called for hosts or for NameVirtualHost directives (host == 0).
- */
-int maCreateHostAddresses(MaServer *server, MaHost *host, cchar *configValue)
-{
-    MaListen        *listen;
-    MaHostAddress   *address;
-    char            *ipAddrPort, *ipAddr, *value, *tok;
-    char            addrBuf[MPR_MAX_IP_ADDR_PORT];
-    int             next, port;
-
-    address = 0;
-    value = mprStrdup(server, configValue);
-    ipAddrPort = mprStrTok(value, " \t", &tok);
-
-    while (ipAddrPort) {
-        if (mprStrcmpAnyCase(ipAddrPort, "_default_") == 0) {
-            mprAssert(0);
-            ipAddrPort = "*:*";
-        }
-
-        if (mprParseIp(server, ipAddrPort, &ipAddr, &port, -1) < 0) {
-            mprError(server, "Can't parse ipAddr %s", ipAddrPort);
-            continue;
-        }
-        mprAssert(ipAddr && *ipAddr);
-        if (ipAddr[0] == '*') {
-            ipAddr = mprStrdup(server, "");
-        }
-
-        /*
-         *  For each listening endpiont,
-         */
-        for (next = 0; (listen = mprGetNextItem(server->listens, &next)) != 0; ) {
-            if (port > 0 && port != listen->port) {
-                continue;
-            }
-            if (listen->ipAddr[0] != '\0' && ipAddr[0] != '\0' && strcmp(ipAddr, listen->ipAddr) != 0) {
-                continue;
-            }
-
-            /*
-             *  Find the matching host address or create a new one
-             */
-            if ((address = maLookupHostAddress(server, listen->ipAddr, listen->port)) == 0) {
-                address = maCreateHostAddress(server, listen->ipAddr, listen->port);
-                mprAddItem(server->hostAddresses, address);
-            }
-
-            /*
-             *  If a host is specified
-             */
-            if (host == 0) {
-                maSetNamedVirtualHostAddress(address);
-
-            } else {
-                maInsertVirtualHost(address, host);
-                if (listen->ipAddr[0] != '\0') {
-                    mprSprintf(addrBuf, sizeof(addrBuf), "%s:%d", listen->ipAddr, listen->port);
-                } else {
-                    mprSprintf(addrBuf, sizeof(addrBuf), "%s:%d", ipAddr, listen->port);
-                }
-                maSetHostName(host, addrBuf);
-            }
-        }
-        mprFree(ipAddr);
-        ipAddrPort = mprStrTok(0, " \t", &tok);
-    }
-
-    if (host) {
-        if (address == 0) {
-            mprError(server, "No valid IP address for host %s", host->name);
-            mprFree(value);
-            return MPR_ERR_CANT_INITIALIZE;
-        }
-        if (maIsNamedVirtualHostAddress(address)) {
-            maSetNamedVirtualHost(host);
-        }
-    }
-
-    mprFree(value);
-
-    return 0;
-}
-
-
-/*
- *  Set the Server Root directory. We convert path into an absolute path.
- */
-void maSetServerRoot(MaServer *server, cchar *path)
-{
-    if (path == 0 || BLD_FEATURE_ROMFS) {
-        path = ".";
-    }
-#if !VXWORKS
-    /*
-     *  VxWorks stat() is broken if using a network FTP server.
-     */
-    if (! mprPathExists(server, path, R_OK)) {
-        mprError(server, "Can't access ServerRoot directory %s", path);
-        return;
-    }
-#endif
-    mprFree(server->serverRoot);
-    server->serverRoot = mprGetAbsPath(server, path);
-}
-
-
-void maSetDefaultHost(MaServer *server, MaHost *host)
-{
-    server->defaultHost = host;
-}
-
-
-int maSplitConfigValue(MprCtx ctx, char **s1, char **s2, char *buf, int quotes)
-{
-    char    *next;
-
-    if (maGetConfigValue(ctx, s1, buf, &next, quotes) < 0 || maGetConfigValue(ctx, s2, next, &next, quotes) < 0) {
-        return MPR_ERR_BAD_SYNTAX;
-    }
-    if (*s1 == 0 || *s2 == 0) {
-        return MPR_ERR_BAD_SYNTAX;
-    }
-    return 0;
-}
-
-
-int maGetConfigValue(MprCtx ctx, char **arg, char *buf, char **nextToken, int quotes)
-{
-    char    *endp;
-
-    if (buf == 0) {
-        return -1;
-    }
-    while (isspace((int) *buf)) {
-        buf++;
-    }
-
-    if (quotes && *buf == '\"') {
-        *arg = ++buf;
-        if ((endp = strchr(buf, '\"')) != 0) {
-            *endp++ = '\0';
-        } else {
-            return MPR_ERR_BAD_SYNTAX;
-        }
-        while ((int) isspace((int) *endp)) {
-            endp++;
-        }
-        *nextToken = endp;
-    } else {
-        *arg = mprStrTok(buf, " \t\n", nextToken);
-    }
-    return 0;
-}
-
-
-/*
- *  Convenience function to create a new default host
- */
-MaHost *maCreateDefaultHost(MaServer *server, cchar *docRoot, cchar *ipAddr, int port)
-{
-    MaHost          *host;
-    MaListen        *listen;
-    MaHostAddress   *address;
-
-    if (ipAddr == 0) {
-        /*
-         *  If no IP:PORT specified, find the first listening endpoint. In this case, we expect the caller to
-         *  have setup the lisenting endponts and to have added them to the host address hash.
-         */
-        listen = mprGetFirstItem(server->listens);
-        if (listen) {
-            ipAddr = listen->ipAddr;
-            port = listen->port;
-
-        } else {
-            listen = maCreateListen(server, "localhost", MA_SERVER_DEFAULT_PORT_NUM, 0);
-            maAddListen(server, listen);
-            ipAddr = "localhost";
-            port = MA_SERVER_DEFAULT_PORT_NUM;
-        }
-        host = maCreateHost(server, ipAddr, NULL);
-
-    } else {
-        /*
-         *  Create a new listening endpoint
-         */
-        listen = maCreateListen(server, ipAddr, port, 0);
-        maAddListen(server, listen);
-        host = maCreateHost(server, ipAddr, NULL);
-    }
-
-    if (maOpenMimeTypes(host, "mime.types") < 0) {
-        maAddStandardMimeTypes(host);
-    }
-
-    /*
-     *  Insert the host and create a directory object for the docRoot
-     */
-    maAddHost(server, host);
-    maInsertDir(host, maCreateBareDir(host, docRoot));
-    maSetDocumentRoot(host, docRoot);
-
-    /*
-     *  Ensure we are in the hash lookup of all the addresses to listen to acceptWrapper uses this hash to find
-     *  the host to serve the request.
-     */
-    address = maLookupHostAddress(server, ipAddr, port);
-    if (address == 0) {
-        address = maCreateHostAddress(server, ipAddr, port);
-        mprAddItem(server->hostAddresses, address);
-    }
-    maInsertVirtualHost(address, host);
-
-    if (server->defaultHost == 0) {
-        server->defaultHost = host;
-    }
-    return host;
-}
-
-
-
-#if BLD_UNIX_LIKE
-static int allDigits(cchar *s)
-{
-    return strspn(s, "1234567890") == strlen(s);
-}
-#endif
+#endif /* BLD_FEATURE_STATIC */
 
 /*
  *  @copy   default
@@ -8896,7 +10899,7 @@ static int allDigits(cchar *s)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/server.c"
+ *  End of file "../src/http/link.c"
  */
 /************************************************************************/
 
@@ -8904,323 +10907,80 @@ static int allDigits(cchar *s)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/connectors/sendConnector.c"
+ *  Start of file "../src/http/listen.c"
  */
 /************************************************************************/
 
 /*
- *  sendConnector.c -- Send file connector. 
+ *  listen.c -- Listen for client connections.
  *
- *  The Sendfile connector supports the optimized transmission of whole static files. It uses operating system 
- *  sendfile APIs to eliminate reading the document into user space and multiple socket writes. The send connector 
- *  is not a general purpose connector. It cannot handle dynamic data or ranged requests. It does support chunked requests.
- *
- *  Copyright (c) All Rights Reserved. See details at the end of the file.
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
-
-
-#if BLD_FEATURE_SEND
-
-
-static void addPacketForSend(MaQueue *q, MaPacket *packet);
-static void adjustSendVec(MaQueue *q, int64 written);
-static int64  buildSendVec(MaQueue *q);
-static void freeSentPackets(MaQueue *q, int64 written);
-
-/*
- *  Invoked to initialize the send connector for a request
- */
-static void sendOpen(MaQueue *q)
-{
-    MaConn          *conn;
-    MaResponse      *resp;
-
-    conn = q->conn;
-    resp = conn->response;
-
-    if (!conn->requestFailed && !(resp->flags & MA_RESP_NO_BODY)) {
-        resp->file = mprOpen(q, resp->filename, O_RDONLY | O_BINARY, 0);
-        if (resp->file == 0) {
-            maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't open document: %s", resp->filename);
-        }
-    }
-}
 
 
 /*
- *  Outgoing data service routine. May be called multiple times.
+ *  Listen on an ipAddress:port. NOTE: ipAddr may be empty which means bind to all addresses.
  */
-static void sendOutgoingService(MaQueue *q)
+MaListen *maCreateListen(MaServer *server, cchar *ipAddr, int port, int flags)
 {
-    MaConn      *conn;
-    MaResponse  *resp;
-    int         written;
-    int         errCode;
+    MaListen    *listen;
 
-    conn = q->conn;
-    resp = conn->response;
+    mprAssert(ipAddr);
+    mprAssert(port > 0);
 
-    if (conn->sock == 0) {
-        return;
+    listen = mprAllocObjZeroed(server, MaListen);
+    if (listen == 0) {
+        return 0;
     }
-
-    /*
-     *  Loop doing non-blocking I/O until blocked or all the packets received are written.
-     */
-    while (1) {
-        /*
-         *  Rebuild the iovector only when the past vector has been completely written. Simplifies the logic quite a bit.
-         */
-        written = 0;
-        if (q->ioIndex == 0 && buildSendVec(q) <= 0) {
-            break;
-        }
-        /*
-         *  Write the vector and file data. Exclude the file entry in the io vector.
-         */
-        written = (int) mprSendFileToSocket(conn->sock, resp->file, q->ioPos, q->ioCount, q->iovec, q->ioIndex, NULL, 0);
-        mprLog(q, 5, "Send connector written %d", written);
-        if (written < 0) {
-            errCode = mprGetError();
-            if (errCode == EAGAIN || errCode == EWOULDBLOCK) {
-                maRequestWriteBlocked(conn);
-                break;
-            }
-            if (errCode == EPIPE || errCode == ECONNRESET) {
-                maDisconnectConn(conn);
-            } else {
-                mprLog(conn, 7, "mprSendFileToSocket failed, errCode %d", errCode);
-                maDisconnectConn(conn);
-            }
-            freeSentPackets(q, MAXINT);
-            break;
-
-        } else if (written == 0) {
-            /* Socket is full. Wait for an I/O event */
-            maRequestWriteBlocked(conn);
-            break;
-
-        } else if (written > 0) {
-            resp->bytesWritten += written;
-            freeSentPackets(q, written);
-            adjustSendVec(q, written);
-        }
-    }
-    if (q->ioCount == 0 && q->flags & MA_QUEUE_EOF) {
-        maCompleteRequest(conn);
-    }
+    listen->server = server;
+    listen->flags = flags;
+    listen->port = port;
+    listen->ipAddr = mprStrdup(listen, ipAddr);
+    listen->flags = flags;
+    return listen;
 }
 
 
-/*
- *  Build the IO vector. This connector uses the send file API which permits multiple IO blocks to be written with 
- *  file data. This is used to write transfer the headers and chunk encoding boundaries. Return the count of bytes to 
- *  be written.
- */
-static int64 buildSendVec(MaQueue *q)
+int maStartListening(MaListen *listen)
 {
-    MaConn      *conn;
-    MaResponse  *resp;
-    MaPacket    *packet;
+    MaHttp      *http;
+    cchar       *proto;
+    char        *ipAddr;
+    int         rc;
 
-    conn = q->conn;
-    resp = conn->response;
-
-    mprAssert(q->ioIndex == 0);
-    q->ioCount = 0;
-    q->ioFile = 0;
-
-    /*
-     *  Examine each packet and accumulate as many packets into the I/O vector as possible. Can only have one data packet at
-     *  a time due to the limitations of the sendfile API (on Linux). And the data packet must be after all the 
-     *  vector entries. Leave the packets on the queue for now, they are removed after the IO is complete for the 
-     *  entire packet.
-     */
-    for (packet = q->first; packet; packet = packet->next) {
-        if (packet->flags & MA_PACKET_HEADER) {
-            maFillHeaders(conn, packet);
-            q->count += maGetPacketLength(packet);
-
-        } else if (maGetPacketLength(packet) == 0 && packet->esize == 0) {
-            q->flags |= MA_QUEUE_EOF;
-            if (packet->prefix == NULL) {
-                break;
-            }
-        } else if (resp->flags & MA_RESP_NO_BODY) {
-            maDiscardData(q, 0);
-            continue;
-        }
-        if (q->ioFile || q->ioIndex >= (MA_MAX_IOVEC - 2)) {
-            break;
-        }
-        addPacketForSend(q, packet);
+    listen->sock = mprCreateSocket(listen, listen->ssl);
+    if (mprOpenServerSocket(listen->sock, listen->ipAddr, listen->port, (MprSocketAcceptProc) maAcceptConn, listen->server,
+            MPR_SOCKET_NODELAY | MPR_SOCKET_THREAD) < 0) {
+        mprError(listen, "Can't open a socket on %s, port %d", listen->ipAddr, listen->port);
+        return MPR_ERR_CANT_OPEN;
     }
-    return q->ioCount;
-}
-
-
-/*
- *  Add one entry to the io vector
- */
-static void addToSendVector(MaQueue *q, char *ptr, int bytes)
-{
-    mprAssert(bytes > 0);
-
-    q->iovec[q->ioIndex].start = ptr;
-    q->iovec[q->ioIndex].len = bytes;
-    q->ioCount += bytes;
-    q->ioIndex++;
-}
-
-
-/*
- *  Add a packet to the io vector. Return the number of bytes added to the vector.
- */
-static void addPacketForSend(MaQueue *q, MaPacket *packet)
-{
-    MaResponse  *resp;
-    MaConn      *conn;
-    int         mask;
-
-    conn = q->conn;
-    resp = conn->response;
-    
-    mprAssert(q->count >= 0);
-    mprAssert(q->ioIndex < (MA_MAX_IOVEC - 2));
-
-    if (packet->prefix) {
-        addToSendVector(q, mprGetBufStart(packet->prefix), mprGetBufLength(packet->prefix));
+    proto = mprIsSocketSecure(listen->sock) ? "HTTPS" : "HTTP";
+    ipAddr = listen->ipAddr;
+    if (ipAddr == 0 || *ipAddr == '\0') {
+        ipAddr = "*";
     }
-    if (packet->esize > 0) {
-        mprAssert(q->ioFile == 0);
-        q->ioFile = 1;
-        q->ioCount += packet->esize;
+    mprLog(listen, MPR_CONFIG, "Listening for %s on %s:%d", proto, ipAddr, listen->port);
 
-    } else if (maGetPacketLength(packet) > 0) {
-        /*
-         *  Header packets have actual content. File data packets are virtual and only have a count.
-         */
-        addToSendVector(q, mprGetBufStart(packet->content), mprGetBufLength(packet->content));
-        mask = (packet->flags & MA_PACKET_HEADER) ? MA_TRACE_HEADERS : MA_TRACE_BODY;
-        if (maShouldTrace(conn, mask)) {
-            maTraceContent(conn, packet, 0, resp->bytesWritten, mask);
+    http = listen->server->http;
+    if (http->listenCallback) {
+        if ((rc = (http->listenCallback)(http, listen)) < 0) {
+            return rc;
         }
     }
-}
-
-
-/*
- *  Clear entries from the IO vector that have actually been transmitted. This supports partial writes due to the socket
- *  being full. Don't come here if we've seen all the packets and all the data has been completely written. ie. small files
- *  don't come here.
- */
-static void freeSentPackets(MaQueue *q, int64 bytes)
-{
-    MaPacket    *packet;
-    int64       len;
-
-    mprAssert(q->first);
-    mprAssert(q->count >= 0);
-    mprAssert(bytes >= 0);
-
-    while ((packet = q->first) != 0) {
-        if (packet->prefix) {
-            len = mprGetBufLength(packet->prefix);
-            len = min(len, bytes);
-            mprAdjustBufStart(packet->prefix, (int) len);
-            bytes -= len;
-            /* Prefixes don't count in the q->count. No need to adjust */
-            if (mprGetBufLength(packet->prefix) == 0) {
-                mprFree(packet->prefix);
-                packet->prefix = 0;
-            }
-        }
-        if (packet->esize) {
-            len = min(packet->esize, bytes);
-            packet->esize -= len;
-            packet->epos += len;
-            bytes -= len;
-            mprAssert(packet->esize >= 0);
-            mprAssert(bytes == 0);
-            if (packet->esize > 0) {
-                break;
-            }
-        } else if ((len = maGetPacketLength(packet)) > 0) {
-            len = min(len, bytes);
-            mprAdjustBufStart(packet->content, (int) len);
-            bytes -= len;
-            q->count -= (int) len;
-            mprAssert(q->count >= 0);
-        }
-        if (maGetPacketLength(packet) == 0) {
-            if ((packet = maGet(q)) != 0) {
-                maFreePacket(q, packet);
-            }
-        }
-        mprAssert(bytes >= 0);
-        if (bytes == 0) {
-            break;
-        }
-    }
-}
-
-
-/*
- *  Clear entries from the IO vector that have actually been transmitted. This supports partial writes due to the socket
- *  being full. Don't come here if we've seen all the packets and all the data has been completely written. ie. small files
- *  don't come here.
- */
-static void adjustSendVec(MaQueue *q, int64 written)
-{
-    MprIOVec    *iovec;
-    size_t      len;
-    int         i, j;
-
-    iovec = q->iovec;
-    for (i = 0; i < q->ioIndex; i++) {
-        len = iovec[i].len;
-        if (written < len) {
-            iovec[i].start += (size_t) written;
-            iovec[i].len -= (size_t) written;
-            return;
-        }
-        written -= len;
-        q->ioCount -= len;
-        for (j = i + 1; i < q->ioIndex; ) {
-            iovec[j++] = iovec[i++];
-        }
-        q->ioIndex--;
-        i--;
-    }
-    if (written > 0 && q->ioFile) {
-        /* All remaining data came from the file */
-        q->ioPos += written;
-    }
-    q->ioIndex = 0;
-    q->ioCount = 0;
-    q->ioFile = 0;
-}
-
-
-int maOpenSendConnector(MaHttp *http)
-{
-    MaStage     *stage;
-
-    stage = maCreateConnector(http, "sendConnector", MA_STAGE_ALL);
-    if (stage == 0) {
-        return MPR_ERR_CANT_CREATE;
-    }
-    stage->open = sendOpen;
-    stage->outgoingService = sendOutgoingService; 
-    http->sendConnector = stage;
     return 0;
 }
 
 
-#else
-void __dummySendConnector() {}
-#endif /* BLD_FEATURE_SEND */
+int maStopListening(MaListen *listen)
+{
+    if (listen->sock) {
+        mprFree(listen->sock);
+        listen->sock = 0;
+    }
+    return 0;
+}
+
 
 /*
  *  @copy   default
@@ -9259,7 +11019,7 @@ void __dummySendConnector() {}
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/connectors/sendConnector.c"
+ *  End of file "../src/http/listen.c"
  */
 /************************************************************************/
 
@@ -9267,309 +11027,1103 @@ void __dummySendConnector() {}
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/connectors/netConnector.c"
+ *  Start of file "../src/http/location.c"
  */
 /************************************************************************/
 
 /*
- *  netConnector.c -- General network connector. 
+ *  location.c -- Implement Location directives.
  *
- *  The Network connector handles output data (only) from upstream handlers and filters. It uses vectored writes to
- *  aggregate output packets into fewer actual I/O requests to the O/S. 
+ *  Location directives provide authorization and handler matching based on URL prefixes.
+ *
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+
+
+
+MaLocation *maCreateBareLocation(MprCtx ctx)
+{
+    MaLocation  *location;
+
+    location = mprAllocObjZeroed(ctx, MaLocation);
+    if (location == 0) {
+        return 0;
+    }
+    location->errorDocuments = mprCreateHash(location, MA_ERROR_HASH_SIZE);
+    location->handlers = mprCreateList(location);
+
+    location->extensions = mprCreateHash(location, MA_HANDLER_HASH_SIZE);
+    mprSetHashCaseless(location->extensions);
+
+    location->expires = mprCreateHash(location, MA_HANDLER_HASH_SIZE);
+    location->inputStages = mprCreateList(location);
+    location->outputStages = mprCreateList(location);
+    location->prefix = mprStrdup(location, "");
+    location->prefixLen = (int) strlen(location->prefix);
+#if BLD_FEATURE_AUTH
+    location->auth = maCreateAuth(location, 0);
+#endif
+    return location;
+}
+
+
+/*
+ *  Create a new location block. Inherit from the parent. We use a copy-on-write scheme if these are modified later.
+ */
+MaLocation *maCreateLocation(MprCtx ctx, MaLocation *parent)
+{
+    MaLocation  *location;
+
+    if (parent == 0) {
+        return maCreateBareLocation(ctx);
+    }
+    location = mprAllocObjZeroed(ctx, MaLocation);
+    if (location == 0) {
+        return 0;
+    }
+    location->prefix = mprStrdup(location, parent->prefix);
+    location->parent = parent;
+    location->prefixLen = parent->prefixLen;
+    location->flags = parent->flags;
+    location->inputStages = parent->inputStages;
+    location->outputStages = parent->outputStages;
+    location->handlers = parent->handlers;
+    location->extensions = parent->extensions;
+    location->expires = parent->expires;
+    location->connector = parent->connector;
+    location->errorDocuments = parent->errorDocuments;
+    location->sessionTimeout = parent->sessionTimeout;
+#if BLD_FEATURE_EJS
+    location->ejsPath = parent->ejsPath;
+#endif
+#if BLD_FEATURE_UPLOAD
+    location->uploadDir = parent->uploadDir;
+    location->autoDelete = parent->autoDelete;
+#endif
+#if BLD_FEATURE_SSL
+    location->ssl = parent->ssl;
+#endif
+#if BLD_FEATURE_AUTH
+    location->auth = maCreateAuth(location, parent->auth);
+#endif
+    return location;
+}
+
+
+void maFinalizeLocation(MaLocation *location)
+{
+#if BLD_FEATURE_SSL
+    if (location->ssl) {
+        mprConfigureSsl(location->ssl);
+    }
+#endif
+}
+
+
+void maSetLocationAuth(MaLocation *location, MaAuth *auth)
+{
+    location->auth = auth;
+}
+
+
+/*
+ *  Add a handler. This adds a handler to the set of possible handlers for a set of file extensions.
+ */
+int maAddHandler(MaHttp *http, MaLocation *location, cchar *name, cchar *extensions)
+{
+    MaStage     *handler;
+    char        *extlist, *word, *tok;
+
+    mprAssert(location);
+    
+    if (mprGetParent(location->handlers) == location->parent) {
+        location->extensions = mprCopyHash(location, location->parent->extensions);
+        location->handlers = mprDupList(location, location->parent->handlers);
+    }
+    handler = maLookupStage(http, name);
+    if (handler == 0) {
+        mprError(http, "Can't find stage %s", name); 
+        return MPR_ERR_NOT_FOUND;
+    }
+    if (extensions && *extensions) {
+        /*
+         *  Add to the handler extension hash
+         */ 
+        extlist = mprStrdup(location, extensions);
+        word = mprStrTok(extlist, " \t\r\n", &tok);
+        while (word) {
+            if (*word == '*' && word[1] == '.') {
+                word += 2;
+            } else if (*word == '.') {
+                word++;
+            } else if (*word == '\"' && word[1] == '\"') {
+                word = "";
+            }
+            mprAddHash(location->extensions, word, handler);
+            word = mprStrTok(NULL, " \t\r\n", &tok);
+        }
+        mprFree(extlist);
+        mprAddItem(location->handlers, handler);
+
+    } else {
+        if (handler->match == 0) {
+            /*
+             *  Only match by extension if the handler does not provide a match() routine
+             */
+            mprAddHash(location->extensions, "", handler);
+        }
+        mprAddItem(location->handlers, handler);
+    }
+    if (extensions && *extensions) {
+        mprLog(location, MPR_CONFIG, "Add handler \"%s\" for \"%s\"", name, extensions);
+    } else {
+        mprLog(location, MPR_CONFIG, "Add handler \"%s\" for \"%s\"", name, location->prefix);
+    }
+    return 0;
+}
+
+
+/*
+ *  Set a handler to universally apply to requests in this location block.
+ */
+int maSetHandler(MaHttp *http, MaHost *host, MaLocation *location, cchar *name)
+{
+    MaStage     *handler;
+
+    mprAssert(location);
+    
+    if (mprGetParent(location->handlers) == location->parent) {
+        location->extensions = mprCopyHash(location, location->parent->extensions);
+        location->handlers = mprDupList(location, location->parent->handlers);
+    }
+    handler = maLookupStage(http, name);
+    if (handler == 0) {
+        mprError(http, "Can't find handler %s", name); 
+        return MPR_ERR_NOT_FOUND;
+    }
+    location->handler = handler;
+    mprLog(location, MPR_CONFIG, "SetHandler \"%s\" \"%s\", prefix %s", name, (host) ? host->name: "unknown", 
+        location->prefix);
+    return 0;
+}
+
+
+/*
+ *  Add a filter. Direction defines what direction the stage filter be defined.
+ */
+int maAddFilter(MaHttp *http, MaLocation *location, cchar *name, cchar *extensions, int direction)
+{
+    MaStage     *stage;
+    MaFilter    *filter;
+    char        *extlist, *word, *tok;
+
+    mprAssert(location);
+    
+    stage = maLookupStage(http, name);
+    if (stage == 0) {
+        mprError(http, "Can't find filter %s", name); 
+        return MPR_ERR_NOT_FOUND;
+    }
+
+    filter = mprAllocObjZeroed(location, MaFilter);
+    filter->stage = stage;
+
+    if (extensions && *extensions) {
+        filter->extensions = mprCreateHash(filter, 0);
+        mprSetHashCaseless(filter->extensions);
+        extlist = mprStrdup(location, extensions);
+        word = mprStrTok(extlist, " \t\r\n", &tok);
+        while (word) {
+            if (*word == '*' && word[1] == '.') {
+                word += 2;
+            } else if (*word == '.') {
+                word++;
+            } else if (*word == '\"' && word[1] == '\"') {
+                word = "";
+            }
+            mprAddHash(filter->extensions, word, filter);
+            word = mprStrTok(0, " \t\r\n", &tok);
+        }
+        mprFree(extlist);
+    }
+
+    if (direction & MA_FILTER_INCOMING) {
+        if (mprGetParent(location->inputStages) == location->parent) {
+            location->inputStages = mprDupList(location, location->parent->inputStages);
+        }
+        mprAddItem(location->inputStages, filter);
+    }
+    if (direction & MA_FILTER_OUTGOING) {
+        if (mprGetParent(location->outputStages) == location->parent) {
+            location->outputStages = mprDupList(location, location->parent->outputStages);
+        }
+        mprAddItem(location->outputStages, filter);
+    }
+
+    if (extensions && *extensions) {
+        mprLog(location, MPR_CONFIG, "Add filter \"%s\" to location \"%s\" for extensions \"%s\"", name, 
+            location->prefix, extensions);
+    } else {
+        mprLog(location, MPR_CONFIG, "Add filter \"%s\" to location \"%s\" for all extensions", name, location->prefix);
+    }
+
+    return 0;
+}
+
+
+/*
+ *  Set the network connector.
+ */
+int maSetConnector(MaHttp *http, MaLocation *location, cchar *name)
+{
+    MaStage     *stage;
+
+    mprAssert(location);
+    
+    stage = maLookupStage(http, name);
+    if (stage == 0) {
+        mprError(http, "Can't find connector %s", name); 
+        return MPR_ERR_NOT_FOUND;
+    }
+    location->connector = stage;
+    mprLog(location, MPR_CONFIG, "Set connector \"%s\"", name);
+    return 0;
+}
+
+
+void maAddLocationExpiry(MaLocation *location, MprTime when, cchar *mimeTypes)
+{
+    char    *types, *mime, *tok;
+
+    if (mimeTypes && *mimeTypes) {
+        if (mprGetParent(location->expires) == location->parent) {
+            location->expires = mprCopyHash(location, location->parent->expires);
+        }
+        types = mprStrdup(location, mimeTypes);
+        mime = mprStrTok(types, " ,\t\r\n", &tok);
+        while (mime) {
+            mprAddHash(location->expires, mime, ITOP(when));
+            mime = mprStrTok(0, " \t\r\n", &tok);
+        }
+        mprFree(types);
+    }
+}
+
+
+void maResetHandlers(MaLocation *location)
+{
+    if (mprGetParent(location->handlers) == location) {
+        mprFree(location->handlers);
+    }
+    location->handlers = mprCreateList(location);
+}
+
+
+void maResetPipeline(MaLocation *location)
+{
+    if (mprGetParent(location->extensions) == location) {
+        mprFree(location->extensions);
+    }
+    location->extensions = mprCreateHash(location, 0);
+    mprSetHashCaseless(location->extensions);
+    
+    if (mprGetParent(location->handlers) == location) {
+        mprFree(location->handlers);
+    }
+    location->handlers = mprCreateList(location);
+    
+    if (mprGetParent(location->inputStages) == location) {
+        mprFree(location->inputStages);
+    }
+    location->inputStages = mprCreateList(location);
+    
+    if (mprGetParent(location->outputStages) == location) {
+        mprFree(location->outputStages);
+    }
+    location->outputStages = mprCreateList(location);
+}
+
+
+MaStage *maGetHandlerByExtension(MaLocation *location, cchar *ext)
+{
+    return (MaStage*) mprLookupHash(location->extensions, ext);
+}
+
+
+void maSetLocationPrefix(MaLocation *location, cchar *uri)
+{
+    mprAssert(location);
+
+    mprFree(location->prefix);
+    location->prefix = mprStrdup(location, uri);
+    location->prefixLen = (int) strlen(location->prefix);
+}
+
+
+void maSetLocationFlags(MaLocation *location, int flags)
+{
+    location->flags = flags;
+}
+
+
+void maAddErrorDocument(MaLocation *location, cchar *code, cchar *url)
+{
+    if (mprGetParent(location->errorDocuments) == location->parent) {
+        location->errorDocuments = mprCopyHash(location, location->parent->errorDocuments);
+    }
+    mprAddHash(location->errorDocuments, code, mprStrdup(location, url));
+}
+
+
+cchar *maLookupErrorDocument(MaLocation *location, int code)
+{
+    char        numBuf[16];
+
+    if (location->errorDocuments == 0) {
+        return 0;
+    }
+    mprItoa(numBuf, sizeof(numBuf), code, 10);
+    return (cchar*) mprLookupHash(location->errorDocuments, numBuf);
+}
+
+
+/*
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/location.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/log.c"
+ */
+/************************************************************************/
+
+/*
+ *  log.c -- Logging
+ *
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+
+
+/*
+ *  Turn on logging. If no logSpec is specified, default to stdout:2. If the user specifies --log "none" then 
+ *  the log is disabled. This is useful when specifying the log via the appweb.conf.
+ */
+static void logHandler(MprCtx ctx, int flags, int level, cchar *msg)
+{
+    Mpr         *mpr;
+    MprFile     *file;
+    char        *prefix, buf[MPR_MAX_STRING];
+
+    mpr = mprGetMpr(ctx);
+    if ((file = (MprFile*) mpr->logHandlerData) == 0) {
+        return;
+    }
+    prefix = mpr->name;
+
+    while (*msg == '\n') {
+        mprFprintf(file, "\n");
+        msg++;
+    }
+
+    if (flags & MPR_LOG_SRC) {
+        mprFprintf(file, "%s: %d: %s\n", prefix, level, msg);
+
+    } else if (flags & MPR_ERROR_SRC) {
+        mprSprintf(buf, sizeof(buf), "%s: Error: %s\n", prefix, msg);
+        mprWriteToOsLog(ctx, buf, flags, level);
+
+        /*
+         *  Use static printing to avoid malloc when the messages are small.
+         *  This is important for memory allocation errors.
+         */
+        if (strlen(msg) < (MPR_MAX_STRING - 32)) {
+            mprWriteString(file, buf);
+        } else {
+            mprFprintf(file, "%s: Error: %s\n", prefix, msg);
+        }
+
+    } else if (flags & MPR_FATAL_SRC) {
+        mprSprintf(buf, sizeof(buf), "%s: Fatal: %s\n", prefix, msg);
+        mprWriteString(file, buf);
+        mprWriteToOsLog(ctx, buf, flags, level);
+        
+    } else if (flags & MPR_RAW) {
+        mprFprintf(file, "%s", msg);
+    }
+}
+
+
+/*
+ *  Start error and information logging. Note: this is not per-request access logging
+ */
+int maStartLogging(MprCtx ctx, cchar *logSpec)
+{
+    Mpr         *mpr;
+    MprFile     *file;
+    char        *levelSpec, *spec;
+    int         level;
+
+    level = 0;
+    mpr = mprGetMpr(ctx);
+
+    if (logSpec == 0) {
+        logSpec = "stdout:0";
+    }
+    if (*logSpec && strcmp(logSpec, "none") != 0) {
+        spec = mprStrdup(mpr, logSpec);
+        if ((levelSpec = strrchr(spec, ':')) != 0 && isdigit((int) levelSpec[1])) {
+            *levelSpec++ = '\0';
+            level = atoi(levelSpec);
+        }
+
+        if (strcmp(spec, "stdout") == 0) {
+            file = mpr->fileSystem->stdOutput;
+        } else {
+            if ((file = mprOpen(mpr, spec, O_CREAT | O_WRONLY | O_TRUNC | O_TEXT, 0664)) == 0) {
+                mprPrintfError(mpr, "Can't open log file %s\n", spec);
+                return -1;
+            }
+        }
+        mprSetLogLevel(mpr, level);
+        mprSetLogHandler(mpr, logHandler, (void*) file);
+
+        mprLog(mpr, MPR_CONFIG, "Configuration for %s", mprGetAppTitle(mpr));
+        mprLog(mpr, MPR_CONFIG, "---------------------------------------------");
+        mprLog(mpr, MPR_CONFIG, "Host:               %s", mprGetHostName(mpr));
+        mprLog(mpr, MPR_CONFIG, "CPU:                %s", BLD_CPU);
+        mprLog(mpr, MPR_CONFIG, "OS:                 %s", BLD_OS);
+        if (strcmp(BLD_DIST, "Unknown") != 0) {
+            mprLog(mpr, MPR_CONFIG, "Distribution:       %s %s", BLD_DIST, BLD_DIST_VER);
+        }
+        mprLog(mpr, MPR_CONFIG, "Version:            %s-%s", BLD_VERSION, BLD_NUMBER);
+        mprLog(mpr, MPR_CONFIG, "BuildType:          %s", BLD_TYPE);
+        mprLog(mpr, MPR_CONFIG, "---------------------------------------------");
+    }
+    return 0;
+}
+
+
+/*
+ *  Stop the error and information logging. Note: this is not per-request access logging
+ */
+int maStopLogging(MprCtx ctx)
+{
+    MprFile     *file;
+    Mpr         *mpr;
+
+    mpr = mprGetMpr(ctx);
+
+    file = mpr->logHandlerData;
+    if (file) {
+        mprFree(file);
+        mpr->logHandlerData = 0;
+        mprSetLogHandler(mpr, 0, 0);
+    }
+    return 0;
+}
+
+#if BLD_FEATURE_ACCESS_LOG
+
+int maStartAccessLogging(MaHost *host)
+{
+#if !BLD_FEATURE_ROMFS
+    if (host->logPath) {
+        host->accessLog = mprOpen(host, host->logPath, O_CREAT | O_APPEND | O_WRONLY | O_TEXT, 0664);
+        if (host->accessLog == 0) {
+            mprError(host, "Can't open log file %s", host->logPath);
+        }
+    }
+#endif
+    return 0;
+}
+
+
+int maStopAccessLogging(MaHost *host)
+{
+    if (host->accessLog) {
+        mprFree(host->accessLog);
+        host->accessLog = 0;
+    }
+    return 0;
+}
+
+
+void maSetAccessLog(MaHost *host, cchar *path, cchar *format)
+{
+    char    *src, *dest;
+
+    mprAssert(host);
+    mprAssert(path && *path);
+    mprAssert(format);
+    
+    if (format == NULL || *format == '\0') {
+        format = "%h %l %u %t \"%r\" %>s %b";
+    }
+
+    mprFree(host->logPath);
+    host->logPath = mprStrdup(host, path);
+
+    mprFree(host->logFormat);
+    host->logFormat = mprStrdup(host, format);
+
+    for (src = dest = host->logFormat; *src; src++) {
+        if (*src == '\\' && src[1] != '\\') {
+            continue;
+        }
+        *dest++ = *src;
+    }
+    *dest = '\0';
+}
+
+
+void maSetLogHost(MaHost *host, MaHost *logHost)
+{
+    host->logHost = logHost;
+}
+
+
+void maWriteAccessLogEntry(MaHost *host, cchar *buf, int len)
+{
+    static int once = 0;
+
+    if (mprWrite(host->accessLog, (char*) buf, len) != len && once++ == 0) {
+        mprError(host, "Can't write to access log %s", host->logPath);
+    }
+}
+
+
+/*
+ *  Called to rotate the access log
+ */
+void maRotateAccessLog(MaHost *host)
+{
+    MprPath         info;
+    struct tm       tm;
+    MprTime         when;
+    char            bak[MPR_MAX_FNAME];
+
+    if (mprGetPathInfo(host, host->logPath, &info) == 0) {
+        when = mprGetTime(host);
+        mprDecodeUniversalTime(host, &tm, when);
+        mprSprintf(bak, sizeof(bak), "%s-%02d-%02d-%02d-%02d:%02d:%02d", host->logPath, 
+            tm.tm_mon, tm.tm_mday, tm.tm_year, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        mprFree(host->accessLog);
+        rename(host->logPath, bak);
+        unlink(host->logPath);
+        host->accessLog = mprOpen(host, host->logPath, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0664);
+    }
+}
+
+
+void maLogRequest(MaConn *conn)
+{
+    MaHost      *logHost, *host;
+    MaResponse  *resp;
+    MaRequest   *req;
+    MprBuf      *buf;
+    char        keyBuf[80], *timeText, *fmt, *cp, *qualifier, *value, c;
+    int         len;
+
+    resp = conn->response;
+    req = conn->request;
+    host = req->host;
+
+    logHost = host->logHost;
+    if (logHost == 0) {
+        return;
+    }
+    fmt = logHost->logFormat;
+    if (fmt == 0) {
+        return;
+    }
+    if (req->method == 0) {
+        return;
+    }
+
+    len = MPR_MAX_URL + 256;
+    buf = mprCreateBuf(resp, len, len);
+
+    while ((c = *fmt++) != '\0') {
+        if (c != '%' || (c = *fmt++) == '%') {
+            mprPutCharToBuf(buf, c);
+            continue;
+        }
+
+        switch (c) {
+        case 'a':                           /* Remote IP */
+            mprPutStringToBuf(buf, conn->remoteIpAddr);
+            break;
+
+        case 'A':                           /* Local IP */
+            mprPutStringToBuf(buf, conn->sock->listenSock->ipAddr);
+            break;
+
+        case 'b':
+            if (resp->bytesWritten == 0) {
+                mprPutCharToBuf(buf, '-');
+            } else {
+                mprPutIntToBuf(buf, resp->bytesWritten);
+            } 
+            break;
+
+        case 'B':                           /* Bytes written (minus headers) */
+            mprPutIntToBuf(buf, resp->bytesWritten - resp->headerSize);
+            break;
+
+        case 'h':                           /* Remote host */
+            mprPutStringToBuf(buf, conn->remoteIpAddr);
+            break;
+
+        case 'n':                           /* Local host */
+            mprPutStringToBuf(buf, req->parsedUri->host);
+            break;
+
+        case 'l':                           /* Supplied in authorization */
+            mprPutStringToBuf(buf, req->user ? req->user : "-");
+            break;
+
+        case 'O':                           /* Bytes written (including headers) */
+            mprPutIntToBuf(buf, resp->bytesWritten);
+            break;
+
+        case 'r':                           /* First line of request */
+            mprPutFmtToBuf(buf, "%s %s %s", req->methodName, req->parsedUri->originalUri, req->httpProtocol);
+            break;
+
+        case 's':                           /* Response code */
+            mprPutIntToBuf(buf, resp->code);
+            break;
+
+        case 't':                           /* Time */
+            mprPutCharToBuf(buf, '[');
+            timeText = mprFormatLocalTime(conn, mprGetTime(conn));
+            mprPutStringToBuf(buf, timeText);
+            mprFree(timeText);
+            mprPutCharToBuf(buf, ']');
+            break;
+
+        case 'u':                           /* Remote username */
+            mprPutStringToBuf(buf, req->user ? req->user : "-");
+            break;
+
+        case '{':                           /* Header line */
+            qualifier = fmt;
+            if ((cp = strchr(qualifier, '}')) != 0) {
+                fmt = &cp[1];
+                *cp = '\0';
+                c = *fmt++;
+                mprStrcpy(keyBuf, sizeof(keyBuf), "HTTP_");
+                mprStrcpy(&keyBuf[5], sizeof(keyBuf) - 5, qualifier);
+                mprStrUpper(keyBuf);
+                switch (c) {
+                case 'i':
+                    value = (char*) mprLookupHash(req->headers, keyBuf);
+                    mprPutStringToBuf(buf, value ? value : "-");
+                    break;
+                default:
+                    mprPutStringToBuf(buf, qualifier);
+                }
+                *cp = '}';
+
+            } else {
+                mprPutCharToBuf(buf, c);
+            }
+            break;
+
+        case '>':
+            if (*fmt == 's') {
+                fmt++;
+                mprPutIntToBuf(buf, resp->code);
+            }
+            break;
+
+        default:
+            mprPutCharToBuf(buf, c);
+            break;
+        }
+    }
+    mprPutCharToBuf(buf, '\n');
+    mprAddNullToBuf(buf);
+
+    mprWrite(logHost->accessLog, mprGetBufStart(buf), mprGetBufLength(buf));
+}
+
+#else
+void maLogRequest(MaConn *conn) {}
+#endif /* BLD_FEATURE_ACCESS_LOG */
+
+
+
+/*
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/log.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/mime.c"
+ */
+/************************************************************************/
+
+/* 
+ *  mime.c
+ *
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+
+
+
+int maOpenMimeTypes(MaHost *host, cchar *path)
+{
+    MprFile     *file;
+    char        buf[80], *tok, *ext, *type;
+    int         line;
+
+    host->mimeFile = mprStrdup(host, path);
+
+    if (host->mimeTypes == 0) {
+        host->mimeTypes = mprCreateHash(host, MA_MIME_HASH_SIZE);
+        mprSetHashCaseless(host->mimeTypes);
+    }
+    file = mprOpen(host, path, O_RDONLY | O_TEXT, 0);
+    if (file == 0) {
+        return MPR_ERR_CANT_OPEN;
+    }
+    line = 0;
+    while (mprGets(file, buf, sizeof(buf)) != 0) {
+        line++;
+        if (buf[0] == '#' || isspace((int) buf[0])) {
+            continue;
+        }
+        type = mprStrTok(buf, " \t\n\r", &tok);
+        ext = mprStrTok(0, " \t\n\r", &tok);
+        if (type == 0 || ext == 0) {
+            mprError(host, "Bad mime spec in %s at line %d", path, line);
+            continue;
+        }
+        while (ext) {
+            maAddMimeType(host, ext, type);
+            ext = mprStrTok(0, " \t\n\r", &tok);
+        }
+    }
+    mprFree(file);
+    return 0;
+}
+
+
+/*
+ *  Add a mime type to the mime lookup table. Action Programs are added separately.
+ */
+MaMimeType *maAddMimeType(MaHost *host, cchar *ext, cchar *mimeType)
+{
+    MaMimeType  *mime;
+
+    mime = mprAllocObjZeroed(host->mimeTypes, MaMimeType);
+    if (mime == 0) {
+        return 0;
+    }
+    mime->type = mprStrdup(host, mimeType);
+    if (host->mimeTypes == 0) {
+        host->mimeTypes = mprCreateHash(host, MA_MIME_HASH_SIZE);
+        mprSetHashCaseless(host->mimeTypes);
+    }
+    if (*ext == '.') {
+        ext++;
+    }
+    mprAddHash(host->mimeTypes, ext, mime);
+    return mime;
+}
+
+
+int maSetMimeActionProgram(MaHost *host, cchar *mimeType, cchar *actionProgram)
+{
+    MaMimeType      *mime;
+    MprHash         *hp;
+    
+    if (host->mimeTypes == 0) {
+        host->mimeTypes = mprCreateHash(host, MA_MIME_HASH_SIZE);
+        mprSetHashCaseless(host->mimeTypes);
+        maAddStandardMimeTypes(host);
+    }
+    
+    hp = 0;
+    mime = 0;
+    while ((hp = mprGetNextHash(host->mimeTypes, hp)) != 0) {
+        mime = (MaMimeType*) hp->data;
+        if (mime->type[0] == mimeType[0] && strcmp(mime->type, mimeType) == 0) {
+            break;
+        }
+    }
+    if (mime == 0) {
+        mprError(host, "Can't find mime type %s for action program %s", mimeType, actionProgram);
+        return MPR_ERR_NOT_FOUND;
+    }
+    mprFree(mime->actionProgram);
+    mime->actionProgram = mprStrdup(host, actionProgram);
+    return 0;
+}
+
+
+cchar *maGetMimeActionProgram(MaHost *host, cchar *mimeType)
+{
+    MaMimeType      *mime;
+
+    if (mimeType == 0 || *mimeType == '\0') {
+        return 0;
+    }
+    mime = (MaMimeType*) mprLookupHash(host->mimeTypes, mimeType);
+    if (mime == 0) {
+        return 0;
+    }
+    return mime->actionProgram;
+}
+
+
+cchar *maLookupMimeType(MaHost *host, cchar *ext)
+{
+    MaMimeType      *mime;
+
+    if (ext == 0 || *ext == '\0') {
+        return 0;
+    }
+    mime = (MaMimeType*) mprLookupHash(host->mimeTypes, ext);
+    if (mime == 0) {
+        return 0;
+    }
+    return mime->type;
+}
+
+
+void maAddStandardMimeTypes(MaHost *host)
+{
+    maAddMimeType(host, "ai", "application/postscript");
+    maAddMimeType(host, "asc", "text/plain");
+    maAddMimeType(host, "au", "audio/basic");
+    maAddMimeType(host, "avi", "video/x-msvideo");
+    maAddMimeType(host, "bin", "application/octet-stream");
+    maAddMimeType(host, "bmp", "image/bmp");
+    maAddMimeType(host, "class", "application/octet-stream");
+    maAddMimeType(host, "css", "text/css");
+    maAddMimeType(host, "dll", "application/octet-stream");
+    maAddMimeType(host, "doc", "application/msword");
+    maAddMimeType(host, "ejs", "text/html");
+    maAddMimeType(host, "eps", "application/postscript");
+    maAddMimeType(host, "es", "application/x-javascript");
+    maAddMimeType(host, "exe", "application/octet-stream");
+    maAddMimeType(host, "gif", "image/gif");
+    maAddMimeType(host, "gz", "application/x-gzip");
+    maAddMimeType(host, "htm", "text/html");
+    maAddMimeType(host, "html", "text/html");
+    maAddMimeType(host, "ico", "image/x-icon");
+    maAddMimeType(host, "jar", "application/octet-stream");
+    maAddMimeType(host, "jpeg", "image/jpeg");
+    maAddMimeType(host, "jpg", "image/jpeg");
+    maAddMimeType(host, "js", "application/javascript");
+    maAddMimeType(host, "mp3", "audio/mpeg");
+    maAddMimeType(host, "pdf", "application/pdf");
+    maAddMimeType(host, "png", "image/png");
+    maAddMimeType(host, "ppt", "application/vnd.ms-powerpoint");
+    maAddMimeType(host, "ps", "application/postscript");
+    maAddMimeType(host, "ra", "audio/x-realaudio");
+    maAddMimeType(host, "ram", "audio/x-pn-realaudio");
+    maAddMimeType(host, "rmm", "audio/x-pn-realaudio");
+    maAddMimeType(host, "rtf", "text/rtf");
+    maAddMimeType(host, "rv", "video/vnd.rn-realvideo");
+    maAddMimeType(host, "so", "application/octet-stream");
+    maAddMimeType(host, "swf", "application/x-shockwave-flash");
+    maAddMimeType(host, "tar", "application/x-tar");
+    maAddMimeType(host, "tgz", "application/x-gzip");
+    maAddMimeType(host, "tiff", "image/tiff");
+    maAddMimeType(host, "txt", "text/plain");
+    maAddMimeType(host, "wav", "audio/x-wav");
+    maAddMimeType(host, "xls", "application/vnd.ms-excel");
+    maAddMimeType(host, "zip", "application/zip");
+
+    maAddMimeType(host, "php", "application/x-appweb-php");
+    maAddMimeType(host, "pl", "application/x-appweb-perl");
+    maAddMimeType(host, "py", "application/x-appweb-python");
+}
+
+/*
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/mime.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/misc.c"
+ */
+/************************************************************************/
+
+/*
+ *  misc.c -- Bits and pieces
  *
  *  Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 
 
-#if BLD_FEATURE_NET
-
-static void addPacketForNet(MaQueue *q, MaPacket *packet);
-static void adjustNetVec(MaQueue *q, int written);
-static int64  buildNetVec(MaQueue *q);
-static void freeNetPackets(MaQueue *q, int64 written);
-
-
-static void netOutgoingService(MaQueue *q)
-{
-    MaConn      *conn;
-    MaResponse  *resp;
-    int         written, errCode;
-
-    conn = q->conn;
-    resp = conn->response;
-    
-    while (q->first || q->ioIndex) {
-        written = 0;
-        if (q->ioIndex == 0 && buildNetVec(q) <= 0) {
-            break;
-        }
-        /*
-         *  Issue a single I/O request to write all the blocks in the I/O vector
-         */
-        errCode = mprGetOsError();
-        mprAssert(q->ioIndex > 0);
-        written = mprWriteSocketVector(conn->sock, q->iovec, q->ioIndex);
-        mprLog(q, 5, "Net connector written %d", written);
-        if (written < 0) {
-            errCode = mprGetOsError();
-            if (errCode == EAGAIN || errCode == EWOULDBLOCK) {
-                maRequestWriteBlocked(conn);
-                break;
-            }
-            if (errCode == EPIPE || errCode == ECONNRESET) {
-                maDisconnectConn(conn);
-            } else {
-                mprLog(conn, 7, "mprVectorWriteSocket failed, error %d", errCode);
-                maDisconnectConn(conn);
-            }
-            freeNetPackets(q, MAXINT);
-            break;
-
-        } else if (written == 0) {
-            /* 
-             * Socket full. Wait for an I/O event. Conn.c will setup listening for write events if the queue is non-empty
-             */
-            maRequestWriteBlocked(conn);
-            break;
-
-        } else if (written > 0) {
-            resp->bytesWritten += written;
-            freeNetPackets(q, written);
-            adjustNetVec(q, written);
-        }
-    }
-    if (q->ioCount == 0 && q->flags & MA_QUEUE_EOF) {
-        maCompleteRequest(conn);
-    }
-}
-
-
 /*
- *  Build the IO vector. Return the count of bytes to be written. Return -1 for EOF.
+ *  Build an ASCII time string.  If sbuf is NULL we use the current time, else we use the last modified time of sbuf
  */
-static int64 buildNetVec(MaQueue *q)
+char *maGetDateString(MprCtx ctx, MprPath *sbuf)
 {
-    MaConn      *conn;
-    MaResponse  *resp;
-    MaPacket    *packet;
+    MprTime     when;
+    struct tm   tm;
 
-    conn = q->conn;
-    resp = conn->response;
-
-    /*
-     *  Examine each packet and accumulate as many packets into the I/O vector as possible. Leave the packets on the queue 
-     *  for now, they are removed after the IO is complete for the entire packet.
-     */
-    for (packet = q->first; packet; packet = packet->next) {
-        if (packet->flags & MA_PACKET_HEADER) {
-            if (resp->chunkSize <= 0 && q->count > 0 && resp->length < 0) {
-                /* Incase no chunking filter and we've not seen all the data yet */
-                conn->keepAliveCount = 0;
-            }
-            maFillHeaders(conn, packet);
-            q->count += maGetPacketLength(packet);
-
-        } else if (maGetPacketLength(packet) == 0) {
-            q->flags |= MA_QUEUE_EOF;
-            if (packet->prefix == NULL) {
-                break;
-            }
-            
-        } else if (resp->flags & MA_RESP_NO_BODY) {
-            maDiscardData(q, 0);
-            continue;
-        }
-        if (q->ioIndex >= (MA_MAX_IOVEC - 2)) {
-            break;
-        }
-        addPacketForNet(q, packet);
-    }
-    return q->ioCount;
-}
-
-
-/*
- *  Add one entry to the io vector
- */
-static void addToNetVector(MaQueue *q, char *ptr, int bytes)
-{
-    mprAssert(bytes > 0);
-
-    q->iovec[q->ioIndex].start = ptr;
-    q->iovec[q->ioIndex].len = bytes;
-    q->ioCount += bytes;
-    q->ioIndex++;
-}
-
-
-/*
- *  Add a packet to the io vector. Return the number of bytes added to the vector.
- */
-static void addPacketForNet(MaQueue *q, MaPacket *packet)
-{
-    MaResponse  *resp;
-    MaConn      *conn;
-    int         mask;
-
-    conn = q->conn;
-    resp = conn->response;
-
-    mprAssert(q->count >= 0);
-    mprAssert(q->ioIndex < (MA_MAX_IOVEC - 2));
-
-    if (packet->prefix) {
-        addToNetVector(q, mprGetBufStart(packet->prefix), mprGetBufLength(packet->prefix));
-    }
-    if (maGetPacketLength(packet) > 0) {
-        addToNetVector(q, mprGetBufStart(packet->content), mprGetBufLength(packet->content));
-    }
-    mask = MA_TRACE_RESPONSE | ((packet->flags & MA_PACKET_HEADER) ? MA_TRACE_HEADERS : MA_TRACE_BODY);
-    if (maShouldTrace(conn, mask)) {
-        maTraceContent(conn, packet, 0, resp->bytesWritten, mask);
-    }
-}
-
-
-static void freeNetPackets(MaQueue *q, int64 bytes)
-{
-    MaPacket    *packet;
-    int         len;
-
-    mprAssert(q->first);
-    mprAssert(q->count >= 0);
-    mprAssert(bytes >= 0);
-
-    while ((packet = q->first) != 0) {
-        if (packet->prefix) {
-            len = mprGetBufLength(packet->prefix);
-            len = (int) min(len, bytes);
-            mprAdjustBufStart(packet->prefix, len);
-            bytes -= len;
-            /* Prefixes don't count in the q->count. No need to adjust */
-            if (mprGetBufLength(packet->prefix) == 0) {
-                mprFree(packet->prefix);
-                packet->prefix = 0;
-            }
-        }
-
-        if (packet->content) {
-            len = mprGetBufLength(packet->content);
-            len = (int) min(len, bytes);
-            mprAdjustBufStart(packet->content, len);
-            bytes -= len;
-            q->count -= len;
-            mprAssert(q->count >= 0);
-        }
-        if (packet->content == 0 || mprGetBufLength(packet->content) == 0) {
-            /*
-             *  This will remove the packet from the queue and will re-enable upstream disabled queues.
-             */
-            if ((packet = maGet(q)) != 0) {
-                maFreePacket(q, packet);
-            }
-        }
-        mprAssert(bytes >= 0);
-        if (bytes == 0) {
-            break;
-        }
-    }
-}
-
-
-/*
- *  Clear entries from the IO vector that have actually been transmitted. Support partial writes.
- */
-static void adjustNetVec(MaQueue *q, int written)
-{
-    MprIOVec    *iovec;
-    int         len, i, j;
-
-    /*
-     *  Cleanup the IO vector
-     */
-    if (written == q->ioCount) {
-        /*
-         *  Entire vector written. Just reset.
-         */
-        q->ioIndex = 0;
-        q->ioCount = 0;
-
+    if (sbuf == 0) {
+        when = mprGetTime(ctx);
     } else {
-        /*
-         *  Partial write of an vector entry. Need to copy down the unwritten vector entries.
-         */
-        q->ioCount -= written;
-        mprAssert(q->ioCount >= 0);
-        iovec = q->iovec;
-        for (i = 0; i < q->ioIndex; i++) {
-            len = (int) iovec[i].len;
-            if (written < len) {
-                iovec[i].start += written;
-                iovec[i].len -= written;
-                break;
-            } else {
-                written -= len;
-            }
-        }
-        /*
-         *  Compact
-         */
-        for (j = 0; i < q->ioIndex; ) {
-            iovec[j++] = iovec[i++];
-        }
-        q->ioIndex = j;
+        when = (MprTime) sbuf->mtime * MPR_TICKS_PER_SEC;
     }
+    mprDecodeUniversalTime(ctx, &tm, when);
+    return mprFormatTime(ctx, MPR_HTTP_DATE, &tm);
 }
-
-
-/*
- *  Initialize the net connector
- */
-int maOpenNetConnector(MaHttp *http)
-{
-    MaStage     *stage;
-
-    stage = maCreateConnector(http, "netConnector", MA_STAGE_ALL);
-    if (stage == 0) {
-        return MPR_ERR_CANT_CREATE;
-    }
-    stage->outgoingService = netOutgoingService;
-    http->netConnector = stage;
-    return 0;
-}
-
-
-#else 
-void __dummyNetConnector() {}
-#endif /* BLD_FEATURE_NET */
 
 /*
  *  @copy   default
- *
+ *  
  *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
  *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *
+ *  
  *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire
- *  a commercial license from Embedthis Software. You agree to be fully bound
- *  by the terms of either license. Consult the LICENSE.TXT distributed with
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
  *  this software for full details.
- *
- *  This software is open source; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by the
- *  Free Software Foundation; either version 2 of the License, or (at your
- *  option) any later version. See the GNU General Public License for more
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
  *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *
- *  This program is distributed WITHOUT ANY WARRANTY; without even the
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- *  This GPL license does NOT permit incorporating this software into
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
  *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses
- *  for this software and support services are available from Embedthis
- *  Software at http://www.embedthis.com
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
  *
  *  Local variables:
     tab-width: 4
@@ -9581,7 +12135,2035 @@ void __dummyNetConnector() {}
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/connectors/netConnector.c"
+ *  End of file "../src/http/misc.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/modules/sslModule.c"
+ */
+/************************************************************************/
+
+/*
+ *  sslModule.c - Module for SSL support
+ *
+ *  Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+
+#include    "mprSsl.h"
+
+#if BLD_FEATURE_SSL
+
+static int parseSsl(MaHttp *http, cchar *key, char *value, MaConfigState *state)
+{
+    MaLocation  *location;
+    MaHost      *host;
+    char        *path, prefix[MPR_MAX_FNAME];
+    char        *tok, *word;
+    int         protoMask, mask;
+    static int  hasBeenWarned = 0;
+
+    host = state->host;
+    location = state->location;
+
+    mprStrcpy(prefix, sizeof(prefix), key);
+    prefix[3] = '\0';
+
+    if (mprStrcmpAnyCase(prefix, "SSL") != 0) {
+        return 0;
+    }
+
+    if (!mprHasSecureSockets(http)) {
+        if (!hasBeenWarned++) {
+            mprError(http, "Missing an SSL Provider");
+        }
+        return 0;
+        /* return MPR_ERR_BAD_SYNTAX; */
+    }
+
+    if (location->ssl == 0) {
+        location->ssl = mprCreateSsl(location);
+    }
+
+    if (mprStrcmpAnyCase(key, "SSLEngine") == 0) {
+        mprStrTok(value, " \t", &tok);
+        mprStrTok(0, " \t", &tok);
+        if (mprStrcmpAnyCase(value, "on") == 0) {
+            maSecureHost(host, location->ssl);
+        }
+        return 1;
+    }
+
+    path = maMakePath(host, mprStrTrim(value, "\""));
+
+    if (mprStrcmpAnyCase(key, "SSLCACertificatePath") == 0) {
+        mprSetSslCaPath(location->ssl, path);
+        mprFree(path);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "SSLCACertificateFile") == 0) {
+        mprSetSslCaFile(location->ssl, path);
+        mprFree(path);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "SSLCertificateFile") == 0) {
+        mprSetSslCertFile(location->ssl, path);
+        mprFree(path);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "SSLCertificateKeyFile") == 0) {
+        mprSetSslKeyFile(location->ssl, path);
+        mprFree(path);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "SSLCipherSuite") == 0) {
+        mprSetSslCiphers(location->ssl, value);
+        mprFree(path);
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "SSLVerifyClient") == 0) {
+        mprFree(path);
+        if (mprStrcmpAnyCase(value, "require") == 0) {
+            mprVerifySslClients(location->ssl, 1);
+
+        } else if (mprStrcmpAnyCase(value, "none") == 0) {
+            mprVerifySslClients(location->ssl, 0);
+
+        } else {
+            return -1;
+        }
+        return 1;
+
+    } else if (mprStrcmpAnyCase(key, "SSLProtocol") == 0) {
+        mprFree(path);
+        protoMask = 0;
+        word = mprStrTok(value, " \t", &tok);
+        while (word) {
+            mask = -1;
+            if (*word == '-') {
+                word++;
+                mask = 0;
+            } else if (*word == '+') {
+                word++;
+            }
+            if (mprStrcmpAnyCase(word, "SSLv2") == 0) {
+                protoMask &= ~(MPR_HTTP_PROTO_SSLV2 & ~mask);
+                protoMask |= (MPR_HTTP_PROTO_SSLV2 & mask);
+
+            } else if (mprStrcmpAnyCase(word, "SSLv3") == 0) {
+                protoMask &= ~(MPR_HTTP_PROTO_SSLV3 & ~mask);
+                protoMask |= (MPR_HTTP_PROTO_SSLV3 & mask);
+
+            } else if (mprStrcmpAnyCase(word, "TLSv1") == 0) {
+                protoMask &= ~(MPR_HTTP_PROTO_TLSV1 & ~mask);
+                protoMask |= (MPR_HTTP_PROTO_TLSV1 & mask);
+
+            } else if (mprStrcmpAnyCase(word, "ALL") == 0) {
+                protoMask &= ~(MPR_HTTP_PROTO_ALL & ~mask);
+                protoMask |= (MPR_HTTP_PROTO_ALL & mask);
+            }
+            word = mprStrTok(0, " \t", &tok);
+        }
+        mprSetSslProtocols(location->ssl, protoMask);
+        return 1;
+    }
+    mprFree(path);
+    return 0;
+}
+
+
+/*
+ *  Loadable module initialization. 
+ */
+MprModule *maSslModuleInit(MaHttp *http, cchar *path)
+{
+    MprModule   *module;
+    MaStage     *stage;
+
+    if ((module = mprLoadSsl(http, 1)) == 0) {
+        return 0;
+    }
+    if ((stage = maCreateStage(http, "sslModule", MA_STAGE_MODULE)) == 0) {
+        mprFree(module);
+        return 0;
+    }
+    stage->parse = parseSsl; 
+
+    return module;
+}
+
+
+#else
+
+MprModule *maSslModuleInit(MaHttp *http, cchar *path)
+{
+    return 0;
+}
+#endif /* BLD_FEATURE_SSL */
+
+/*
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/modules/sslModule.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/pipeline.c"
+ */
+/************************************************************************/
+
+/*
+ *  pipeline.c -- HTTP pipeline request processing.
+ *
+ *  Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+
+
+
+static MaStage *checkStage(MaConn *conn, MaStage *stage);
+static MaStage *findHandler(MaConn *conn);
+static MaStage *mapToFile(MaConn *conn, MaStage *handler);
+static bool matchFilter(MaConn *conn, MaFilter *filter);
+static bool rewriteRequest(MaConn *conn);
+static void openQ(MaQueue *q);
+static MaStage *processDirectory(MaConn *conn, MaStage *handler);
+static void setEnv(MaConn *conn);
+static void setPathInfo(MaConn *conn);
+static void startQ(MaQueue *q);
+
+/*
+    Find the matching handler for a request. If any errors occur, the pass handler is used to pass errors onto the 
+    net/sendfile connectors to send to the client. This routine may rewrite the request URI and may redirect the request.
+ */
+void maMatchHandler(MaConn *conn)
+{
+    MaRequest       *req;
+    MaResponse      *resp;
+    MaStage         *handler;
+
+    req = conn->request;
+    resp = conn->response;
+    handler = 0;
+
+    mprAssert(req->url);
+    mprAssert(req->alias);
+    mprAssert(resp->filename);
+    mprAssert(resp->fileInfo.checked);
+
+    /*
+        Get the best (innermost) location block and see if a handler is explicitly set for that location block.
+     */
+    while (!handler && !conn->requestFailed && req->rewrites++ < MA_MAX_REWRITE) {
+        /*
+            Give stages a cance to rewrite the request, then match the location handler. If that doesn't match, 
+            try to match by extension and/or handler match() routines. This may invoke processDirectory which 
+            may redirect and thus require reprocessing -- hence the loop.
+         */
+        if (!rewriteRequest(conn)) {
+            if ((handler = checkStage(conn, req->location->handler)) == 0) {
+                handler = findHandler(conn);
+            }
+            handler = mapToFile(conn, handler);
+        }
+    }
+    if (handler == 0) {
+        handler = conn->http->passHandler;
+        if (!conn->requestFailed) {
+            if (req->rewrites >= MA_MAX_REWRITE) {
+                maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Too many request rewrites");
+            } else if (!(req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE))) {
+                maFailRequest(conn, MPR_HTTP_CODE_BAD_METHOD, "Requested method %s not supported for URL: %s", 
+                    req->methodName, req->url);
+            }
+        }
+
+    } else if (req->method & (MA_REQ_OPTIONS | MA_REQ_TRACE)) {
+        if ((req->flags & MA_REQ_OPTIONS) != !(handler->flags & MA_STAGE_OPTIONS)) {
+            handler = conn->http->passHandler;
+
+        } else if ((req->flags & MA_REQ_TRACE) != !(handler->flags & MA_STAGE_TRACE)) {
+            handler = conn->http->passHandler;
+        }
+    }
+    resp->handler = handler;
+    mprLog(resp, 3, "Select handler: \"%s\" for \"%s\"", handler->name, req->url);
+}
+
+
+static bool rewriteRequest(MaConn *conn)
+{
+    MaResponse      *resp;
+    MaRequest       *req;
+    MaStage         *handler;
+    MprHash         *he;
+    int             next;
+
+    req = conn->request;
+    resp = conn->response;
+    mprAssert(resp->filename);
+    mprAssert(resp->fileInfo.checked);
+    mprAssert(req->alias);
+
+    if (req->alias->redirectCode) {
+        maRedirect(conn, req->alias->redirectCode, req->alias->uri);
+        return 1;
+    }
+    for (next = 0; (handler = mprGetNextItem(req->location->handlers, &next)) != 0; ) {
+        if (handler->modify && handler->modify(conn, handler)) {
+            return 1;
+        }
+    }
+    for (he = 0; (he = mprGetNextHash(req->location->extensions, he)) != 0; ) {
+        handler = (MaStage*) he->data;
+        if (handler->modify && handler->modify(conn, handler)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+/*
+ *  Create stages for the request pipeline.
+ */
+void maCreatePipeline(MaConn *conn)
+{
+    MaHttp          *http;
+    MaResponse      *resp;
+    MaRequest       *req;
+    MaStage         *handler;
+    MaLocation      *location;
+    MaStage         *stage, *connector;
+    MaFilter        *filter;
+    MaQueue         *q, *qhead, *rq, *rqhead;
+    int             next;
+
+    req = conn->request;
+    resp = conn->response;
+    location = req->location;
+    handler = resp->handler;
+    http = conn->http;
+
+    mprAssert(req);
+    mprAssert(location);
+    mprAssert(location->outputStages);
+
+    /*
+     *  Create the output pipeline for this request. Handler first, then filters, connector last.
+     */
+    resp->outputPipeline = mprCreateList(resp);
+
+    /*
+     *  Add the handler and filters. If the request has failed, switch to the pass handler which will just 
+     *  pass data along.
+     */
+    if (conn->requestFailed) {
+        handler = resp->handler = http->passHandler;
+        mprAddItem(resp->outputPipeline, resp->handler);
+
+    } else {
+        mprAddItem(resp->outputPipeline, resp->handler);
+        for (next = 0; (filter = mprGetNextItem(location->outputStages, &next)) != 0; ) {
+            if (filter->stage == http->authFilter) {
+                if (req->auth->type == 0) {
+                    continue;
+                }
+            }
+            if (filter->stage == http->rangeFilter && req->ranges == 0) {
+                continue;
+            }
+            if ((filter->stage->flags & MA_STAGE_ALL & req->method) == 0) {
+                continue;
+            }
+            if (matchFilter(conn, filter)) {
+                mprAddItem(resp->outputPipeline, filter->stage);
+            }
+        }
+    }
+    if (conn->requestFailed) {
+        handler = resp->handler = http->passHandler;
+        mprSetItem(resp->outputPipeline, 0, resp->handler);
+    }
+    connector = location->connector;
+    if (connector == 0) {
+        mprError(conn, "No connector defined, using net connector");
+        connector = http->netConnector;
+    }
+#if BLD_FEATURE_SEND
+    if (resp->handler == http->fileHandler && connector == http->netConnector && req->method == MA_REQ_GET && 
+            http->sendConnector && !req->ranges && !req->host->secure && resp->chunkSize <= 0 && !conn->trace) {
+        /*
+            Switch (transparently) to the send connector if serving whole static file content via the net connector
+            and not tracing.
+        */
+        connector = http->sendConnector;
+    }
+#endif
+    resp->connector = connector;
+    if ((connector->flags & MA_STAGE_ALL & req->method) == 0) {
+        maFailRequest(conn, MPR_HTTP_CODE_BAD_REQUEST, "Connector \"%s\" does not support the \"%s\" method \"%s\"", 
+            connector->name, req->methodName);
+    }
+    mprAddItem(resp->outputPipeline, connector);
+
+    /*
+     *  Create the outgoing queue heads and open the queues
+     */
+    q = &resp->queue[MA_QUEUE_SEND];
+    for (next = 0; (stage = mprGetNextItem(resp->outputPipeline, &next)) != 0; ) {
+        q = maCreateQueue(conn, stage, MA_QUEUE_SEND, q);
+    }
+
+    /*
+     *  Create the receive pipeline for this request. Connector first, handler last. Must be created even if the request
+     *  has failed so input chunking can be processed to keep the connection alive.
+     */
+    if (req->remainingContent > 0 || (req->method == MA_REQ_PUT || req->method == MA_REQ_POST)) {
+        req->inputPipeline = mprCreateList(resp);
+
+        mprAddItem(req->inputPipeline, connector);
+        for (next = 0; (filter = mprGetNextItem(location->inputStages, &next)) != 0; ) {
+            if (filter->stage == http->authFilter || !matchFilter(conn, filter)) {
+                continue;
+            }
+            if (filter->stage == http->chunkFilter && !(req->flags & MA_REQ_CHUNKED)) {
+                continue;
+            }
+            if ((filter->stage->flags & MA_STAGE_ALL & req->method) == 0) {
+                continue;
+            }
+            mprAddItem(req->inputPipeline, filter->stage);
+        }
+        mprAddItem(req->inputPipeline, handler);
+
+        /*
+         *  Create the incoming queue heads and open the queues.
+         */
+        q = &resp->queue[MA_QUEUE_RECEIVE];
+        for (next = 0; (stage = mprGetNextItem(req->inputPipeline, &next)) != 0; ) {
+            q = maCreateQueue(conn, stage, MA_QUEUE_RECEIVE, q);
+        }
+    }
+
+    /*
+     *  Pair up the send and receive queues. NOTE: can't use a stage multiple times.
+     */
+    qhead = &resp->queue[MA_QUEUE_SEND];
+    rqhead = &resp->queue[MA_QUEUE_RECEIVE];
+    for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
+        for (rq = rqhead->nextQ; rq != rqhead; rq = rq->nextQ) {
+            if (q->stage == rq->stage) {
+                q->pair = rq;
+                rq->pair = q;
+            }
+        }
+    }
+
+    /*
+     *  Open the queues (keep going on errors). Open in reverse order to open the handler last.
+     *  This ensures the authFilter runs before the handler.
+     */
+    qhead = &resp->queue[MA_QUEUE_SEND];
+    for (q = qhead->prevQ; q != qhead; q = q->prevQ) {
+        if (q->open && !(q->flags & MA_QUEUE_OPEN)) {
+            q->flags |= MA_QUEUE_OPEN;
+            openQ(q);
+        }
+    }
+
+    if (req->remainingContent > 0) {
+        qhead = &resp->queue[MA_QUEUE_RECEIVE];
+        for (q = qhead->prevQ; q != qhead; q = q->prevQ) {
+            if (q->open && !(q->flags & MA_QUEUE_OPEN)) {
+                if (q->pair == 0 || !(q->pair->flags & MA_QUEUE_OPEN)) {
+                    q->flags |= MA_QUEUE_OPEN;
+                    openQ(q);
+                }
+            }
+        }
+    }    
+    /*
+        Now that all stages are open, we can set the environment
+     */
+    setEnv(conn);
+
+    /*
+        Invoke any start routines
+     */
+    qhead = &resp->queue[MA_QUEUE_SEND];
+    for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
+        if (q->start && !(q->flags & MA_QUEUE_STARTED)) {
+            q->flags |= MA_QUEUE_STARTED;
+            startQ(q);
+        }
+    }
+
+    if (req->remainingContent > 0) {
+        qhead = &resp->queue[MA_QUEUE_RECEIVE];
+        for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
+            if (q->start && !(q->flags & MA_QUEUE_STARTED)) {
+                if (q->pair == 0 || !(q->pair->flags & MA_QUEUE_STARTED)) {
+                    q->flags |= MA_QUEUE_STARTED;
+                    startQ(q);
+                }
+            }
+        }
+    }
+    conn->flags |= MA_CONN_PIPE_CREATED;
+}
+
+
+void maDestroyPipeline(MaConn *conn)
+{
+    MaResponse      *resp;
+    MaQueue         *q, *qhead;
+    int             i;
+
+    resp = conn->response;
+
+    if (conn->flags & MA_CONN_PIPE_CREATED && resp) {
+        for (i = 0; i < MA_MAX_QUEUE; i++) {
+            qhead = &resp->queue[i];
+            for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
+                if (q->close && q->flags & MA_QUEUE_OPEN) {
+                    q->flags &= ~MA_QUEUE_OPEN;
+                    q->close(q);
+                }
+            }
+        }
+        conn->flags &= ~MA_CONN_PIPE_CREATED;
+    }
+}
+
+
+/*
+ *  Invoke the run routine for the handler and then pump the pipeline by servicing all scheduled queues.
+ */
+bool maRunPipeline(MaConn *conn)
+{
+    MaQueue     *q;
+    
+    q = conn->response->queue[MA_QUEUE_SEND].nextQ;
+    
+    if (q->stage->run) {
+        MEASURE(conn, q->stage->name, "run", q->stage->run(q));
+    }
+    if (conn->request) {
+        return maServiceQueues(conn);
+    }
+    return 0;
+}
+
+
+/*
+ *  Run the queue service routines until there is no more work to be done. NOTE: all I/O is non-blocking.
+ */
+bool maServiceQueues(MaConn *conn)
+{
+    MaQueue     *q;
+    bool        workDone;
+
+    workDone = 0;
+    while (!conn->disconnected && (q = maGetNextQueueForService(&conn->serviceq)) != NULL) {
+        maServiceQueue(q);
+        workDone = 1;
+    }
+    return workDone;
+}
+
+
+void maDiscardPipeData(MaConn *conn)
+{
+    MaResponse      *resp;
+    MaQueue         *q, *qhead;
+
+    resp = conn->response;
+    if (resp == 0) {
+        return;
+    }
+
+    qhead = &resp->queue[MA_QUEUE_SEND];
+    for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
+        maDiscardData(q, 0);
+    }
+
+    qhead = &resp->queue[MA_QUEUE_RECEIVE];
+    for (q = qhead->nextQ; q != qhead; q = q->nextQ) {
+        maDiscardData(q, 0);
+    }
+}
+
+
+static MaStage *checkStage(MaConn *conn, MaStage *stage)
+{
+    MaRequest   *req;
+
+    req = conn->request;
+
+    if (stage == 0) {
+        return 0;
+    }
+    if ((stage->flags & MA_STAGE_ALL & req->method) == 0) {
+        return 0;
+    }
+    if (stage->match && !(stage->flags & MA_STAGE_UNLOADED)) {
+        /* Can't have match routines on unloadable modules */
+        if (!stage->match(conn, stage, req->url)) {
+            return 0;
+        }
+    }
+    return stage;
+}
+
+
+static cchar *getExtension(MaConn *conn, cchar *path)
+{
+    cchar   *cp;
+    char    *ext, *ep;
+
+    if ((cp = strrchr(path, '.')) != 0) {
+        ext = mprStrdup(conn->request, ++cp);
+        for (ep = ext; *ep && isalnum((int)*ep); ep++) {
+            ;
+        }
+        *ep = '\0';
+        return ext;
+    }
+    return 0;
+}
+
+/*
+    Get an extension used for mime type matching. This finds the last extension in the Uri 
+    (or filename if absent in the Uri). Note, the extension may be followed by extra path information.
+ */
+cchar *maGetExtension(MaConn *conn)
+{
+    MaRequest   *req;
+    cchar       *ext;
+
+    req = conn->request;
+    ext = getExtension(conn, &req->url[req->alias->prefixLen]);
+    if (ext == 0) {
+        ext = getExtension(conn, conn->response->filename);
+    }
+    if (ext == 0) {
+        ext = "";
+    }
+    return ext;
+}
+
+
+/*
+ *  Search for a handler by request extension. If that fails, use handler custom matching.
+ *  If all that fails, return the catch-all handler (fileHandler)
+ */
+static MaStage *findHandler(MaConn *conn)
+{
+    MaRequest   *req;
+    MaResponse  *resp;
+    MaStage     *handler;
+    MaLocation  *location;
+    MprHash     *hp;
+    cchar       *ext;
+    char        *path;
+    int         next;
+
+    req = conn->request;
+    resp = conn->response;
+    location = req->location;
+    handler = 0;
+    
+    /*
+        Do custom handler matching first
+     */
+    for (next = 0; (handler = mprGetNextItem(location->handlers, &next)) != 0; ) {
+        if (handler->match && checkStage(conn, handler)) {
+            resp->handler = handler;
+            return handler;
+        }
+    }
+
+    ext = resp->extension;
+    if (*ext) {
+        handler = maGetHandlerByExtension(location, resp->extension);
+        if (checkStage(conn, handler)) {
+            return handler;
+        }
+
+    } else {
+        /*
+            URI has no extension, check if the addition of configured  extensions results in a valid filename.
+         */
+        for (path = 0, hp = 0; (hp = mprGetNextHash(location->extensions, hp)) != 0; ) {
+            handler = (MaStage*) hp->data;
+            if (*hp->key && (handler->flags & MA_STAGE_MISSING_EXT)) {
+                path = mprStrcat(resp, -1, resp->filename, ".", hp->key, NULL);
+                if (mprGetPathInfo(conn, path, &resp->fileInfo) == 0) {
+                    mprLog(conn, 5, "findHandler: Adding extension, new path %s\n", path);
+                    maSetRequestUri(conn, mprStrcat(resp, -1, req->url, ".", hp->key, NULL), NULL);
+                    return handler;
+                }
+                mprFree(path);
+            }
+        }
+    }
+
+    /*
+        Failed to match. Return any catch-all handler
+     */
+    handler = maGetHandlerByExtension(location, "");
+    if (handler == 0) {
+        /*
+            Could be missing a catch-all in the config file, so invoke the file handler.
+         */
+        handler = maLookupStage(conn->http, "fileHandler");
+    }
+    if ((handler = checkStage(conn, handler)) == 0) {
+        handler = conn->http->passHandler;
+    }
+    return handler;
+}
+
+
+char *maMakeFilename(MaConn *conn, MaAlias *alias, cchar *url, bool skipAliasPrefix)
+{
+    char        *cleanPath, *path;
+
+    mprAssert(alias);
+    mprAssert(url);
+
+    if (skipAliasPrefix) {
+        url += alias->prefixLen;
+    }
+    while (*url == '/') {
+        url++;
+    }
+    if ((path = mprJoinPath(conn->request, alias->filename, url)) == 0) {
+        return 0;
+    }
+    cleanPath = mprGetNativePath(conn, path);
+    mprFree(path);
+    return cleanPath;
+}
+
+
+static MaStage *mapToFile(MaConn *conn, MaStage *handler)
+{
+    MaRequest   *req;
+    MaResponse  *resp;
+    MprPath     *info, ginfo;
+    char        *gfile;
+
+    req = conn->request;
+    resp = conn->response;
+    info = &resp->fileInfo;
+
+    mprAssert(resp->filename);
+    mprAssert(info->checked);
+
+    if (!handler || (handler->flags & MA_STAGE_VIRTUAL)) {
+        return handler;
+    }
+    if ((req->dir = maLookupBestDir(req->host, resp->filename)) == 0) {
+        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Missing directory block for %s", resp->filename);
+    } else {
+        if (req->dir->auth) {
+            req->auth = req->dir->auth;
+        }
+        if (info->isDir) {
+            handler = processDirectory(conn, handler);
+        } else if (info->valid) {
+            /*
+                Define an Etag for physical entities. Redo the file info if not valid now that extra path has been removed.
+             */
+            resp->etag = mprAsprintf(resp, -1, "\"%x-%Lx-%Lx\"", info->inode, info->size, info->mtime);
+        } else {
+            if (req->acceptEncoding) {
+                if (strstr(req->acceptEncoding, "gzip") != 0) {
+                    gfile = mprAsprintf(resp, -1, "%s.gz", resp->filename);
+                    if (mprGetPathInfo(resp, gfile, &ginfo) == 0) {
+                        resp->filename = gfile;
+                        resp->fileInfo = ginfo;
+                        maSetHeader(conn, 0, "Content-Encoding", "gzip");
+                        return handler;
+                    }
+                }
+            }
+            if (req->method != MA_REQ_PUT && handler->flags & MA_STAGE_VERIFY_ENTITY && 
+                    (req->auth == 0 || req->auth->type == 0)) {
+                /* If doing Authentication, must let authFilter generate the response */
+                maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't open document: %s", resp->filename);
+            }
+        }
+    }
+    return handler;
+}
+
+
+/*
+ *  Match a filter by extension
+ */
+static bool matchFilter(MaConn *conn, MaFilter *filter)
+{
+    MaRequest       *req;
+    MaResponse      *resp;
+    MaStage         *stage;
+
+    req = conn->request;
+    resp = conn->response;
+    stage = filter->stage;
+
+    if (stage->match) {
+        return stage->match(conn, stage, req->url);
+    }
+    if (filter->extensions && *resp->extension) {
+        return maMatchFilterByExtension(filter, resp->extension);
+    }
+    return 1;
+}
+
+
+static void openQ(MaQueue *q)
+{
+    MaConn      *conn;
+    MaStage     *stage;
+    MaResponse  *resp;
+
+    conn = q->conn;
+    resp = conn->response;
+    stage = q->stage;
+
+    if (resp->chunkSize > 0) {
+        q->packetSize = min(q->packetSize, resp->chunkSize);
+    }
+    if (stage->flags & MA_STAGE_UNLOADED) {
+        mprAssert(stage->path);
+        mprLog(q, 2, "Loading module %s", stage->name);
+        stage->module = maLoadModule(conn->http, stage->name, stage->path);
+    }
+    if (stage->module) {
+        stage->module->lastActivity = conn->host->now;
+    }
+    q->flags |= MA_QUEUE_OPEN;
+    if (q->open) {
+        MEASURE(conn, stage->name, "open", stage->open(q));
+    }
+}
+
+
+static void startQ(MaQueue *q)
+{
+    MaConn      *conn;
+    MaResponse  *resp;
+
+    conn = q->conn;
+    resp = conn->response;
+
+    if (resp->chunkSize > 0) {
+        q->packetSize = min(q->packetSize, resp->chunkSize);
+    }
+    q->flags |= MA_QUEUE_STARTED;
+    if (q->start) {
+        MEASURE(q, q->stage->name, "start", q->start(q));
+    }
+}
+
+
+/*
+ *  Manage requests to directories. This will either do an external redirect back to the browser or do an internal 
+ *  (transparent) redirection and serve different content back to the browser. This routine may modify the requested 
+ *  URI and/or the request handler.
+ */
+static MaStage *processDirectory(MaConn *conn, MaStage *handler)
+{
+    MaRequest       *req;
+    MaResponse      *resp;
+    MprUri          *prior;
+    MprPath         *info;
+    char            *path, *index, *uri, *pathInfo;
+
+    req = conn->request;
+    resp = conn->response;
+    info = &resp->fileInfo;
+    prior = req->parsedUri;
+    mprAssert(info->isDir);
+
+    index = req->dir->indexName;
+    path = mprJoinPath(resp, resp->filename, index);
+   
+    if (req->url[strlen(req->url) - 1] == '/') {
+        /*
+            Internal directory redirections
+         */
+        if (mprPathExists(resp, path, R_OK)) {
+            /*
+                Index file exists, so do an internal redirect to it. Client will not be aware of this happening.
+                Return zero so the request will be rematched on return.
+             */
+            pathInfo = mprJoinPath(req, req->url, index);
+            uri = mprFormatUri(req, prior->scheme, prior->host, prior->port, pathInfo, prior->query);
+            maSetRequestUri(conn, uri, NULL);
+            return 0;
+        }
+        mprFree(path);
+
+    } else {
+        /*
+         *  External redirect. If the index exists, redirect to it. If not, append a "/" to the URI and redirect.
+         */
+        if (mprPathExists(resp, path, R_OK)) {
+            pathInfo = mprJoinPath(req, req->url, index);
+        } else {
+            pathInfo = mprJoinPath(req, req->url, "/");
+        }
+        uri = mprFormatUri(req, prior->scheme, prior->host, prior->port, pathInfo, prior->query);
+        maRedirect(conn, MPR_HTTP_CODE_MOVED_PERMANENTLY, uri);
+        handler = conn->http->passHandler;
+    }
+    return handler;
+}
+
+
+static bool fileExists(MprCtx ctx, cchar *path) {
+    if (mprPathExists(ctx, path, R_OK)) {
+        return 1;
+    }
+#if BLD_WIN_LIKE
+{
+    char    *file;
+    file = mprStrcat(ctx, -1, path, ".exe", NULL);
+    if (mprPathExists(ctx, file, R_OK)) {
+        return 1;
+    }
+    file = mprStrcat(ctx, -1, path, ".bat", NULL);
+    if (mprPathExists(ctx, file, R_OK)) {
+        return 1;
+    }
+}
+#endif
+    return 0;
+}
+
+
+/*
+ *  Set the pathInfo (PATH_INFO) and update the request uri. This may set the response filename if convenient.
+ */
+static void setPathInfo(MaConn *conn)
+{
+    MaStage     *handler;
+    MaAlias     *alias;
+    MaRequest   *req;
+    MaResponse  *resp;
+    char        *last, *start, *cp, *pathInfo;
+    int         found, sep, offset;
+
+    req = conn->request;
+    resp = conn->response;
+    alias = req->alias;
+    handler = resp->handler;
+
+    mprAssert(handler);
+
+    if (handler && handler->flags & MA_STAGE_PATH_INFO) {
+        if (!(handler->flags & MA_STAGE_VIRTUAL)) {
+            /*
+             *  Find the longest subset of the filename that matches a real file. Test each segment to see if 
+             *  it corresponds to a real physical file. This also defines a new response filename after trimming the 
+             *  extra path info.
+             */
+            last = 0;
+            sep = mprGetPathSeparator(req, resp->filename);
+            for (cp = start = &resp->filename[strlen(alias->filename)]; cp; ) {
+                if ((cp = strchr(cp, sep)) != 0) {
+                    *cp = '\0';
+                }
+                found = fileExists(conn, resp->filename);
+                if (cp) {
+                    *cp = sep;
+                }
+                if (found) {
+                    if (cp) {
+                        last = cp++;
+                    } else {
+                        last = &resp->filename[strlen(resp->filename)];
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            if (last) {
+                offset = alias->prefixLen + (int) (last - start);
+                if (offset < (int) strlen(req->url)) {
+                    pathInfo = &req->url[offset];
+                    req->pathInfo = mprStrdup(req, pathInfo);
+                    pathInfo[0] = '\0';
+                    maSetRequestUri(conn, req->url, NULL);
+                } else {
+                    req->pathInfo = "";
+                }
+                if (req->pathInfo && req->pathInfo[0]) {
+                    req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0);
+                }
+            }
+        }
+        if (req->pathInfo == 0) {
+            req->pathInfo = req->url;
+            maSetRequestUri(conn, "/", NULL);
+            req->pathTranslated = maMakeFilename(conn, alias, req->pathInfo, 0); 
+        }
+    }
+}
+
+
+static void setEnv(MaConn *conn)
+{
+    MaRequest       *req;
+    MaResponse      *resp;
+    MaStage         *handler;
+
+    req = conn->request;
+    resp = conn->response;
+    handler = resp->handler;
+
+    mprAssert(resp->filename);
+    mprAssert(resp->extension);
+    mprAssert(resp->mimeType);
+
+    setPathInfo(conn);
+
+    if (handler->flags & MA_STAGE_VARS && req->parsedUri->query) {
+        maAddVars(req->formVars, req->parsedUri->query, (int) strlen(req->parsedUri->query));
+    }
+    if (handler->flags & MA_STAGE_ENV_VARS) {
+        maCreateEnvVars(conn);
+        if (resp->envCallback) {
+            resp->envCallback(conn);
+        }
+    }
+}
+
+
+char *maMapUriToStorage(MaConn *conn, cchar *url)
+{
+    MaAlias     *alias;
+
+    alias = maGetAlias(conn->request->host, url);
+    if (alias == 0) {
+        return 0;
+    }
+    return maMakeFilename(conn, alias, url, 1);
+}
+
+
+/*
+    @copy   default
+  
+    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+  
+    This software is distributed under commercial and open source licenses.
+    You may use the GPL open source license described below or you may acquire
+    a commercial license from Embedthis Software. You agree to be fully bound
+    by the terms of either license. Consult the LICENSE.TXT distributed with
+    this software for full details.
+  
+    This software is open source; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or (at your
+    option) any later version. See the GNU General Public License for more
+    details at: http://www.embedthis.com/downloads/gplLicense.html
+  
+    This program is distributed WITHOUT ANY WARRANTY; without even the
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  
+    This GPL license does NOT permit incorporating this software into
+    proprietary programs. If you are unable to comply with the GPL, you must
+    acquire a commercial license to use this software. Commercial licenses
+    for this software and support services are available from Embedthis
+    Software at http://www.embedthis.com
+  
+    Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/pipeline.c"
+ */
+/************************************************************************/
+
+
+
+/************************************************************************/
+/*
+ *  Start of file "../src/http/queue.c"
+ */
+/************************************************************************/
+
+/*
+ *  queue.c -- Queue support routines. Queues are the bi-directional data flow channels for the request/response pipeline.
+ *
+ *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+
+
+
+#if BLD_DEBUG
+void maCheckQueueCount(MaQueue *q);
+#else
+#define maCheckQueueCount(q)
+#endif
+
+/*
+ *  Createa a new queue for the given stage. If prev is given, then link the new queue after the previous queue.
+ */
+MaQueue *maCreateQueue(MaConn *conn, MaStage *stage, int direction, MaQueue *prev)
+{
+    MaQueue     *q;
+    MaResponse  *resp;
+    MaLimits    *limits;
+
+    resp = conn->response;
+    limits = &conn->http->limits;
+
+    q = mprAllocObjZeroed(resp, MaQueue);
+    if (q == 0) {
+        return 0;
+    }
+    
+    maInitQueue(conn->http, q, stage->name);
+    maInitSchedulerQueue(q);
+
+    q->conn = conn;
+    q->stage = stage;
+    q->close = stage->close;
+    q->open = stage->open;
+    q->start = stage->start;
+    q->direction = direction;
+
+    q->max = limits->maxStageBuffer;
+    q->packetSize = limits->maxStageBuffer;
+
+    if (direction == MA_QUEUE_SEND) {
+        q->put = stage->outgoingData;
+        q->service = stage->outgoingService;
+        
+    } else {
+        q->put = stage->incomingData;
+        q->service = stage->incomingService;
+    }
+    if (prev) {
+        maInsertQueue(prev, q);
+    }
+    return q;
+}
+
+
+/*
+ *  Initialize a bare queue. Used for dummy heads.
+ */
+void maInitQueue(MaHttp *http, MaQueue *q, cchar *name)
+{
+    q->nextQ = q;
+    q->prevQ = q;
+    q->owner = name;
+    q->max = http->limits.maxStageBuffer;
+    q->low = q->max / 100 * 5;
+}
+
+
+/*
+ *  Insert a queue after the previous element
+ */
+void maAppendQueue(MaQueue *head, MaQueue *q)
+{
+    q->nextQ = head;
+    q->prevQ = head->prevQ;
+    head->prevQ->nextQ = q;
+    head->prevQ = q;
+}
+
+
+/*
+ *  Insert a queue after the previous element
+ */
+void maInsertQueue(MaQueue *prev, MaQueue *q)
+{
+    q->nextQ = prev->nextQ;
+    q->prevQ = prev;
+    prev->nextQ->prevQ = q;
+    prev->nextQ = q;
+}
+
+
+void maRemoveQueue(MaQueue *q)
+{
+    q->prevQ->nextQ = q->nextQ;
+    q->nextQ->prevQ = q->prevQ;
+    q->prevQ = q->nextQ = q;
+}
+
+
+MaQueue *findPreviousQueue(MaQueue *q)
+{
+    while (q->prevQ) {
+        q = q->prevQ;
+        if (q->service) {
+            return q;
+        }
+    }
+    return 0;
+}
+
+
+bool maIsQueueEmpty(MaQueue *q)
+{
+    return q->first == 0;
+}
+
+
+/*
+ *  Get the next packet from the queue
+ */
+MaPacket *maGet(MaQueue *q)
+{
+    MaConn      *conn;
+    MaQueue     *prev;
+    MaPacket    *packet;
+
+    maCheckQueueCount(q);
+
+    conn = q->conn;
+    while (q->first) {
+        if ((packet = q->first) != 0) {
+            if (packet->flags & MA_PACKET_DATA && conn->requestFailed) {
+                q->first = packet->next;
+                q->count -= maGetPacketLength(packet);
+                maFreePacket(q, packet);
+                continue;
+            }
+            q->first = packet->next;
+            packet->next = 0;
+            q->count -= maGetPacketLength(packet);
+            mprAssert(q->count >= 0);
+            if (packet == q->last) {
+                q->last = 0;
+                mprAssert(q->first == 0);
+            }
+        }
+        maCheckQueueCount(q);
+        if (q->flags & MA_QUEUE_FULL && q->count < q->low) {
+            /*
+             *  This queue was full and now is below the low water mark. Back-enable the previous queue.
+             */
+            q->flags &= ~MA_QUEUE_FULL;
+            prev = findPreviousQueue(q);
+            if (prev && prev->flags & MA_QUEUE_DISABLED) {
+                maEnableQueue(prev);
+            }
+        }
+        maCheckQueueCount(q);
+        return packet;
+    }
+    return 0;
+}
+
+
+/*
+ *  Create a new packet. If size is -1, then also create a default growable buffer -- used for incoming body content. If 
+ *  size > 0, then create a non-growable buffer of the requested size.
+ */
+MaPacket *maCreatePacket(MprCtx ctx, int size)
+{
+    MaPacket    *packet;
+
+    packet = mprAllocObjZeroed(ctx, MaPacket);
+    if (packet == 0) {
+        return 0;
+    }
+    if (size != 0) {
+        packet->content = mprCreateBuf(packet, size < 0 ? MA_BUFSIZE: size, -1);
+        if (packet->content == 0) {
+            mprFree(packet);
+            return 0;
+        }
+    }
+    return packet;
+}
+
+
+/*
+ *  Create a packet for the connection to read into. This may come from the connection packet free list
+ */
+MaPacket *maCreateConnPacket(MaConn *conn, int size)
+{
+    if (conn->state == MPR_HTTP_STATE_COMPLETE) {
+        return maCreatePacket((MprCtx) conn, size);
+    }
+    return maCreatePacket(conn->request ? (MprCtx) conn->request: (MprCtx) conn, size);
+}
+
+
+void maFreePacket(MaQueue *q, MaPacket *packet)
+{
+    mprFree(packet);
+} 
+
+
+/*
+ *  Create the response header packet
+ */
+MaPacket *maCreateHeaderPacket(MprCtx ctx)
+{
+    MaPacket    *packet;
+
+    packet = maCreatePacket(ctx, MA_BUFSIZE);
+    if (packet == 0) {
+        return 0;
+    }
+    packet->flags = MA_PACKET_HEADER;
+    return packet;
+}
+
+
+MaPacket *maCreateDataPacket(MprCtx ctx, int size)
+{
+    MaPacket    *packet;
+
+    packet = maCreatePacket(ctx, size);
+    if (packet == 0) {
+        return 0;
+    }
+    packet->flags = MA_PACKET_DATA;
+    return packet;
+}
+
+
+MaPacket *maCreateEntityPacket(MprCtx ctx, MprOff pos, MprOff size, MaFillProc fill)
+{
+    MaPacket    *packet;
+
+    packet = maCreatePacket(ctx, 0);
+    if (packet == 0) {
+        return 0;
+    }
+    packet->flags = MA_PACKET_DATA;
+    packet->epos = pos;
+    packet->esize = size;
+    packet->fill = fill;
+    return packet;
+}
+
+
+MaPacket *maCreateEndPacket(MprCtx ctx)
+{
+    MaPacket    *packet;
+
+    packet = maCreatePacket(ctx, 0);
+    if (packet == 0) {
+        return 0;
+    }
+    packet->flags = MA_PACKET_END;
+    return packet;
+}
+
+
+#if BLD_DEBUG
+void maCheckQueueCount(MaQueue *q)
+{
+    MaPacket    *packet;
+    int64       count;
+
+    count = 0;
+    for (packet = q->first; packet; packet = packet->next) {
+        count += maGetPacketLength(packet);
+    }
+    mprAssert(count == q->count);
+}
+#endif
+
+
+/*
+ *  Put a packet on the service queue.
+ */
+void maPutForService(MaQueue *q, MaPacket *packet, bool serviceQ)
+{
+    mprAssert(packet);
+   
+    maCheckQueueCount(q);
+    q->count += maGetPacketLength(packet);
+    packet->next = 0;
+    
+    if (q->first) {
+        q->last->next = packet;
+        q->last = packet;
+        
+    } else {
+        q->first = packet;
+        q->last = packet;
+    }
+    maCheckQueueCount(q);
+    if (serviceQ && !(q->flags & MA_QUEUE_DISABLED))  {
+        maScheduleQueue(q);
+    }
+}
+
+
+/*
+ *  Join a packet onto the service queue
+ */
+void maJoinForService(MaQueue *q, MaPacket *packet, bool serviceQ)
+{
+    MaPacket    *old;
+
+    if (q->first == 0) {
+        /*
+         *  Just use the service queue as a holding queue while we aggregate the post data.
+         */
+        maPutForService(q, packet, 0);
+        maCheckQueueCount(q);
+
+    } else {
+        maCheckQueueCount(q);
+        q->count += maGetPacketLength(packet);
+        if (q->first && maGetPacketLength(q->first) == 0) {
+            old = q->first;
+            packet = q->first->next;
+            q->first = packet;
+            maFreePacket(q, old);
+
+        } else {
+            /*
+             *  Aggregate all data into one packet and free the packet.
+             */
+            maJoinPacket(q->first, packet);
+            maCheckQueueCount(q);
+            maFreePacket(q, packet);
+        }
+    }
+    maCheckQueueCount(q);
+    if (serviceQ && !(q->flags & MA_QUEUE_DISABLED))  {
+        maScheduleQueue(q);
+    }
+}
+
+
+/*
+ *  Pass to a queue
+ */
+void maPut(MaQueue *q, MaPacket *packet)
+{
+    mprAssert(packet);
+    
+    mprAssert(q->put);
+    q->put(q, packet);
+}
+
+
+/*
+ *  Pass to the next queue
+ */
+void maPutNext(MaQueue *q, MaPacket *packet)
+{
+    mprAssert(packet);
+    
+    mprAssert(q->nextQ->put);
+    q->nextQ->put(q->nextQ, packet);
+}
+
+
+/*
+ *  Put the packet back at the front of the queue
+ */
+void maPutBack(MaQueue *q, MaPacket *packet)
+{
+    mprAssert(packet);
+    mprAssert(packet->next == 0);
+    
+    packet->next = q->first;
+
+    if (q->first == 0) {
+        q->last = packet;
+    }
+    q->first = packet;
+
+    mprAssert(maGetPacketLength(packet) >= 0);
+    q->count += maGetPacketLength(packet);
+    mprAssert(q->count >= 0);
+    maCheckQueueCount(q);
+}
+
+
+/*
+ *  Return true if the next queue will accept this packet. If not, then disable the queue's service procedure.
+ *  This may split the packet if it exceeds the downstreams maximum packet size.
+ */
+bool maWillNextQueueAccept(MaQueue *q, MaPacket *packet)
+{
+    MaQueue     *next;
+    int64       size;
+
+    next = q->nextQ;
+    size = maGetPacketLength(packet);
+    if (size <= next->packetSize && (size + next->count) <= next->max) {
+        return 1;
+    }
+    if (maResizePacket(q, packet, 0) < 0) {
+        return 0;
+    }
+    size = maGetPacketLength(packet);
+    if (size <= next->packetSize && (size + next->count) <= next->max) {
+        return 1;
+    }
+
+    /*
+     *  The downstream queue is full, so disable the queue and mark the downstream queue as full and service immediately. 
+     */
+    maDisableQueue(q);
+    next->flags |= MA_QUEUE_FULL;
+    maScheduleQueue(next);
+    return 0;
+}
+
+
+bool maWillNextQueueAcceptSize(MaQueue *q, int size)
+{
+    MaQueue     *next;
+
+    next = q->nextQ;
+    if (size <= next->packetSize && (size + next->count) <= next->max) {
+        return 1;
+    }
+    /*
+     *  The downstream queue is full, so disable the queue and mark the downstream queue as full and service immediately. 
+     */
+    maDisableQueue(q);
+    next->flags |= MA_QUEUE_FULL;
+    maScheduleQueue(next);
+    return 0;
+}
+
+
+void maSendEndPacket(MaQueue *q)
+{
+    maPutNext(q, maCreateEndPacket(q));
+    q->flags |= MA_QUEUE_EOF;
+}
+
+
+void maSendPackets(MaQueue *q)
+{
+    MaPacket    *packet;
+
+    for (packet = maGet(q); packet; packet = maGet(q)) {
+        maPutNext(q, packet);
+    }
+}
+
+
+void maDisableQueue(MaQueue *q)
+{
+    mprLog(q, 7, "Disable queue %s", q->owner);
+    q->flags |= MA_QUEUE_DISABLED;
+}
+
+
+void maScheduleQueue(MaQueue *q)
+{
+    MaQueue     *head;
+    
+    mprAssert(q->conn);
+    head = &q->conn->serviceq;
+    
+    if (q->scheduleNext == q) {
+        q->scheduleNext = head;
+        q->schedulePrev = head->schedulePrev;
+        head->schedulePrev->scheduleNext = q;
+        head->schedulePrev = q;
+    }
+}
+
+
+MaQueue *maGetNextQueueForService(MaQueue *q)
+{
+    MaQueue     *next;
+    
+    if (q->scheduleNext != q) {
+        next = q->scheduleNext;
+        next->schedulePrev->scheduleNext = next->scheduleNext;
+        next->scheduleNext->schedulePrev = next->schedulePrev;
+        next->schedulePrev = next->scheduleNext = next;
+        return next;
+    }
+    return 0;
+}
+
+
+void maInitSchedulerQueue(MaQueue *q)
+{
+    q->scheduleNext = q;
+    q->schedulePrev = q;
+}
+
+
+void maServiceQueue(MaQueue *q)
+{
+    /*
+     *  Since we are servicing the queue, remove it from the service queue if it is at the front of the queue.
+     */
+    if (q->conn->serviceq.scheduleNext == q) {
+        maGetNextQueueForService(&q->conn->serviceq);
+    }
+    if (!(q->flags & MA_QUEUE_DISABLED)) {
+        q->service(q);
+        q->flags |= MA_QUEUE_SERVICED;
+    }
+}
+
+
+void maEnableQueue(MaQueue *q)
+{
+    mprLog(q, 7, "Enable q %s", q->owner);
+    q->flags &= ~MA_QUEUE_DISABLED;
+    maScheduleQueue(q);
+}
+
+
+/*
+ *  Return the number of bytes the queue will accept. Always positive.
+ */
+int maGetQueueRoom(MaQueue *q)
+{
+    mprAssert(q->max > 0);
+    mprAssert(q->count >= 0);
+    
+    if (q->count >= q->max) {
+        return 0;
+    }
+    return q->max - q->count;
+}
+
+
+/*
+ *  Return true if the packet is too large to be accepted by the downstream queue.
+ */
+bool maPacketTooBig(MaQueue *q, MaPacket *packet)
+{
+    int     size;
+    
+    size = mprGetBufLength(packet->content);
+    return size > q->max || size > q->packetSize;
+}
+
+
+/*
+ *  Split a packet if required so it fits in the downstream queue. Put back the 2nd portion of the split packet on the queue.
+ *  Ensure that the packet is not larger than "size" if it is greater than zero.
+ */
+int maResizePacket(MaQueue *q, MaPacket *packet, int size)
+{
+    MaPacket    *tail;
+    MaConn      *conn;
+    MprCtx      ctx;
+    int         len;
+    
+    conn = q->conn;
+    if (size <= 0) {
+        size = MAXINT;
+    }
+    ctx = conn->request ? (MprCtx) conn->request : (MprCtx) conn;
+
+    if (packet->esize > size) {
+        if ((tail = maSplitPacket(ctx, packet, size)) == 0) {
+            return MPR_ERR_NO_MEMORY;
+        }
+    } else {
+        /*
+         *  Calculate the size that will fit
+         */
+        len = packet->content ? maGetPacketLength(packet) : 0;
+        size = min(size, len);
+        size = min(size, q->nextQ->max);
+        size = min(size, q->nextQ->packetSize);
+        if (size == 0 || size == len) {
+            return 0;
+        }
+        if ((tail = maSplitPacket(ctx, packet, size)) == 0) {
+            return MPR_ERR_NO_MEMORY;
+        }
+    }
+    maPutBack(q, tail);
+    return 0;
+}
+
+
+MaPacket *maCloneEntityPacket(MprCtx ctx, MaPacket *orig)
+{
+    MaPacket  *packet;
+
+    if ((packet = maCreatePacket(ctx, 0)) == 0) {
+        return 0;
+    }
+    packet->flags = orig->flags;
+    packet->esize = orig->esize;
+    packet->epos = orig->epos;
+    packet->fill = orig->fill;
+    return packet;
+}
+
+
+/*
+ *  Drain a service queue by scheduling the queue and servicing all queues. Return true if there is room for more data.
+ */
+static bool drain(MaQueue *q, bool block)
+{
+    MaConn      *conn;
+    MaQueue     *next;
+    int         oldMode;
+
+    conn = q->conn;
+
+    /*
+     *  Queue is full. Need to drain the service queue if possible.
+     */
+    do {
+        oldMode = mprSetSocketBlockingMode(conn->sock, block);
+        maScheduleQueue(q);
+        next = q->nextQ;
+        if (next->count >= next->max) {
+            maScheduleQueue(next);
+        }
+        maServiceQueues(conn);
+        mprSetSocketBlockingMode(conn->sock, oldMode);
+    } while (block && q->count >= q->max);
+    
+    return (q->count < q->max) ? 1 : 0;
+}
+
+
+/*
+ *  Write a block of data. This is the lowest level write routine for dynamic data. If block is true, this routine will 
+ *  block until all the block is written. If block is false, then it may return without having written all the data.
+ */
+int maWriteBlock(MaQueue *q, cchar *buf, int size, bool block)
+{
+    MaPacket    *packet;
+    MaConn      *conn;
+    MaResponse  *resp;
+    int         bytes, written, packetSize;
+
+    mprAssert(q->stage->flags & MA_STAGE_HANDLER);
+               
+    conn = q->conn;
+    resp = conn->response;
+    packetSize = (resp->chunkSize > 0) ? resp->chunkSize : q->max;
+    packetSize = min(packetSize, size);
+    
+    if ((q->flags & MA_QUEUE_DISABLED) || (q->count > 0 && (q->count + size) >= q->max)) {
+        if (!drain(q, block)) {
+            return 0;
+        }
+    }
+    for (written = 0; size > 0; ) {
+        if (q->count >= q->max && !drain(q, block)) {
+            maCheckQueueCount(q);
+            break;
+        }
+        if (conn->disconnected) {
+            return MPR_ERR_CANT_WRITE;
+        }
+        if ((packet = maCreateDataPacket(q, packetSize)) == 0) {
+            return MPR_ERR_NO_MEMORY;
+        }
+        if ((bytes = mprPutBlockToBuf(packet->content, buf, size)) == 0) {
+            return MPR_ERR_NO_MEMORY;
+        }
+        buf += bytes;
+        size -= bytes;
+        written += bytes;
+        maPutForService(q, packet, 1);
+        maCheckQueueCount(q);
+    }
+    maCheckQueueCount(q);
+    return written;
+}
+
+
+int maWriteString(MaQueue *q, cchar *s)
+{
+    return maWriteBlock(q, s, (int) strlen(s), 1);
+}
+
+
+int maWrite(MaQueue *q, cchar *fmt, ...)
+{
+    va_list     vargs;
+    char        *buf;
+    int         rc;
+    
+    va_start(vargs, fmt);
+    buf = mprVasprintf(q, -1, fmt, vargs);
+    va_end(vargs);
+
+    rc = maWriteString(q, buf);
+    mprFree(buf);
+    return rc;
+}
+
+
+/*
+ *  Join two packets by pulling the content from the second into the first.
+ */
+int maJoinPacket(MaPacket *packet, MaPacket *p)
+{
+    int     len;
+
+    mprAssert(packet->esize == 0);
+    mprAssert(p->esize == 0);
+
+    len = maGetPacketLength(p);
+    if (mprPutBlockToBuf(packet->content, mprGetBufStart(p->content), len) != len) {
+        return MPR_ERR_NO_MEMORY;
+    }
+    return 0;
+}
+
+
+/*
+ *  Split a packet at a given offset and return a new packet containing the data after the offset.
+ *  The suffix data migrates to the new packet. 
+ */
+MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
+{
+    MaPacket    *packet;
+    int         count, size;
+
+    if (orig->esize) {
+        if ((packet = maCreateEntityPacket(ctx, orig->epos + offset, orig->esize - offset, orig->fill)) == 0) {
+            return 0;
+        }
+        orig->esize = offset;
+
+    } else {
+        if (offset >= maGetPacketLength(orig)) {
+            mprAssert(offset < maGetPacketLength(orig));
+            return 0;
+        }
+        count = maGetPacketLength(orig) - offset;
+        size = max(count, MA_BUFSIZE);
+        size = MA_PACKET_ALIGN(size);
+        if ((packet = maCreateDataPacket(ctx, size)) == 0) {
+            return 0;
+        }
+        mprAdjustBufEnd(orig->content, -count);
+        if (mprPutBlockToBuf(packet->content, mprGetBufEnd(orig->content), count) != count) {
+            return 0;
+        }
+#if BLD_DEBUG
+        mprAddNullToBuf(orig->content);
+#endif
+    }
+    packet->flags = orig->flags;
+    return packet;
+}
+
+
+void maAdjustPacketStart(MaPacket *packet, MprOff size)
+{
+    if (packet->esize) {
+        packet->epos += size;
+        packet->esize -= size;
+    } else if (packet->content) {
+        mprAdjustBufStart(packet->content, (int) size);
+    }
+}
+
+
+void maAdjustPacketEnd(MaPacket *packet, MprOff size)
+{
+    if (packet->esize) {
+        packet->esize += size;
+    } else if (packet->content) {
+        mprAdjustBufEnd(packet->content, (int) size);
+    }
+}
+
+
+void maJoinPackets(MaQueue *q)
+{
+    MaPacket    *first, *packet, *next;
+
+    if (q->first) {
+        first = (q->first->flags & MA_PACKET_HEADER) ? q->first->next : q->first;
+
+        for (packet = first->next; packet; packet = next) {
+            next = packet->next;
+            maJoinPacket(first, packet);
+            maCheckQueueCount(q);
+            maFreePacket(q, packet);
+        }
+    }
+}
+
+
+/*
+ *  Remove packets from a queue which do not need to be processed.
+ *  Remove data packets if no body is required (HEAD|TRACE|OPTIONS|PUT|DELETE method, not modifed content, or error)
+ *  This actually removes and frees the data packets whereas maDiscardData will just flush the data packets.
+ */
+void maCleanQueue(MaQueue *q)
+{
+    MaConn      *conn;
+    MaResponse  *resp;
+    MaPacket    *packet, *next, *prev;
+
+    conn = q->conn;
+    resp = conn->response;
+
+    if (!(resp->flags & MA_RESP_NO_BODY)) {
+        return;
+    }
+
+    for (prev = 0, packet = q->first; packet; packet = next) {
+        next = packet->next;
+        if (packet->flags & (MA_PACKET_RANGE | MA_PACKET_DATA)) {
+            if (prev) {
+                prev->next = next;
+            } else {
+                q->first = next;
+            }
+            q->count -= maGetPacketLength(packet);
+            maFreePacket(q, packet);
+            continue;
+        }
+        prev = packet;
+    }
+    maCheckQueueCount(q);
+}
+
+
+/*
+ *  Remove all data from non-header packets in the queue. Don't worry about freeing. Will happen automatically at 
+ *  the request end. See also maCleanQueue above.
+ */
+void maDiscardData(MaQueue *q, bool removePackets)
+{
+    MaPacket    *packet;
+    int         len;
+
+    if (q->first) {
+        /*
+         *  Skip the header packet
+         */
+        if (q->first->flags & MA_PACKET_HEADER) {
+            packet = q->first->next;
+        } else {
+            packet = q->first;
+        }
+
+        /*
+         *  Just flush each packet. Don't remove so the EOF packet is preserved
+         */
+        for (; packet; packet = packet->next) {
+            if (packet->content) {
+                len = maGetPacketLength(packet);
+                q->conn->response->length -= len;
+                q->count -= len;
+                mprFlushBuf(packet->content);
+            }
+        }
+        maCheckQueueCount(q);
+    }
+}
+
+
+/*
+ *  @copy   default
+ *  
+ *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
+ *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
+ *  
+ *  This software is distributed under commercial and open source licenses.
+ *  You may use the GPL open source license described below or you may acquire 
+ *  a commercial license from Embedthis Software. You agree to be fully bound 
+ *  by the terms of either license. Consult the LICENSE.TXT distributed with 
+ *  this software for full details.
+ *  
+ *  This software is open source; you can redistribute it and/or modify it 
+ *  under the terms of the GNU General Public License as published by the 
+ *  Free Software Foundation; either version 2 of the License, or (at your 
+ *  option) any later version. See the GNU General Public License for more 
+ *  details at: http://www.embedthis.com/downloads/gplLicense.html
+ *  
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the 
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ *  
+ *  This GPL license does NOT permit incorporating this software into 
+ *  proprietary programs. If you are unable to comply with the GPL, you must
+ *  acquire a commercial license to use this software. Commercial licenses 
+ *  for this software and support services are available from Embedthis 
+ *  Software at http://www.embedthis.com 
+ *  
+ *  Local variables:
+    tab-width: 4
+    c-basic-offset: 4
+    End:
+    vim: sw=4 ts=4 expandtab
+
+    @end
+ */
+/************************************************************************/
+/*
+ *  End of file "../src/http/queue.c"
  */
 /************************************************************************/
 
@@ -11050,1349 +15632,509 @@ cvoid *maGetStageData(MaConn *conn, cchar *key)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/handlers/dirHandler.c"
+ *  Start of file "../src/http/response.c"
  */
 /************************************************************************/
 
 /*
- *  dirHandler.c - Directory listing handler.
+ *  response.c - Http response management
  *
  *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
 
 
-#if BLD_FEATURE_DIR
-/*
- *  Handler configuration
- */
-typedef struct Dir {
-    cchar           *defaultIcon;
-    MprList         *dirList;
-    bool            enabled;
-    MprList         *extList;
-    int             fancyIndexing;
-    bool            foldersFirst;
-    MprList         *ignoreList;
-    cchar           *pattern;
-    char            *sortField;
-    int             sortOrder;              /* 1 == ascending, -1 descending */
-} Dir;
+
+static int destroyResponse(MaResponse *resp);
+static void putFormattedHeader(MaConn *conn, MaPacket *packet, cchar *key, cchar *fmt, ...);
+static void putHeader(MaConn *conn, MaPacket *packet, cchar *key, cchar *value);
 
 
-static void filterDirList(MaConn *conn, MprList *list);
-static int  match(cchar *pattern, cchar *file);
-static void outputFooter(MaQueue *q);
-static void outputHeader(MaQueue *q, cchar *dir, int nameSize);
-static void outputLine(MaQueue *q, MprDirEntry *ep, cchar *dir, int nameSize);
-static void parseQuery(MaConn *conn);
-static void parseWords(MprList *list, cchar *str);
-static void sortList(MaConn *conn, MprList *list);
-
-/*
- *  Match if the url maps to a directory.
- */
-static bool matchDir(MaConn *conn, MaStage *handler, cchar *url)
+MaResponse *maCreateResponse(MaConn *conn)
 {
-    MaResponse      *resp;
-    Dir             *dir;
+    MaResponse  *resp;
+    MaHttp      *http;
 
-    resp = conn->response;
-    dir = handler->stageData;
-    
-    mprAssert(resp->filename);
-    mprAssert(resp->fileInfo.checked);
+    http = conn->http;
 
-    return dir->enabled && resp->fileInfo.isDir;
+    resp = mprAllocObjWithDestructorZeroed(conn->request->arena, MaResponse, destroyResponse);
+    if (resp == 0) {
+        return 0;
+    }
+
+    resp->conn = conn;
+    resp->code = MPR_HTTP_CODE_OK;
+    resp->mimeType = "text/html";
+    resp->handler = http->passHandler;
+    resp->length = -1;
+    resp->entityLength = -1;
+    resp->chunkSize = -1;
+
+    resp->headers = mprCreateHash(resp, MA_HEADER_HASH_SIZE);
+    maInitQueue(http, &resp->queue[MA_QUEUE_SEND], "responseSendHead");
+    maInitQueue(http, &resp->queue[MA_QUEUE_RECEIVE], "responseReceiveHead");
+    return resp;
 }
 
 
-static void runDir(MaQueue *q)
+static int destroyResponse(MaResponse *resp)
 {
-    MaConn          *conn;
-    MaResponse      *resp;
-    MaRequest       *req;
-    MprList         *list;
-    MprDirEntry     *dp;
-    Dir             *dir;
-    cchar           *filename;
-    uint            nameSize;
-    int             next;
+    mprLog(resp, 5, "destroyResponse");
+    maDestroyPipeline(resp->conn);
+    return 0;
+}
 
-    conn = q->conn;
+
+void maFillHeaders(MaConn *conn, MaPacket *packet)
+{
+    MaRequest       *req;
+    MaResponse      *resp;
+    MaHost          *host;
+    MaRange         *range;
+    MprHash         *hp;
+    MprBuf          *buf;
+    struct tm       tm;
+    char            *hdr;
+    int             expires;
+
+    mprAssert(packet->flags == MA_PACKET_HEADER);
+
     req = conn->request;
     resp = conn->response;
-    dir = q->stage->stageData;
+    host = req->host;
+    buf = packet->content;
 
-    filename = resp->filename;
-    mprAssert(filename);
-
-    maDontCacheResponse(conn);
-    maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
-    maPutForService(q, maCreateHeaderPacket(q), 0);
-
-    parseQuery(conn);
-
-    list = mprGetPathFiles(conn, filename, 1);
-    if (list == 0) {
-        maWrite(q, "<h2>Can't get file list</h2>\r\n");
-        outputFooter(q);
+    if (resp->flags & MA_RESP_HEADERS_CREATED) {
         return;
+    }    
+    if (req->method ==  MA_REQ_TRACE || req->method == MA_REQ_OPTIONS) {
+        maTraceOptions(conn);
+    }
+    mprPutStringToBuf(buf, req->httpProtocol);
+    mprPutCharToBuf(buf, ' ');
+    mprPutIntToBuf(buf, resp->code);
+    mprPutCharToBuf(buf, ' ');
+    mprPutStringToBuf(buf, mprGetHttpCodeString(resp, resp->code));
+    mprPutStringToBuf(buf, "\r\n");
+
+    putHeader(conn, packet, "Date", req->host->currentDate);
+    putHeader(conn, packet, "Server", MA_SERVER_NAME);
+
+    if (mprLookupHash(resp->headers, "Expires") || mprLookupHash(resp->headers, "Cache-Control")) {
+        /* User defined expiry */;
+
+    } else if (resp->flags & MA_RESP_DONT_CACHE) {
+        /* Default for Ejs */
+        putHeader(conn, packet, "Cache-Control", "no-cache");
+
+    } else if (req->location->expires) {
+        expires = PTOI(mprLookupHash(req->location->expires, resp->mimeType));
+        if (expires == 0) {
+            expires = PTOI(mprLookupHash(req->location->expires, ""));
+        }
+        if (expires) {
+            mprDecodeUniversalTime(conn, &tm, mprGetTime(conn) + (expires * MPR_TICKS_PER_SEC));
+            putFormattedHeader(conn, packet, "Cache-Control", "max-age=%d", expires);
+            /* Expires is for old HTTP/1.0 clients */
+            hdr = mprFormatTime(conn, MPR_HTTP_DATE, &tm);
+            putFormattedHeader(conn, packet, "Expires", "%s", hdr);
+            mprFree(hdr);
+        }
+    }
+    if (resp->etag) {
+        putFormattedHeader(conn, packet, "ETag", "%s", resp->etag);
+    }
+    if (resp->altBody) {
+        resp->length = strlen(resp->altBody);
+    }
+    if (resp->chunkSize > 0 && !resp->altBody) {
+        if (!(req->method & MA_REQ_HEAD)) {
+            maSetHeader(conn, 0, "Transfer-Encoding", "chunked");
+        }
+
+    } else if (resp->length >= 0) {
+        putFormattedHeader(conn, packet, "Content-Length", "%Ld", resp->length);
     }
 
-    if (dir->pattern) {
-        filterDirList(conn, list);
+    if (req->ranges) {
+        if (req->ranges->next == 0) {
+            range = req->ranges;
+            if (resp->entityLength > 0) {
+                putFormattedHeader(conn, packet, "Content-Range", "bytes %Ld-%Ld/%Ld", 
+                    range->start, range->end, resp->entityLength);
+            } else {
+                putFormattedHeader(conn, packet, "Content-Range", "bytes %Ld-%Ld/*", range->start, range->end);
+            }
+        } else {
+            putFormattedHeader(conn, packet, "Content-Type", "multipart/byteranges; boundary=%s", resp->rangeBoundary);
+        }
+        putHeader(conn, packet, "Accept-Ranges", "bytes");
+
+    } else if (resp->code != MPR_HTTP_CODE_MOVED_TEMPORARILY && resp->mimeType[0]) {
+        if (!mprLookupHash(resp->headers, "Content-Type")) {
+            putHeader(conn, packet, "Content-Type", resp->mimeType);
+        }
     }
 
-    sortList(conn, list);
+    if (--conn->keepAliveCount > 0) {
+        putHeader(conn, packet, "Connection", "keep-alive");
+        putFormattedHeader(conn, packet, "Keep-Alive", "timeout=%d, max=%d", 
+            host->keepAliveTimeout / 1000, conn->keepAliveCount);
+    } else {
+        putHeader(conn, packet, "Connection", "close");
+    }
 
     /*
-     *  Get max filename
+     *  Output any remaining custom headers
      */
-    nameSize = 0;
-    for (next = 0; (dp = mprGetNextItem(list, &next)) != 0; ) {
-        nameSize = max((int) strlen(dp->name), nameSize);
+    hp = mprGetFirstHash(resp->headers);
+    while (hp) {
+        putHeader(conn, packet, hp->key, hp->data);
+        hp = mprGetNextHash(resp->headers, hp);
     }
-    nameSize = max(nameSize, 22);
 
-    outputHeader(q, req->url, nameSize);
-    for (next = 0; (dp = mprGetNextItem(list, &next)) != 0; ) {
-        outputLine(q, dp, filename, nameSize);
-    }
-    outputFooter(q);
-
-    maPutForService(q, maCreateEndPacket(conn), 1);
-
-    mprFree(list);
+#if BLD_DEBUG
+{
+    static int seq = 0;
+    putFormattedHeader(conn, packet, "X-Appweb-Seq", "%d", seq++);
 }
- 
+#endif
 
-static void parseQuery(MaConn *conn)
+    /*
+     *  By omitting the "\r\n" delimiter after the headers, chunks can emit "\r\nSize\r\n" as a single chunk delimiter
+     */
+    if (resp->chunkSize <= 0 || resp->altBody) {
+        mprPutStringToBuf(buf, "\r\n");
+    }
+    if (resp->altBody) {
+        mprPutStringToBuf(buf, resp->altBody);
+        maDiscardData(resp->queue[MA_QUEUE_SEND].nextQ, 0);
+    }
+    resp->headerSize = mprGetBufLength(buf);
+    resp->flags |= MA_RESP_HEADERS_CREATED;
+}
+
+
+void maTraceOptions(MaConn *conn)
+{
+    MaResponse  *resp;
+    MaRequest   *req;
+    int         flags;
+
+    if (conn->requestFailed) {
+        return;
+    }
+    resp = conn->response;
+    req = conn->request;
+
+    if (req->method & MA_REQ_TRACE) {
+        if (req->host->flags & MA_HOST_NO_TRACE) {
+            resp->code = MPR_HTTP_CODE_NOT_ACCEPTABLE;
+            maFormatBody(conn, "Trace Request Denied", "<p>The TRACE method is disabled on this server.</p>");
+        } else {
+            resp->altBody = mprAsprintf(resp, -1, "%s %s %s\r\n", req->methodName, req->parsedUri->originalUri, 
+                req->httpProtocol);
+        }
+
+    } else if (req->method & MA_REQ_OPTIONS) {
+        if (resp->handler == 0) {
+            maSetHeader(conn, 0, "Allow", "OPTIONS,TRACE");
+
+        } else {
+            flags = resp->handler->flags;
+            maSetHeader(conn, 0, "Allow", "OPTIONS,TRACE%s%s%s%s%s",
+                (flags & MA_STAGE_GET) ? ",GET" : "",
+                (flags & MA_STAGE_HEAD) ? ",HEAD" : "",
+                (flags & MA_STAGE_POST) ? ",POST" : "",
+                (flags & MA_STAGE_PUT) ? ",PUT" : "",
+                (flags & MA_STAGE_DELETE) ? ",DELETE" : "");
+        }
+        resp->length = 0;
+    }
+}
+
+
+static void putFormattedHeader(MaConn *conn, MaPacket *packet, cchar *key, cchar *fmt, ...)
+{
+    va_list     args;
+    char        *value;
+
+    va_start(args, fmt);
+    value = mprVasprintf(packet, MA_MAX_HEADERS, fmt, args);
+    va_end(args);
+
+    putHeader(conn, packet, key, value);
+    mprFree(value);
+}
+
+
+static void putHeader(MaConn *conn, MaPacket *packet, cchar *key, cchar *value)
+{
+    MprBuf      *buf;
+
+    buf = packet->content;
+
+    mprPutStringToBuf(buf, key);
+    mprPutStringToBuf(buf, ": ");
+    if (value) {
+        mprPutStringToBuf(buf, value);
+    }
+    mprPutStringToBuf(buf, "\r\n");
+}
+
+
+int maFormatBody(MaConn *conn, cchar *title, cchar *fmt, ...)
+{
+    MaResponse  *resp;
+    va_list     args;
+    char        *body;
+
+    resp = conn->response;
+    mprAssert(resp->altBody == 0);
+
+    va_start(args, fmt);
+
+    body = mprVasprintf(resp, MA_MAX_HEADERS, fmt, args);
+
+    resp->altBody = mprAsprintf(resp, -1,
+        "<!DOCTYPE html>\r\n"
+        "<html><head><title>%s</title></head>\r\n"
+        "<body>\r\n%s\r\n</body>\r\n</html>\r\n",
+        title, body);
+    mprFree(body);
+    va_end(args);
+    return (int) strlen(resp->altBody);
+}
+
+
+/*
+ *  Redirect the user to another web page. The targetUri may or may not have a scheme.
+ */
+void maRedirect(MaConn *conn, int code, cchar *targetUri)
+{
+    MaResponse  *resp;
+    MaRequest   *req;
+    MaHost      *host;
+    MprUri      *target, *prev;
+    char        *path, *uri, *dir, *cp, *hostName;
+    int         port;
+
+    mprAssert(targetUri);
+
+    req = conn->request;
+    resp = conn->response;
+    host = req->host;
+
+    mprLog(conn, 3, "redirect %d %s", code, targetUri);
+
+    if (resp->redirectCallback) {
+        targetUri = (resp->redirectCallback)(conn, &code, targetUri);
+    }
+
+    uri = 0;
+    resp->code = code;
+
+    prev = req->parsedUri;
+    target = mprParseUri(resp, targetUri);
+
+    if (strstr(targetUri, "://") == 0) {
+        /*
+         *  Redirect does not have a host specifier. Use request "Host" header by preference, then the host ServerName.
+         */
+        if (req->hostName) {
+            hostName = req->hostName;
+        } else {
+            hostName = host->name;
+        }
+        port = strchr(targetUri, ':') ? prev->port : conn->address->port;
+        if (target->url[0] == '/') {
+            /*
+             *  Absolute URL. If hostName has a port specifier, it overrides prev->port.
+             */
+            uri = mprFormatUri(resp, prev->scheme, hostName, port, target->url, target->query);
+        } else {
+            /*
+             *  Relative file redirection to a file in the same directory as the previous request.
+             */
+            dir = mprStrdup(resp, req->url);
+            if ((cp = strrchr(dir, '/')) != 0) {
+                /* Remove basename */
+                *cp = '\0';
+            }
+            path = mprStrcat(resp, -1, dir, "/", target->url, NULL);
+            uri = mprFormatUri(resp, prev->scheme, hostName, port, path, target->query);
+        }
+        targetUri = uri;
+    }
+
+    maSetHeader(conn, 0, "Location", "%s", targetUri);
+    mprAssert(resp->altBody == 0);
+    resp->altBody = mprAsprintf(resp, -1,
+        "<!DOCTYPE html>\r\n"
+        "<html><head><title>%s</title></head>\r\n"
+        "<body><h1>%s</h1>\r\n<p>The document has moved <a href=\"%s\">here</a>.</p>\r\n"
+        "<address>%s at %s Port %d</address></body>\r\n</html>\r\n",
+        mprGetHttpCodeString(conn, code), mprGetHttpCodeString(conn, code), targetUri,
+        MA_SERVER_NAME, host->name, prev->port);
+    mprFree(uri);
+
+    /*
+     *  The original request has failed and is being redirected. This is regarded as a request failure and
+     *  will prevent further processing of the pipeline.
+     */
+    conn->requestFailed = 1;
+}
+
+
+void maDontCacheResponse(MaConn *conn)
+{
+    if (conn->response) {
+        conn->response->flags |= MA_RESP_DONT_CACHE;
+    }
+}
+
+
+void maSetHeader(MaConn *conn, bool allowMultiple, cchar *key, cchar *fmt, ...)
+{
+    MaResponse      *resp;
+    char            *value;
+    va_list         vargs;
+
+    resp = conn->response;
+
+    va_start(vargs, fmt);
+    value = mprVasprintf(resp, MA_MAX_HEADERS, fmt, vargs);
+
+    if (allowMultiple) {
+        mprAddDuplicateHash(resp->headers, key, value);
+    } else {
+        mprAddHash(resp->headers, key, value);
+    }
+}
+
+
+void maSetCookie(MaConn *conn, cchar *name, cchar *value, cchar *path, cchar *cookieDomain, int lifetime, bool isSecure)
 {
     MaRequest   *req;
     MaResponse  *resp;
-    Dir         *dir;
-    char        *value, *query, *next, *tok;
+    struct tm   tm;
+    char        *cp, *expiresAtt, *expires, *domainAtt, *domain, *secure;
+    int         webkitVersion;
 
     req = conn->request;
     resp = conn->response;
-    dir = resp->handler->stageData;
-    
-    query = mprStrdup(req, req->parsedUri->query);
-    if (query == 0) {
-        return;
+
+    if (path == 0) {
+        path = "/";
     }
-
-    tok = mprStrTok(query, ";&", &next);
-    while (tok) {
-        if ((value = strchr(tok, '=')) != 0) {
-            *value++ = '\0';
-            if (*tok == 'C') {                  /* Sort column */
-                mprFree(dir->sortField);
-                if (*value == 'N') {
-                    dir->sortField = "Name";
-                } else if (*value == 'M') {
-                    dir->sortField = "Date";
-                } else if (*value == 'S') {
-                    dir->sortField = "Size";
-                }
-                dir->sortField = mprStrdup(dir, dir->sortField);
-
-            } else if (*tok == 'O') {           /* Sort order */
-                if (*value == 'A') {
-                    dir->sortOrder = 1;
-                } else if (*value == 'D') {
-                    dir->sortOrder = -1;
-                }
-
-            } else if (*tok == 'F') {           /* Format */ 
-                if (*value == '0') {
-                    dir->fancyIndexing = 0;
-                } else if (*value == '1') {
-                    dir->fancyIndexing = 1;
-                } else if (*value == '2') {
-                    dir->fancyIndexing = 2;
-                }
-
-            } else if (*tok == 'P') {           /* Pattern */ 
-                dir->pattern = mprStrdup(dir, value);
-            }
-        }
-        tok = mprStrTok(next, ";&", &next);
-    }
-    
-    mprFree(query);
-}
-
-
-static void sortList(MaConn *conn, MprList *list)
-{
-    MaResponse      *resp;
-    MprDirEntry     *tmp, **items;
-    Dir             *dir;
-    int             count, i, j, rc;
-
-    resp = conn->response;
-    dir = resp->handler->stageData;
-    
-    if (dir->sortField == 0) {
-        return;
-    }
-
-    count = mprGetListCount(list);
-    items = (MprDirEntry**) list->items;
-    if (mprStrcmpAnyCase(dir->sortField, "Name") == 0) {
-        for (i = 1; i < count; i++) {
-            for (j = 0; j < i; j++) {
-                rc = strcmp(items[i]->name, items[j]->name);
-                if (dir->foldersFirst) {
-                    if (items[i]->isDir && !items[j]->isDir) {
-                        rc = -dir->sortOrder;
-                    } else if (items[j]->isDir && !items[i]->isDir) {
-                        rc = dir->sortOrder;
-                    } 
-                }
-                rc *= dir->sortOrder;
-                if (rc < 0) {
-                    tmp = items[i];
-                    items[i] = items[j];
-                    items[j] = tmp;
-                }
-            }
-        }
-
-    } else if (mprStrcmpAnyCase(dir->sortField, "Size") == 0) {
-        for (i = 1; i < count; i++) {
-            for (j = 0; j < i; j++) {
-                rc = (items[i]->size < items[j]->size) ? -1 : 1;
-                if (dir->foldersFirst) {
-                    if (items[i]->isDir && !items[j]->isDir) {
-                        rc = -dir->sortOrder;
-                    } else if (items[j]->isDir && !items[i]->isDir) {
-                        rc = dir->sortOrder;
-                    }
-                }
-                rc *= dir->sortOrder;
-                if (rc < 0) {
-                    tmp = items[i];
-                    items[i] = items[j];
-                    items[j] = tmp;
-                }
-            }
-        }
-
-    } else if (mprStrcmpAnyCase(dir->sortField, "Date") == 0) {
-        for (i = 1; i < count; i++) {
-            for (j = 0; j < i; j++) {
-                rc = (items[i]->lastModified < items[j]->lastModified) ? -1: 1;
-                if (dir->foldersFirst) {
-                    if (items[i]->isDir && !items[j]->isDir) {
-                        rc = -dir->sortOrder;
-                    } else if (items[j]->isDir && !items[i]->isDir) {
-                        rc = dir->sortOrder;
-                    }
-                }
-                rc *= dir->sortOrder;
-                if (rc < 0) {
-                    tmp = items[i];
-                    items[i] = items[j];
-                    items[j] = tmp;
-                }
-            }
-        }
-    }
-}
-
-
-static void outputHeader(MaQueue *q, cchar *path, int nameSize)
-{
-    Dir     *dir;
-    char    *parent, *parentSuffix;
-    int     reverseOrder, fancy, isRootDir, sep;
-
-    dir = q->stage->stageData;
-    
-    fancy = 1;
-
-    maWrite(q, "<!DOCTYPE HTML PUBLIC \"-/*W3C//DTD HTML 3.2 Final//EN\">\r\n");
-    maWrite(q, "<html>\r\n <head>\r\n  <title>Index of %s</title>\r\n", path);
-    maWrite(q, " </head>\r\n");
-    maWrite(q, "<body>\r\n");
-
-    maWrite(q, "<h1>Index of %s</h1>\r\n", path);
-
-    if (dir->sortOrder > 0) {
-        reverseOrder = 'D';
-    } else {
-        reverseOrder = 'A';
-    }
-
-    if (dir->fancyIndexing == 0) {
-        fancy = '0';
-    } else if (dir->fancyIndexing == 1) {
-        fancy = '1';
-    } else if (dir->fancyIndexing == 2) {
-        fancy = '2';
-    }
-
-    parent = mprGetPathDir(q, path);
-    sep = mprGetPathSeparator(q, parent);
-    if (parent[strlen(parent) - 1] != sep) {
-        parentSuffix = "/";
-    } else {
-        parentSuffix = "";
-    }
-
-    isRootDir = (strcmp(path, "/") == 0);
-
-    if (dir->fancyIndexing == 2) {
-        maWrite(q, "<table><tr><th><img src=\"/icons/blank.gif\" alt=\"[ICO]\" /></th>");
-
-        maWrite(q, "<th><a href=\"?C=N;O=%c;F=%c\">Name</a></th>", reverseOrder, fancy);
-        maWrite(q, "<th><a href=\"?C=M;O=%c;F=%c\">Last modified</a></th>", reverseOrder, fancy);
-        maWrite(q, "<th><a href=\"?C=S;O=%c;F=%c\">Size</a></th>", reverseOrder, fancy);
-        maWrite(q, "<th><a href=\"?C=D;O=%c;F=%c\">Description</a></th>\r\n", reverseOrder, fancy);
-
-        maWrite(q, "</tr><tr><th colspan=\"5\"><hr /></th></tr>\r\n");
-
-        if (! isRootDir) {
-            maWrite(q, "<tr><td valign=\"top\"><img src=\"/icons/back.gif\"");
-            maWrite(q, "alt=\"[DIR]\" /></td><td><a href=\"%s%s\">", parent, parentSuffix);
-            maWrite(q, "Parent Directory</a></td>");
-            maWrite(q, "<td align=\"right\">  - </td></tr>\r\n");
-        }
-
-    } else if (dir->fancyIndexing == 1) {
-        maWrite(q, "<pre><img src=\"/icons/space.gif\" alt=\"Icon\" /> ");
-
-        maWrite(q, "<a href=\"?C=N;O=%c;F=%c\">Name</a>%*s", reverseOrder, fancy, nameSize - 3, " ");
-        maWrite(q, "<a href=\"?C=M;O=%c;F=%c\">Last modified</a>       ", reverseOrder, fancy);
-        maWrite(q, "<a href=\"?C=S;O=%c;F=%c\">Size</a>               ", reverseOrder, fancy);
-        maWrite(q, "<a href=\"?C=D;O=%c;F=%c\">Description</a>\r\n", reverseOrder, fancy);
-
-        maWrite(q, "<hr />");
-
-        if (! isRootDir) {
-            maWrite(q, "<img src=\"/icons/parent.gif\" alt=\"[DIR]\" />");
-            maWrite(q, " <a href=\"%s%s\">Parent Directory</a>\r\n", parent, parentSuffix);
-        }
-
-    } else {
-        maWrite(q, "<ul>\n");
-        if (! isRootDir) {
-            maWrite(q, "<li><a href=\"%s%s\"> Parent Directory</a></li>\r\n", parent, parentSuffix);
-        }
-    }
-    mprFree(parent);
-}
-
-
-static void fmtNum(char *buf, int bufsize, int num, int divisor, char *suffix)
-{
-    int     whole, point;
-
-    whole = num / divisor;
-    point = (num % divisor) / (divisor / 10);
-
-    if (point == 0) {
-        mprSprintf(buf, bufsize, "%6d%s", whole, suffix);
-    } else {
-        mprSprintf(buf, bufsize, "%4d.%d%s", whole, point, suffix);
-    }
-}
-
-
-static void outputLine(MaQueue *q, MprDirEntry *ep, cchar *path, int nameSize)
-{
-    MprPath     info;
-    Dir         *dir;
-    MprTime     when;
-    MaHost      *host;
-    char        *newPath, sizeBuf[16], timeBuf[48], *icon;
-    struct tm   tm;
-    bool        isDir;
-    int         len;
-    cchar       *ext, *mimeType;
-    char        *dirSuffix;
-    char        *months[] = { 
-                    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" 
-                };
-
-    dir = q->stage->stageData;
-    if (ep->size >= (1024*1024*1024)) {
-        fmtNum(sizeBuf, sizeof(sizeBuf), (int) ep->size, 1024 * 1024 * 1024, "G");
-
-    } else if (ep->size >= (1024*1024)) {
-        fmtNum(sizeBuf, sizeof(sizeBuf), (int) ep->size, 1024 * 1024, "M");
-
-    } else if (ep->size >= 1024) {
-        fmtNum(sizeBuf, sizeof(sizeBuf), (int) ep->size, 1024, "K");
-
-    } else {
-        mprSprintf(sizeBuf, sizeof(sizeBuf), "%6d", (int) ep->size);
-    }
-
-    newPath = mprJoinPath(q, path, ep->name);
-
-    if (mprGetPathInfo(q, newPath, &info) < 0) {
-        when = mprGetTime(q);
-        isDir = 0;
-
-    } else {
-        isDir = info.isDir ? 1 : 0;
-        when = (MprTime) info.mtime * MPR_TICKS_PER_SEC;
-    }
-    mprFree(newPath);
-
-    if (isDir) {
-        icon = "folder";
-        dirSuffix = "/";
-    } else {
-        host = q->conn->host;
-        ext = mprGetPathExtension(q, ep->name);
-        if ((mimeType = maLookupMimeType(host, ext)) != 0) {
-            if (strcmp(ext, "es") == 0 || strcmp(ext, "ejs") == 0 || strcmp(ext, "php") == 0) {
-                icon = "text";
-            } else if (strstr(mimeType, "text") != 0) {
-                icon = "text";
-            } else {
-                icon = "compressed";
-            }
-        } else {
-            icon = "compressed";
-        }
-        dirSuffix = "";
-    }
-
-    mprDecodeLocalTime(q, &tm, when);
-
-    mprSprintf(timeBuf, sizeof(timeBuf), "%02d-%3s-%4d %02d:%02d",
-        tm.tm_mday, months[tm.tm_mon], tm.tm_year + 1900, tm.tm_hour,  tm.tm_min);
-
-    len = (int) strlen(ep->name) + (int) strlen(dirSuffix);
-
-    if (dir->fancyIndexing == 2) {
-
-        maWrite(q, "<tr><td valign=\"top\">");
-        maWrite(q, "<img src=\"/icons/%s.gif\" alt=\"[   ]\", /></td>", icon);
-        maWrite(q, "<td><a href=\"%s%s\">%s%s</a></td>", ep->name, dirSuffix, ep->name, dirSuffix);
-        maWrite(q, "<td>%s</td><td>%s</td></tr>\r\n", timeBuf, sizeBuf);
-
-    } else if (dir->fancyIndexing == 1) {
-
-        maWrite(q, "<img src=\"/icons/%s.gif\" alt=\"[   ]\", /> ", icon);
-        maWrite(q, "<a href=\"%s%s\">%s%s</a>%-*s %17s %4s\r\n", ep->name, dirSuffix, ep->name, dirSuffix, 
-            nameSize - len, "", timeBuf, sizeBuf);
-
-    } else {
-        maWrite(q, "<li><a href=\"%s%s\"> %s%s</a></li>\r\n", ep->name, dirSuffix, ep->name, dirSuffix);
-    }
-}
-
-
-static void outputFooter(MaQueue *q)
-{
-    MaConn      *conn;
-    MprSocket   *sock;
-    Dir         *dir;
-    
-    conn = q->conn;
-    dir = q->stage->stageData;
-    
-    if (dir->fancyIndexing == 2) {
-        maWrite(q, "<tr><th colspan=\"5\"><hr /></th></tr>\r\n</table>\r\n");
-        
-    } else if (dir->fancyIndexing == 1) {
-        maWrite(q, "<hr /></pre>\r\n");
-    } else {
-        maWrite(q, "</ul>\r\n");
-    }
-    
-    sock = conn->sock->listenSock;
-    maWrite(q, "<address>%s %s at %s Port %d</address>\r\n", BLD_NAME, BLD_VERSION, sock->ipAddr, sock->port);
-    maWrite(q, "</body></html>\r\n");
-}
-
-
-static void filterDirList(MaConn *conn, MprList *list)
-{
-    Dir             *dir;
-    MprDirEntry     *dp;
-    int             next;
-
-    dir = conn->response->handler->stageData;
-    
-    /*
-     *  Do pattern matching. Entries that don't match, free the name to mark
-     */
-    for (next = 0; (dp = mprGetNextItem(list, &next)) != 0; ) {
-        if (! match(dir->pattern, dp->name)) {
-            mprRemoveItem(list, dp);
-            mprFree(dp);
-            next--;
-        }
-    }
-}
-
-
-/*
- *  Return true if the file matches the pattern. Supports '?' and '*'
- */
-static int match(cchar *pattern, cchar *file)
-{
-    cchar   *pp, *fp;
-
-    if (pattern == 0 || *pattern == '\0') {
-        return 1;
-    }
-    if (file == 0 || *file == '\0') {
-        return 0;
-    }
-
-    for (pp = pattern, fp = file; *pp; ) {
-        if (*fp == '\0') {
-            if (*pp == '*' && pp[1] == '\0') {
-                /* Trailing wild card */
-                return 1;
-            }
-            return 0;
-        }
-
-        if (*pp == '*') {
-            if (match(&pp[1], &fp[0])) {
-                return 1;
-            }
-            fp++;
-            continue;
-
-        } else if (*pp == '?' || *pp == *fp) {
-            fp++;
-
-        } else {
-            return 0;
-        }
-        pp++;
-    }
-    if (*fp == '\0') {
-        /* Match */
-        return 1;
-    }
-    return 0;
-}
-
-
-#if BLD_FEATURE_CONFIG_PARSE
-static int parseDir(MaHttp *http, cchar *key, char *value, MaConfigState *state)
-{
-    MaStage     *handler;
-    Dir         *dir;
-    
-    char    *extensions, *option, *nextTok, *junk;
-
-    handler = maLookupStage(http, "dirHandler");
-    dir = handler->stageData;
-    mprAssert(dir);
-    
-    if (mprStrcmpAnyCase(key, "AddIcon") == 0) {
-        /*  AddIcon file ext ext ext */
-        /*  Not yet supported */
-        mprStrTok(value, " \t", &extensions);
-        parseWords(dir->extList, extensions);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "DefaultIcon") == 0) {
-        /*  DefaultIcon file */
-        /*  Not yet supported */
-        dir->defaultIcon = mprStrTok(value, " \t", &junk);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "IndexOrder") == 0) {
-        /*  IndexOrder ascending|descending name|date|size */
-        mprFree(dir->sortField);
-        dir->sortField = 0;
-        option = mprStrTok(value, " \t", &dir->sortField);
-        if (mprStrcmpAnyCase(option, "ascending") == 0) {
-            dir->sortOrder = 1;
-        } else {
-            dir->sortOrder = -1;
-        }
-        if (dir->sortField) {
-            dir->sortField = mprStrdup(dir, dir->sortField);
-        }
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "IndexIgnore") == 0) {
-        /*  IndexIgnore pat ... */
-        /*  Not yet supported */
-        parseWords(dir->ignoreList, value);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "IndexOptions") == 0) {
-        /*  IndexOptions FancyIndexing|FoldersFirst ... (set of options) */
-        option = mprStrTok(value, " \t", &nextTok);
-        while (option) {
-            if (mprStrcmpAnyCase(option, "FancyIndexing") == 0) {
-                dir->fancyIndexing = 1;
-            } else if (mprStrcmpAnyCase(option, "HTMLTable") == 0) {
-                dir->fancyIndexing = 2;
-            } else if (mprStrcmpAnyCase(option, "FoldersFirst") == 0) {
-                dir->foldersFirst = 1;
-            }
-            option = mprStrTok(nextTok, " \t", &nextTok);
-        }
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "Options") == 0) {
-        /*  Options Indexes */
-        option = mprStrTok(value, " \t", &nextTok);
-        while (option) {
-            if (mprStrcmpAnyCase(option, "Indexes") == 0) {
-                dir->enabled = 1;
-            }
-            option = mprStrTok(nextTok, " \t", &nextTok);
-        }
-        return 1;
-    }
-    return 0;
-}
-#endif
-
-
-static void parseWords(MprList *list, cchar *str)
-{
-    char    *word, *tok, *strTok;
-
-    mprAssert(str);
-    if (str == 0 || *str == '\0') {
-        return;
-    }
-
-    strTok = mprStrdup(list, str);
-    word = mprStrTok(strTok, " \t\r\n", &tok);
-    while (word) {
-        mprAddItem(list, word);
-        word = mprStrTok(0, " \t\r\n", &tok);
-    }
-}
-
-
-/*
- *  Dynamic module initialization
- */
-MprModule *maDirHandlerInit(MaHttp *http, cchar *path)
-{
-    MprModule   *module;
-    MaStage     *handler;
-    Dir         *dir;
-
-    module = mprCreateModule(http, "dirHandler", BLD_VERSION, NULL, NULL, NULL);
-    if (module == 0) {
-        return 0;
-    }
-    handler = maCreateHandler(http, "dirHandler", MA_STAGE_GET | MA_STAGE_HEAD);
-    if (handler == 0) {
-        mprFree(module);
-        return 0;
-    }
-    handler->match = matchDir; 
-    handler->run = runDir; 
-    handler->parse = parseDir; 
-    handler->stageData = dir = mprAllocObjZeroed(handler, Dir);
-    dir->sortOrder = 1;
-    http->dirHandler = handler;
-    return module;
-}
-
-#else
-
-MprModule *maDirHandlerInit(MaHttp *http, cchar *path)
-{
-    return 0;
-}
-#endif /* BLD_FEATURE_DIR */
-
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/handlers/dirHandler.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/handlers/phpHandler.c"
- */
-/************************************************************************/
-
-/*
-    phpHandler.c - Appweb PHP handler
-  
-    Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-
-
-#if BLD_FEATURE_PHP
-
-#if BLD_WIN_LIKE
-    /*
-     *  Workaround for VS 2005 and PHP headers. Need to include before PHP headers include it.
-     */
-    #if _MSC_VER >= 1400
-        #include    <sys/utime.h>
-    #endif
-    #undef  WIN32
-    #define WIN32 1
-    #define WINNT 1
-    #define TIME_H
-    #undef _WIN32_WINNT
-    #undef chdir
-    #undef popen
-    #undef pclose
-    #define PHP_WIN32 1
-    #define ZEND_WIN32 1
-    #define ZTS 1
-#endif
-    #undef ulong
-    #undef HAVE_SOCKLEN_T
 
     /*
-     *  Indent headers to side-step make depend if PHP is not enabled
+     *  Fix for Safari >= 3.2.1 with Bonjour addresses with a trailing ".". Safari discards cookies without a domain 
+     *  specifier or with a domain that includes a trailing ".". Solution: include an explicit domain and trim the 
+     *  trailing ".".
+     *
+     *   User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_5_6; en-us) 
+     *       AppleWebKit/530.0+ (KHTML, like Gecko) Version/3.1.2 Safari/525.20.1
      */
-    #include <main/php.h>
-    #include <main/php_globals.h>
-    #include <main/php_variables.h>
-    #include <Zend/zend_modules.h>
-    #include <main/SAPI.h>
-#ifdef PHP_WIN32
-    #include <win32/time.h>
-    #include <win32/signal.h>
-    #include <process.h>
-#else
-    #include <main/build-defs.h>
-#endif
-    #include <Zend/zend.h>
-    #include <Zend/zend_extensions.h>
-    #include <main/php_ini.h>
-    #include <main/php_globals.h>
-    #include <main/php_main.h>
-#if ZTS
-    #include <TSRM/TSRM.h>
-#endif
+    webkitVersion = 0;
+    if (cookieDomain == 0 && req->userAgent && strstr(req->userAgent, "AppleWebKit") != 0) {
+        if ((cp = strstr(req->userAgent, "Version/")) != NULL && strlen(cp) >= 13) {
+            cp = &cp[8];
+            webkitVersion = (cp[0] - '0') * 100 + (cp[2] - '0') * 10 + (cp[4] - '0');
+        }
+    }
+    domain = (char*) cookieDomain;
+    if (webkitVersion >= 312) {
+        domain = mprStrdup(resp, req->hostName);
+        if ((cp = strchr(domain, ':')) != 0) {
+            *cp = '\0';
+        }
+        if (*domain && domain[strlen(domain) - 1] == '.') {
+            domain[strlen(domain) - 1] = '\0';
+        } else {
+            domain = 0;
+        }
+    }
+    if (domain) {
+        domainAtt = "; domain=";
+    } else {
+        domainAtt = "";
+        domain = "";
+    }
+    if (lifetime > 0) {
+        mprDecodeUniversalTime(resp, &tm, conn->time + (lifetime * MPR_TICKS_PER_SEC));
+        expiresAtt = "; expires=";
+        expires = mprFormatTime(resp, MPR_HTTP_DATE, &tm);
+
+    } else {
+        expires = expiresAtt = "";
+    }
+    if (isSecure) {
+        secure = "; secure";
+    } else {
+        secure = ";";
+    }
+
+    /*
+     *  Allow multiple cookie headers. Even if the same name. Later definitions take precedence
+     */
+    maSetHeader(conn, 1, "Set-Cookie", 
+        mprStrcat(resp, -1, name, "=", value, "; path=", path, domainAtt, domain, expiresAtt, expires, secure, NULL));
+
+    maSetHeader(conn, 0, "Cache-control", "no-cache=\"set-cookie\"");
+}
 
 
-typedef struct MaPhp {
-    zval    *var_array;             /* Track var array */
-} MaPhp;
-
-
-static void flushOutput(void *context);
-static void logMessage(char *message);
-static int  initializePhp(MaHttp *http);
-static char *readCookies(TSRMLS_D);
-static int  readPostData(char *buffer, uint len TSRMLS_DC);
-static void registerServerVars(zval *varArray TSRMLS_DC);
-static int  startup(sapi_module_struct *sapiModule);
-static int  sendHeaders(sapi_headers_struct *sapiHeaders TSRMLS_DC);
-static int  writeBlock(cchar *str, uint len TSRMLS_DC);
-
-#if PHP_MAJOR_VERSION >=5 && PHP_MINOR_VERSION >= 3
-static int  writeHeader(sapi_header_struct *sapiHeader, sapi_header_op_enum op, sapi_headers_struct *sapiHeaders TSRMLS_DC);
-#else
-static int  writeHeader(sapi_header_struct *sapiHeader, sapi_headers_struct *sapiHeaders TSRMLS_DC);
-#endif
-
-/*
- *  PHP Module Interface
- */
-static sapi_module_struct phpSapiBlock = {
-    BLD_PRODUCT,                    /* Sapi name */
-    BLD_NAME,                       /* Full name */
-    startup,                        /* Start routine */
-    php_module_shutdown_wrapper,    /* Stop routine  */
-    0,                              /* Activate */
-    0,                              /* Deactivate */
-    writeBlock,                     /* Write */
-    flushOutput,                    /* Flush */
-    0,                              /* Getuid */
-    0,                              /* Getenv */
-    php_error,                      /* Errors */
-    writeHeader,                    /* Write headers */
-    sendHeaders,                    /* Send headers */
-    0,                              /* Send single header */
-    readPostData,                   /* Read body data */
-    readCookies,                    /* Read session cookies */
-    registerServerVars,             /* Define request variables */
-    logMessage,                     /* Emit a log message */
-    NULL,                           /* Override for the php.ini */
-    0,                              /* Block */
-    0,                              /* Unblock */
-    STANDARD_SAPI_MODULE_PROPERTIES
-};
-
-
-static void openPhp(MaQueue *q)
+void maSetEntityLength(MaConn *conn, MprOff len)
 {
     MaRequest       *req;
     MaResponse      *resp;
-    MaConn          *conn;
 
-    conn = q->conn;
-    if (!q->stage->stageData) {
-        if (initializePhp(conn->http) < 0) {
-            maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "PHP initialization failed");
-        }
-        q->stage->stageData = (void*) 1;
-    }
     resp = conn->response;
     req = conn->request;
 
-    switch (req->method) {
-    case MA_REQ_GET:
-    case MA_REQ_HEAD:
-    case MA_REQ_POST:
-    case MA_REQ_PUT:
-        q->queueData = mprAllocObjZeroed(resp, MaPhp);
-        maDontCacheResponse(conn);
-        maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
-        break;
-                
-    case MA_REQ_DELETE:
-    default:
-        maFailRequest(q->conn, MPR_HTTP_CODE_BAD_METHOD, "Method not supported by file handler: %s", req->methodName);
-        break;
+    resp->entityLength = len;
+    if (req->ranges == 0) {
+        resp->length = len;
     }
 }
 
 
-static void runPhp(MaQueue *q)
+void maSetResponseCode(MaConn *conn, int code)
 {
-    MaConn              *conn;
-    MaRequest           *req;
-    MaResponse          *resp;
-    MaPhp               *php;
-    FILE                *fp;
-    char                shebang[MPR_MAX_STRING];
-    zend_file_handle    file_handle;
-
-    TSRMLS_FETCH();
-
-    conn = q->conn;
-    req = conn->request;
-    resp = conn->response;
-    php = q->queueData;
-
-    maPutForService(q, maCreateHeaderPacket(q), 0);
-
-    /*
-     *  Set the request context
-     */
-    zend_first_try {
-        php->var_array = 0;
-        SG(server_context) = conn;
-        if (req->user) {
-            SG(request_info).auth_user = estrdup(req->user);
-        }
-        if (req->password) {
-            SG(request_info).auth_password = estrdup(req->password);
-        }
-        if (req->authType && req->authDetails) {
-            SG(request_info).auth_digest = estrdup(mprAsprintf(req, -1, "%s %s", req->authType, req->authDetails));
-        }
-        SG(request_info).auth_password = req->password;
-        SG(request_info).content_type = req->mimeType;
-        SG(request_info).content_length = req->length;
-        SG(sapi_headers).http_response_code = MPR_HTTP_CODE_OK;
-        SG(request_info).path_translated = resp->filename;
-        SG(request_info).query_string = req->parsedUri->query;
-        SG(request_info).request_method = req->methodName;
-        SG(request_info).request_uri = req->url;
-
-        /*
-         *  Workaround on MAC OS X where the SIGPROF is given to the wrong thread
-         */
-        PG(max_input_time) = -1;
-        EG(timeout_seconds) = 0;
-
-        /* The readPostData callback may be invoked during startup */
-        php_request_startup(TSRMLS_C);
-        CG(zend_lineno) = 0;
-
-    } zend_catch {
-        mprError(q, "Can't start PHP request");
-        zend_try {
-            php_request_shutdown(0);
-        } zend_end_try();
-        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "PHP initialization failed");
-        return;
-    } zend_end_try();
-
-
-    /*
-     *  Execute the script file
-     */
-    file_handle.filename = resp->filename;
-    file_handle.free_filename = 0;
-    file_handle.opened_path = 0;
-
-#if LOAD_FROM_FILE
-    file_handle.type = ZEND_HANDLE_FILENAME;
-#else
-    file_handle.type = ZEND_HANDLE_FP;
-    if ((fp = fopen(resp->filename, "r")) == NULL) {
-        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR,  "PHP can't open script");
-        return;
-    }
-    /*
-        Check for shebang and skip
-     */
-    file_handle.handle.fp = fp;
-    shebang[0] = '\0';
-    if (fgets(shebang, sizeof(shebang), file_handle.handle.fp) != 0) {
-        if (shebang[0] != '#' || shebang[1] != '!') {
-            fseek(fp, 0L, SEEK_SET);
-        }
-    }
-#endif
-
-    zend_try {
-        php_execute_script(&file_handle TSRMLS_CC);
-        if (!SG(headers_sent)) {
-            sapi_send_headers(TSRMLS_C);
-        }
-    } zend_catch {
-        php_request_shutdown(0);
-        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR,  "PHP script execution failed");
-        return;
-    } zend_end_try();
-
-    zend_try {
-        php_request_shutdown(0);
-    } zend_end_try();
-
-    maPutForService(q, maCreateEndPacket(q), 1);
-}
-
-/*
- *
- *  Flush write data back to the client
- */
-static void flushOutput(void *server_context)
-{
-    MaConn      *conn;
-
-    conn = (MaConn*) server_context;
-    if (conn) {
-        maServiceQueues(conn);
-    }
+    conn->response->code = code;
 }
 
 
-static int writeBlock(cchar *str, uint len TSRMLS_DC)
+void maSetResponseMimeType(MaConn *conn, cchar *mimeType)
 {
-    MaConn      *conn;
-    int         written;
+    MaResponse      *resp;
 
-    conn = (MaConn*) SG(server_context);
-    if (conn == 0) {
-        return -1;
-    }
-    written = maWriteBlock(conn->response->queue[MA_QUEUE_SEND].nextQ, str, len, 1);
-    mprLog(mprGetMpr(0), 6, "php: write %d", written);
-    if (written <= 0) {
-        php_handle_aborted_connection();
-    }
-    return written;
-}
-
-
-static void registerServerVars(zval *track_vars_array TSRMLS_DC)
-{
-    MaConn      *conn;
-    MaPhp       *php;
-    MaRequest    *req;
-    MprHash      *hp;
-
-    conn = (MaConn*) SG(server_context);
-    if (conn == 0) {
-        return;
-    }
-    php_import_environment_variables(track_vars_array TSRMLS_CC);
-
-    if (SG(request_info).request_uri) {
-        php_register_variable("PHP_SELF", SG(request_info).request_uri,  track_vars_array TSRMLS_CC);
-    }
-    if ((php = maGetHandlerQueueData(conn)) == 0) {
-        return;
-    }
-    php->var_array = track_vars_array;
-
-    /*
-        Define header variables
-     */
-    zend_try {
-        req = conn->request;
-        hp = mprGetFirstHash(req->headers);
-        while (hp) {
-            if (hp->data) {
-                php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
-                mprLog(conn, 6, "php: header var %s = %s", hp->key, hp->data);
-
-            }
-            hp = mprGetNextHash(req->headers, hp);
-        }
-        hp = mprGetFirstHash(req->formVars);
-        while (hp) {
-            if (hp->data) {
-                php_register_variable(hp->key, (char*) hp->data, php->var_array TSRMLS_CC);
-                mprLog(conn, 6, "php: form var %s = %s", hp->key, hp->data);
-            }
-            hp = mprGetNextHash(req->formVars, hp);
-        }
-    } zend_end_try();
-}
-
-
-static void logMessage(char *message)
-{
-    mprLog(mprGetMpr(0), 0, "phpModule: %s", message);
-}
-
-
-static char *readCookies(TSRMLS_D)
-{
-    MaConn      *conn;
-
-    conn = (MaConn*) SG(server_context);
-    return conn->request->cookie;
-}
-
-
-static int sendHeaders(sapi_headers_struct *phpHeaders TSRMLS_DC)
-{
-    MaConn      *conn;
-
-    conn = (MaConn*) SG(server_context);
-    maSetResponseCode(conn, phpHeaders->http_response_code);
-    maSetResponseMimeType(conn, phpHeaders->mimetype);
-    mprLog(mprGetMpr(0), 6, "php: send headers");
-    return SAPI_HEADER_SENT_SUCCESSFULLY;
-}
-
-
-#if PHP_MAJOR_VERSION >=5 && PHP_MINOR_VERSION >= 3
-static int writeHeader(sapi_header_struct *sapiHeader, sapi_header_op_enum op, sapi_headers_struct *sapiHeaders TSRMLS_DC)
-#else
-static int writeHeader(sapi_header_struct *sapiHeader, sapi_headers_struct *sapi_headers TSRMLS_DC)
-#endif
-{
-    MaConn      *conn;
-    MaResponse  *resp;
-    char        *key, *value;
-
-    conn = (MaConn*) SG(server_context);
     resp = conn->response;
 
-    key = mprStrdup(resp, sapiHeader->header);
-    if ((value = strchr(key, ':')) == 0) {
-        return -1;
-    }
-    *value++ = '\0';
-    while (!isalnum(*value) && *value) {
-        value++;
-    }
-#if PHP_MAJOR_VERSION >=5 && PHP_MINOR_VERSION >= 3
-    switch(op) {
-        case SAPI_HEADER_DELETE_ALL:
-            return 0;
-
-        case SAPI_HEADER_DELETE:
-            return 0;
-
-        case SAPI_HEADER_REPLACE:
-            maSetHeader(conn, 0, key, value);
-            return SAPI_HEADER_ADD;
-
-        case SAPI_HEADER_ADD:
-            maSetHeader(conn, 1, key, value);
-            return SAPI_HEADER_ADD;
-
-        default:
-            return 0;
-    }
-#else
-{
-    bool        allowMultiple;
-    allowMultiple = !sapiHeader->replace;
-    maSetHeader(conn, allowMultiple, key, value);
-    return SAPI_HEADER_ADD;
-}
-#endif
+    /*  Can't free old mime type, as it is sometimes a literal constant */
+    resp->mimeType = mprStrdup(resp, mimeType);
 }
 
 
-static int readPostData(char *buffer, uint bufsize TSRMLS_DC)
+void maOmitResponseBody(MaConn *conn)
 {
-    MaConn      *conn;
-    MaQueue     *q;
-    MprBuf      *content;
-    int         len, nbytes;
-
-    conn = (MaConn*) SG(server_context);
-    q = conn->response->queue[MA_QUEUE_RECEIVE].prevQ;
-    if (q->first == 0) {
-        return 0;
+    if (conn->response) {
+        conn->response->flags |= MA_RESP_NO_BODY;
+        // conn->response->mimeType = "";
     }
-    content = q->first->content;
-    len = min(mprGetBufLength(content), (int) bufsize);
-    if (len > 0) {
-        nbytes = mprMemcpy(buffer, len, mprGetBufStart(content), len);
-        mprAssert(nbytes == len);
-        mprAdjustBufStart(content, len);
-    }
-    mprLog(mprGetMpr(0), 6, "php: read post data %d remaining %d", len, mprGetBufLength(content));
-    return len;
 }
 
 
-static int startup(sapi_module_struct *sapi_module)
+void maSetRedirectCallback(MaConn *conn, MaRedirectCallback redirectCallback)
 {
-    return php_module_startup(sapi_module, 0, 0);
+    conn->response->redirectCallback = redirectCallback;
 }
 
 
-/*
- *  Initialze the php module
- */
-static int initializePhp(MaHttp *http)
+void maSetEnvCallback(MaConn *conn, MaEnvCallback envCallback)
 {
-#if ZTS
-    void                    ***tsrm_ls;
-    php_core_globals        *core_globals;
-    sapi_globals_struct     *sapi_globals;
-    zend_llist              global_vars;
-    zend_compiler_globals   *compiler_globals;
-    zend_executor_globals   *executor_globals;
-
-    tsrm_startup(128, 1, 0, 0);
-    compiler_globals = (zend_compiler_globals*)  ts_resource(compiler_globals_id);
-    executor_globals = (zend_executor_globals*)  ts_resource(executor_globals_id);
-    core_globals = (php_core_globals*) ts_resource(core_globals_id);
-    sapi_globals = (sapi_globals_struct*) ts_resource(sapi_globals_id);
-    tsrm_ls = (void***) ts_resource(0);
-#endif
-
-    mprLog(http, 2, "php: initialize php library");
-#ifdef BLD_FEATURE_PHP_INI
-    phpSapiBlock.php_ini_path_override = BLD_FEATURE_PHP_INI;
-#else
-    phpSapiBlock.php_ini_path_override = http->defaultServer->serverRoot;
-#endif
-    sapi_startup(&phpSapiBlock);
-    if (php_module_startup(&phpSapiBlock, 0, 0) == FAILURE) {
-        mprError(http, "PHP did not initialize");
-        return MPR_ERR_CANT_INITIALIZE;
-    }
-#if ZTS
-    zend_llist_init(&global_vars, sizeof(char *), 0, 0);
-#endif
-
-#if UNUSED
-    SG(options) |= SAPI_OPTION_NO_CHDIR;
-#endif
-    zend_alter_ini_entry("register_argc_argv", 19, "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
-    zend_alter_ini_entry("html_errors", 12, "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
-    zend_alter_ini_entry("implicit_flush", 15, "0", 1, PHP_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE);
-    return 0;
-}
-
-
-static int finalizePhp(MprModule *mp)
-{
-    MaHttp      *http;
-    MaStage     *stage;
-
-    TSRMLS_FETCH();
-
-    mprLog(mp, 4, "php: Finalize library before unloading");
-
-    php_module_shutdown(TSRMLS_C);
-    sapi_shutdown();
-#if ZTS
-    tsrm_shutdown();
-#endif
-    http = mprGetMpr(mp)->appwebHttpService;
-    if ((stage = maLookupStage(http, "phpHandler")) != 0) {
-        stage->stageData = 0;
-    }
-    return 0;
-}
-
-
-/*
- *  Dynamic module initialization
- */
-MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
-{
-    MprModule   *module;
-    MaStage     *handler;
-
-    if ((module = mprCreateModule(http, "phpHandler", BLD_VERSION, http, NULL, finalizePhp)) == 0) {
-        return 0;
-    }
-    module->path = mprStrdup(module, path);
-
-    if ((handler = maLookupStage(http, "phpHandler")) == 0) {
-        handler = maCreateHandler(http, "phpHandler", 
-            MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_VERIFY_ENTITY | 
-            MA_STAGE_MISSING_EXT);
-        if (handler == 0) {
-            mprFree(module);
-            return 0;
-        }
-    }
-    http->phpHandler = handler;
-    handler->open = openPhp;
-    handler->run = runPhp;
-    handler->module = module;
-    mprFree(handler->path);
-    handler->path = mprStrdup(handler, path);
-    return module;
-}
-
-
-#else
-MprModule *maPhpHandlerInit(MaHttp *http, cchar *path)
-{
-    return 0;
-}
-
-#endif /* BLD_FEATURE_PHP */
-
-/*
-    @copy   default
-  
-    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
-    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
-  
-    This software is distributed under commercial and open source licenses.
-    You may use the GPL open source license described below or you may acquire
-    a commercial license from Embedthis Software. You agree to be fully bound
-    by the terms of either license. Consult the LICENSE.TXT distributed with
-    this software for full details.
-  
-    This software is open source; you can redistribute it and/or modify it
-    under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
-    option) any later version. See the GNU General Public License for more
-    details at: http://www.embedthis.com/downloads/gplLicense.html
-  
-    This program is distributed WITHOUT ANY WARRANTY; without even the
-    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
-    This GPL license does NOT permit incorporating this software into
-    proprietary programs. If you are unable to comply with the GPL, you must
-    acquire a commercial license to use this software. Commercial licenses
-    for this software and support services are available from Embedthis
-    Software at http://www.embedthis.com
-  
-    Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/handlers/phpHandler.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/handlers/passHandler.c"
- */
-/************************************************************************/
-
-/*
- *  passHandler.c -- Pass through handler
- *
- *  This handler simply relays all content onto a connector. It is used to convey errors.
- *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
-
-
-
-
-static void runPass(MaQueue *q)
-{
-    maPutForService(q, maCreateHeaderPacket(q), 0);
-    maPutForService(q, maCreateEndPacket(q), 1);
-}
-
-
-static void incomingPassData(MaQueue *q, MaPacket *packet)
-{
-    maFreePacket(q, packet);
-}
-
-
-int maOpenPassHandler(MaHttp *http)
-{
-    MaStage     *stage;
-
-    stage = maCreateHandler(http, "passHandler", MA_STAGE_ALL | MA_STAGE_VIRTUAL);
-    if (stage == 0) {
-        return MPR_ERR_CANT_CREATE;
-    }
-    stage->run = runPass;
-    stage->incomingData = incomingPassData;
-    http->passHandler = stage;
-
-    return 0;
+    conn->response->envCallback = envCallback;
 }
 
 
@@ -12433,7 +16175,7 @@ int maOpenPassHandler(MaHttp *http)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/handlers/passHandler.c"
+ *  End of file "../src/http/response.c"
  */
 /************************************************************************/
 
@@ -12441,1961 +16183,842 @@ int maOpenPassHandler(MaHttp *http)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/handlers/egiHandler.c"
+ *  Start of file "../src/http/server.c"
  */
 /************************************************************************/
 
 /*
- *  egiHandler.c -- Embedded Gateway Interface (EGI) handler. Fast in-process replacement for CGI.
+ *  server.c -- Server Class to manage a single server
  *
- *  The EGI handler implements a very fast in-process CGI scheme.
+ *  An instance of the MaServer Class may be created for each http.conf file. Each server can manage multiple hosts
+ *  (standard, virtual or SSL). This file parses the http.conf file and creates all the necessary MaHost, MaDir and
+ *  MaLocation objects to manage the server's operation.
  *
  *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
 
 
-#if BLD_FEATURE_EGI
-#if BLD_DEBUG
-/*
- *  Non-production in-line test code
- */
-#define EGI_TEST 1
 
-static int  egiTestInit(MaHttp *http, cchar *path);
-static int  getVars(MaQueue *q, char ***keys, char *buf, int len);
-static void printFormVars(MaQueue *q);
-static void printRequestHeaders(MaQueue *q);
-static void printQueryData(MaQueue *q);
-static void printBodyData(MaQueue *q);
+#if BLD_UNIX_LIKE
+static int allDigits(cchar *s);
 #endif
+static void initLimits(MaHttp *http);
+static int  httpDestructor(MaHttp *http);
 
 /*
- *  This runs when all input data has been received. The egi form must write all the data.
- *  It currently does not support forms that return before writing all the data.
+ *  Create a web server described by a config file. 
  */
-static void runEgi(MaQueue *q)
+MaHttp *maCreateWebServer(cchar *configFile)
 {
-    MaConn          *conn;
-    MaRequest       *req;
-    MaEgiForm       *form;
-    MaEgi           *egi;
+    Mpr         *mpr;
+    MaHttp      *http;
+    MaServer    *server;
 
-    conn = q->conn;
-    req = conn->request;
-    egi = (MaEgi*) q->stage->stageData;
-    
-    maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
-    maDontCacheResponse(conn);
-    maPutForService(q, maCreateHeaderPacket(q), 0);
-
-    form = (MaEgiForm*) mprLookupHash(egi->forms, req->url);
-    if (form == 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Egi Form: \"%s\" is not defined", req->url);
-    } else {
-        (*form)(q);
+    /*
+     *  Initialize and start the portable runtime services.
+     */
+    if ((mpr = mprCreate(0, NULL, NULL)) == 0) {
+        mprError(mpr, "Can't create the web server runtime");
+        return 0;
     }
-    maPutForService(q, maCreateEndPacket(q), 1);
+    if (mprStart(mpr, 0) < 0) {
+        mprError(mpr, "Can't start the web server runtime");
+        return 0;
+    }
+    http = maCreateHttp(mpr);
+    if ((server = maCreateServer(http, configFile, NULL, NULL, -1)) == 0) {
+        mprError(mpr, "Can't create the web server");
+        return 0;
+    }
+    if (maParseConfig(server, configFile) < 0) {
+        mprError(mpr, "Can't parse the config file %s", configFile);
+        return 0;
+    }
+    return http;
 }
 
 
 /*
- *  User API to define a form
+ *  Service requests for a web server.
  */
-int maDefineEgiForm(MaHttp *http, cchar *name, MaEgiForm *form)
+int maServiceWebServer(MaHttp *http)
 {
-    MaEgi       *egi;
-    MaStage     *handler;
+    if (maStartHttp(http) < 0) {
+        mprError(http, "Can't start the web server");
+        return MPR_ERR_CANT_CREATE;
+    }
+    mprServiceEvents(mprGetDispatcher(http), -1, MPR_SERVICE_EVENTS | MPR_SERVICE_IO);
+    maStopHttp(http);
+    return 0;
+}
 
-    handler = http->egiHandler;
-    if (handler) {
-        egi = (MaEgi*) handler->stageData;
-        mprAddHash(egi->forms, name, form);
+
+/*
+ *  Run a web server using a config file. 
+ */
+int maRunWebServer(cchar *configFile)
+{
+    MaHttp      *http;
+
+    if ((http = maCreateWebServer(configFile)) == 0) {
+        return MPR_ERR_CANT_CREATE;
+    }
+    return maServiceWebServer(http);
+}
+
+
+int maRunSimpleWebServer(cchar *ipAddr, int port, cchar *docRoot)
+{
+    Mpr         *mpr;
+    MaHttp      *http;
+    MaServer    *server;
+
+    /*
+     *  Initialize and start the portable runtime services.
+     */
+    if ((mpr = mprCreate(0, NULL, NULL)) == 0) {
+        mprError(mpr, "Can't create the web server runtime");
+        return MPR_ERR_CANT_CREATE;
+    }
+    if (mprStart(mpr, 0) < 0) {
+        mprError(mpr, "Can't start the web server runtime");
+        return MPR_ERR_CANT_INITIALIZE;
+    }
+
+    /*
+     *  Create the HTTP object.
+     */
+    if ((http = maCreateHttp(mpr)) == 0) {
+        mprError(mpr, "Can't create the web server http services");
+        return MPR_ERR_CANT_INITIALIZE;
+    }
+
+    /*
+     *  Create and start the HTTP server. Give the server a name of "default" and define "." as 
+     *  the default serverRoot, ie. the directory with the server configuration files.
+     */
+    server = maCreateServer(http, ipAddr, ".", ipAddr, port);
+    if (server == 0) {
+        mprError(mpr, "Can't create the web server");
+        return MPR_ERR_CANT_CREATE;
+    }
+    maSetDocumentRoot(server->defaultHost, docRoot);
+    
+    if (maStartHttp(http) < 0) {
+        mprError(mpr, "Can't start the web server");
+        return MPR_ERR_CANT_CREATE;
+    }
+    mprServiceEvents(mprGetDispatcher(mpr), -1, MPR_SERVICE_EVENTS | MPR_SERVICE_IO);
+    maStopHttp(http);
+    mprFree(mpr);
+    return 0;
+}
+
+
+MaHttp *maCreateHttp(MprCtx ctx)
+{
+    MaHttp      *http;
+
+    http = mprAllocObjWithDestructorZeroed(ctx, MaHttp, httpDestructor);
+    if (http == 0) {
+        return 0;
+    }
+    mprGetMpr(ctx)->appwebHttpService = http;
+    http->servers = mprCreateList(http);
+    http->stages = mprCreateHash(http, 0);
+
+#if BLD_FEATURE_MULTITHREAD
+    http->mutex = mprCreateLock(http);
+#endif
+
+    initLimits(http);
+
+#if BLD_UNIX_LIKE
+{
+    struct passwd   *pp;
+    struct group    *gp;
+
+    http->uid = getuid();
+    if ((pp = getpwuid(http->uid)) == 0) {
+        mprError(http, "Can't read user credentials: %d. Check your /etc/passwd file.", http->uid);
+    } else {
+        http->username = mprStrdup(http, pp->pw_name);
+    }
+
+    http->gid = getgid();
+    if ((gp = getgrgid(http->gid)) == 0) {
+        mprError(http, "Can't read group credentials: %d. Check your /etc/group file", http->gid);
+    } else {
+        http->groupname = mprStrdup(http, gp->gr_name);
+    }
+}
+#else
+    http->uid = http->gid = -1;
+#endif
+
+#if BLD_FEATURE_SEND
+    maOpenSendConnector(http);
+#endif
+#if BLD_FEATURE_NET
+    maOpenNetConnector(http);
+#endif
+    maOpenPassHandler(http);
+    return http;
+}
+
+
+static int httpDestructor(MaHttp *http)
+{
+    maUnloadStaticModules(http);
+    return 0;
+}
+
+
+void maAddServer(MaHttp *http, MaServer *server)
+{
+    mprAddItem(http->servers, server);
+}
+
+
+void maSetDefaultServer(MaHttp *http, MaServer *server)
+{
+    http->defaultServer = server;
+}
+
+
+MaServer *maLookupServer(MaHttp *http, cchar *name)
+{
+    MaServer    *server;
+    int         next;
+
+    for (next = 0; (server = mprGetNextItem(http->servers, &next)) != 0; ) {
+        if (strcmp(server->name, name) == 0) {
+            return server;
+        }
+    }
+    return 0;
+}
+
+
+void maRegisterStage(MaHttp *http, MaStage *stage)
+{
+    mprAddHash(http->stages, stage->name, stage);
+}
+
+
+MaStage *maLookupStage(MaHttp *http, cchar *name)
+{
+    return (MaStage*) mprLookupHash(http->stages, name);
+}
+
+
+void *maLookupStageData(MaHttp *http, cchar *name)
+{
+    MaStage     *stage;
+
+    stage = (MaStage*) mprLookupHash(http->stages, name);
+    return stage->stageData;
+}
+
+
+#if BLD_FEATURE_CMD
+void maSetForkCallback(MaHttp *http, MprForkCallback callback, void *data)
+{
+    http->forkCallback = callback;
+    http->forkData = data;
+}
+#endif
+
+
+int maStartHttp(MaHttp *http)
+{
+    MaServer    *server;
+    int         next;
+
+    /*
+     *  Start servers (and hosts)
+     */
+    for (next = 0; (server = mprGetNextItem(http->servers, &next)) != 0; ) {
+        if (maStartServer(server) < 0) {
+            return MPR_ERR_CANT_INITIALIZE;
+        }
+    }
+
+    return 0;
+}
+
+
+int maStopHttp(MaHttp *http)
+{
+    MaServer    *server;
+    int         next;
+
+    for (next = 0; (server = mprGetNextItem(http->servers, &next)) != 0; ) {
+        maStopServer(server);
+    }
+    return 0;
+}
+
+
+int maSetHttpUser(MaHttp *http, cchar *newUser)
+{
+#if BLD_UNIX_LIKE
+    struct passwd   *pp;
+
+    if (allDigits(newUser)) {
+        http->uid = atoi(newUser);
+        if ((pp = getpwuid(http->uid)) == 0) {
+            mprError(http, "Bad user id: %d", http->uid);
+            return MPR_ERR_CANT_ACCESS;
+        }
+        newUser = pp->pw_name;
+
+    } else {
+        if ((pp = getpwnam(newUser)) == 0) {
+            mprError(http, "Bad user name: %s", newUser);
+            return MPR_ERR_CANT_ACCESS;
+        }
+        http->uid = pp->pw_uid;
+    }
+#endif
+
+    mprFree(http->username);
+    http->username = mprStrdup(http, newUser);
+
+    return 0;
+}
+
+
+int maSetHttpGroup(MaHttp *http, cchar *newGroup)
+{
+#if BLD_UNIX_LIKE
+    struct group    *gp;
+
+    if (allDigits(newGroup)) {
+        http->gid = atoi(newGroup);
+        if ((gp = getgrgid(http->gid)) == 0) {
+            mprError(http, "Bad group id: %d", http->gid);
+            return MPR_ERR_CANT_ACCESS;
+        }
+        newGroup = gp->gr_name;
+
+    } else {
+        if ((gp = getgrnam(newGroup)) == 0) {
+            mprError(http, "Bad group name: %s", newGroup);
+            return MPR_ERR_CANT_ACCESS;
+        }
+        http->gid = gp->gr_gid;
+    }
+#endif
+
+    mprFree(http->groupname);
+    http->groupname = mprStrdup(http, newGroup);
+
+    return 0;
+}
+
+
+int maApplyChangedUser(MaHttp *http)
+{
+#if BLD_UNIX_LIKE
+    if (http->uid >= 0) {
+        if ((setuid(http->uid)) != 0) {
+            mprError(http, "Can't change user to: %s: %d\n"
+                "WARNING: This is a major security exposure", http->username, http->uid);
+#if LINUX && PR_SET_DUMPABLE
+        } else {
+            prctl(PR_SET_DUMPABLE, 1);
+#endif
+        }
+    }
+#endif
+    return 0;
+}
+
+
+int maApplyChangedGroup(MaHttp *http)
+{
+#if BLD_UNIX_LIKE
+    if (http->gid >= 0) {
+        if (setgid(http->gid) != 0) {
+            mprError(http, "Can't change group to %s: %d\n"
+                "WARNING: This is a major security exposure", http->groupname, http->gid);
+#if LINUX && PR_SET_DUMPABLE
+        } else {
+            prctl(PR_SET_DUMPABLE, 1);
+#endif
+        }
+    }
+#endif
+    return 0;
+}
+
+
+void maSetListenCallback(MaHttp *http, MaListenCallback fn)
+{
+    http->listenCallback = fn;
+}
+
+
+/*
+ *  Load a module. Returns 0 if the modules is successfully loaded either statically or dynamically.
+ */
+MprModule *maLoadModule(MaHttp *http, cchar *name, cchar *libname)
+{
+    MprModule   *module;
+    char        entryPoint[MPR_MAX_FNAME];
+    char        *path;
+
+    path = 0;
+
+    module = mprLookupModule(http, name);
+    if (module) {
+        mprLog(http, MPR_CONFIG, "Activating module (Builtin) %s", name);
+        return module;
+    }
+    mprSprintf(entryPoint, sizeof(entryPoint), "ma%sInit", name);
+    entryPoint[2] = toupper((int) entryPoint[2]);
+
+    if (libname == 0) {
+        path = mprStrcat(http, -1, "mod_", name, BLD_SHOBJ, NULL);
+    }
+    if ((module = mprLoadModule(http, (libname) ? libname: path, entryPoint)) == 0) {
+        return 0;
+    }
+    mprLog(http, MPR_CONFIG, "Activating module (Loadable) %s", name);
+    return module;
+}
+
+
+int maUnloadModule(MaHttp *http, cchar *name)
+{
+    MprModule   *module;
+    MaStage     *stage;
+
+    if ((module = mprLookupModule(http, name)) == 0) {
+        return MPR_ERR_CANT_ACCESS;
+    }
+    if (module->timeout) {
+        if ((stage = maLookupStage(http, name)) != 0) {
+            stage->flags |= MA_STAGE_UNLOADED;
+        }
+        mprUnloadModule(module);
+    }
+    return 0;
+}
+
+
+static void initLimits(MaHttp *http)
+{
+    MaLimits    *limits;
+
+    limits = &http->limits;
+
+    limits->maxBody = MA_MAX_BODY;
+    limits->maxChunkSize = MA_MAX_CHUNK_SIZE;
+    limits->maxResponseBody = MA_MAX_RESPONSE_BODY;
+    limits->maxStageBuffer = MA_MAX_STAGE_BUFFER;
+    limits->maxNumHeaders = MA_MAX_NUM_HEADERS;
+    limits->maxHeader = MA_MAX_HEADERS;
+    limits->maxUrl = MPR_MAX_URL;
+    limits->maxUploadSize = MA_MAX_UPLOAD_SIZE;
+    limits->maxThreads = MA_DEFAULT_MAX_THREADS;
+    limits->minThreads = 0;
+
+    /*
+     *  Zero means use O/S defaults
+     */
+    limits->threadStackSize = 0;
+}
+
+
+/*
+ *  Create a new server. There is typically only one server with one or more (virtual) hosts.
+ */
+MaServer *maCreateServer(MaHttp *http, cchar *name, cchar *root, cchar *ipAddr, int port)
+{
+    MaServer        *server;
+    MaHostAddress   *hostAddress;
+    MaListen        *listen;
+    static int      staticModulesLoaded = 0;
+
+    mprAssert(http);
+    mprAssert(name && *name);
+
+    server = mprAllocObjZeroed(http, MaServer);
+    if (server == 0) {
+        return 0;
+    }
+
+    server->hosts = mprCreateList(server);
+    server->listens = mprCreateList(server);
+    server->hostAddresses = mprCreateList(server);
+    server->name = mprStrdup(server, name);
+    server->http = http;
+
+    maAddServer(http, server);
+    maSetServerRoot(server, root);
+
+    if (ipAddr && port > 0) {
+        listen = maCreateListen(server, ipAddr, port, 0);
+        maAddListen(server, listen);
+
+        hostAddress = maCreateHostAddress(server, ipAddr, port);
+        mprAddItem(server->hostAddresses, hostAddress);
+    }
+    maSetDefaultServer(http, server);
+    if (!staticModulesLoaded) {
+        staticModulesLoaded = 1;
+        maLoadStaticModules(http);
+    }
+    return server;
+}
+
+
+int maStartServer(MaServer *server)
+{
+    MaHost      *host;
+    MaListen    *listen;
+    int         next, count, warned;
+
+    /*
+     *  Start the hosts
+     */
+    for (next = 0; (host = mprGetNextItem(server->hosts, &next)) != 0; ) {
+        mprLog(server, 1, "Starting host named: \"%s\"", host->name);
+        if (maStartHost(host) < 0) {
+            return MPR_ERR_CANT_INITIALIZE;
+        }
+    }
+
+    /*
+     *  Listen to all required ipAddr:ports
+     */
+    warned = 0;
+    count = 0;
+    for (next = 0; (listen = mprGetNextItem(server->listens, &next)) != 0; ) {
+        if (maStartListening(listen) < 0) {
+            mprError(server, "Can't listen for HTTP on %s:%d", listen->ipAddr, listen->port);
+            warned++;
+            break;
+
+        } else {
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        if (! warned) {
+            mprError(server, "Server is not listening on any addresses");
+        }
+        return MPR_ERR_CANT_OPEN;
+    }
+
+    /*
+     *  Now change user and group to the desired identities (user must be last)
+     */
+    if (maApplyChangedGroup(server->http) < 0 || maApplyChangedUser(server->http) < 0) {
+        return MPR_ERR_CANT_COMPLETE;
+    }
+
+    return 0;
+}
+
+
+/*
+ *  Stop the server and stop listening on all ports
+ */
+int maStopServer(MaServer *server)
+{
+    MaHost      *host;
+    MaListen    *listen;
+    int         next;
+
+    for (next = 0; (listen = mprGetNextItem(server->listens, &next)) != 0; ) {
+        maStopListening(listen);
+    }
+    for (next = 0; (host = mprGetNextItem(server->hosts, &next)) != 0; ) {
+        maStopHost(host);
+    }
+    return 0;
+}
+
+
+void maAddHost(MaServer *server, MaHost *host)
+{
+    mprAddItem(server->hosts, host);
+}
+
+
+void maAddListen(MaServer *server, MaListen *listen)
+{
+    mprAddItem(server->listens, listen);
+}
+
+
+MaHost *maLookupHost(MaServer *server, cchar *name)
+{
+    MaHost  *host;
+    int     next;
+
+    for (next = 0; (host = mprGetNextItem(server->hosts, &next)) != 0; ) {
+        if (strcmp(host->name, name) == 0) {
+            return host;
+        }
     }
     return 0;
 }
 
 
 /*
- *  Dynamic module initialization
+ *  Lookup a host address. If ipAddr is null or port is -1, then those elements are wild.
  */
-MprModule *maEgiHandlerInit(MaHttp *http, cchar *path)
+MaHostAddress *maLookupHostAddress(MaServer *server, cchar *ipAddr, int port)
 {
-    MprModule   *module;
-    MaStage     *handler;
-    MaEgi       *egi;
+    MaHostAddress   *address;
+    int             next;
 
-    module = mprCreateModule(http, "egiHandler", BLD_VERSION, NULL, NULL, NULL);
-    if (module == 0) {
-        return 0;
+    for (next = 0; (address = mprGetNextItem(server->hostAddresses, &next)) != 0; ) {
+        if (address->port < 0 || port < 0 || address->port == port) {
+            if (ipAddr == 0 || address->ipAddr == 0 || strcmp(address->ipAddr, ipAddr) == 0) {
+                return address;
+            }
+        }
     }
-    handler = maCreateHandler(http, "egiHandler", 
-        MA_STAGE_GET | MA_STAGE_HEAD | MA_STAGE_POST | MA_STAGE_PUT | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_VIRTUAL);
-    if (handler == 0) {
-        mprFree(module);
-        return 0;
-    }
-    http->egiHandler = handler;
-
-    handler->run = runEgi; 
-    handler->stageData = egi = mprAllocObjZeroed(handler, MaEgi);
-    egi->forms = mprCreateHash(egi, MA_EGI_HASH_SIZE);
-#if EGI_TEST
-    egiTestInit(http, path);
-#endif
-    return module;
+    return 0;
 }
 
 
 /*
- *  This code is never in release product.
+ *  Create the host addresses for a host. Called for hosts or for NameVirtualHost directives (host == 0).
  */
-
-#if EGI_TEST
-
-#if UNUSED
-static cchar *cback(MaConn *conn, int *code, cchar *targetUri)
+int maCreateHostAddresses(MaServer *server, MaHost *host, cchar *configValue)
 {
-    *code = 302;
-    // return mprAsprintf(conn, -1, "https://www.embedthis.com/vpn");
-    return mprAsprintf(conn, -1, "/vpn");
+    MaListen        *listen;
+    MaHostAddress   *address;
+    char            *ipAddrPort, *ipAddr, *value, *tok;
+    char            addrBuf[MPR_MAX_IP_ADDR_PORT];
+    int             next, port;
+
+    address = 0;
+    value = mprStrdup(server, configValue);
+    ipAddrPort = mprStrTok(value, " \t", &tok);
+
+    while (ipAddrPort) {
+        if (mprStrcmpAnyCase(ipAddrPort, "_default_") == 0) {
+            mprAssert(0);
+            ipAddrPort = "*:*";
+        }
+
+        if (mprParseIp(server, ipAddrPort, &ipAddr, &port, -1) < 0) {
+            mprError(server, "Can't parse ipAddr %s", ipAddrPort);
+            continue;
+        }
+        mprAssert(ipAddr && *ipAddr);
+        if (ipAddr[0] == '*') {
+            ipAddr = mprStrdup(server, "");
+        }
+
+        /*
+         *  For each listening endpiont,
+         */
+        for (next = 0; (listen = mprGetNextItem(server->listens, &next)) != 0; ) {
+            if (port > 0 && port != listen->port) {
+                continue;
+            }
+            if (listen->ipAddr[0] != '\0' && ipAddr[0] != '\0' && strcmp(ipAddr, listen->ipAddr) != 0) {
+                continue;
+            }
+
+            /*
+             *  Find the matching host address or create a new one
+             */
+            if ((address = maLookupHostAddress(server, listen->ipAddr, listen->port)) == 0) {
+                address = maCreateHostAddress(server, listen->ipAddr, listen->port);
+                mprAddItem(server->hostAddresses, address);
+            }
+
+            /*
+             *  If a host is specified
+             */
+            if (host == 0) {
+                maSetNamedVirtualHostAddress(address);
+
+            } else {
+                maInsertVirtualHost(address, host);
+                if (listen->ipAddr[0] != '\0') {
+                    mprSprintf(addrBuf, sizeof(addrBuf), "%s:%d", listen->ipAddr, listen->port);
+                } else {
+                    mprSprintf(addrBuf, sizeof(addrBuf), "%s:%d", ipAddr, listen->port);
+                }
+                maSetHostName(host, addrBuf);
+            }
+        }
+        mprFree(ipAddr);
+        ipAddrPort = mprStrTok(0, " \t", &tok);
+    }
+
+    if (host) {
+        if (address == 0) {
+            mprError(server, "No valid IP address for host %s", host->name);
+            mprFree(value);
+            return MPR_ERR_CANT_INITIALIZE;
+        }
+        if (maIsNamedVirtualHostAddress(address)) {
+            maSetNamedVirtualHost(host);
+        }
+    }
+
+    mprFree(value);
+
+    return 0;
 }
-#endif
 
-static void simpleTest(MaQueue *q)
+
+/*
+ *  Set the Server Root directory. We convert path into an absolute path.
+ */
+void maSetServerRoot(MaServer *server, cchar *path)
 {
-    MaHttp          *http;
-    MaServer        *server;
+    if (path == 0 || BLD_FEATURE_ROMFS) {
+        path = ".";
+    }
+#if !VXWORKS
+    /*
+     *  VxWorks stat() is broken if using a network FTP server.
+     */
+    if (! mprPathExists(server, path, R_OK)) {
+        mprError(server, "Can't access ServerRoot directory %s", path);
+        return;
+    }
+#endif
+    mprFree(server->serverRoot);
+    server->serverRoot = mprGetAbsPath(server, path);
+}
+
+
+void maSetDefaultHost(MaServer *server, MaHost *host)
+{
+    server->defaultHost = host;
+}
+
+
+int maSplitConfigValue(MprCtx ctx, char **s1, char **s2, char *buf, int quotes)
+{
+    char    *next;
+
+    if (maGetConfigValue(ctx, s1, buf, &next, quotes) < 0 || maGetConfigValue(ctx, s2, next, &next, quotes) < 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    if (*s1 == 0 || *s2 == 0) {
+        return MPR_ERR_BAD_SYNTAX;
+    }
+    return 0;
+}
+
+
+int maGetConfigValue(MprCtx ctx, char **arg, char *buf, char **nextToken, int quotes)
+{
+    char    *endp;
+
+    if (buf == 0) {
+        return -1;
+    }
+    while (isspace((int) *buf)) {
+        buf++;
+    }
+
+    if (quotes && *buf == '\"') {
+        *arg = ++buf;
+        if ((endp = strchr(buf, '\"')) != 0) {
+            *endp++ = '\0';
+        } else {
+            return MPR_ERR_BAD_SYNTAX;
+        }
+        while ((int) isspace((int) *endp)) {
+            endp++;
+        }
+        *nextToken = endp;
+    } else {
+        *arg = mprStrTok(buf, " \t\n", nextToken);
+    }
+    return 0;
+}
+
+
+/*
+ *  Convenience function to create a new default host
+ */
+MaHost *maCreateDefaultHost(MaServer *server, cchar *docRoot, cchar *ipAddr, int port)
+{
+    MaHost          *host;
     MaListen        *listen;
     MaHostAddress   *address;
 
-    http = mprGetMpr(q)->appwebHttpService;
-    server = http->defaultServer;
-    listen = mprGetFirstItem(server->listens);
-    maStopListening(listen);
-
-    if ((address = maLookupHostAddress(server, listen->ipAddr, listen->port)) != 0) {
-        mprRemoveItem(server->hostAddresses, address);
-    }
-    listen->port = 5555;
-
-    address = maCreateHostAddress(server, listen->ipAddr, listen->port);
-    mprAddItem(server->hostAddresses, address);
-    maInsertVirtualHost(address, server->defaultHost);
-
-    maStartListening(listen);
-
-#if UNUSED
-    maSetRedirectCallback(q->conn, cback);
-    maRedirect(q->conn, 302, "/abc/anything");
-#endif
-    maWrite(q, "Hello %s\r\n", maGetFormVar(q->conn, "name", "unknown"));
-}
-
-
-static void bigTest(MaQueue *q)
-{
-    int     i;
-
-    for (i = 0; i < 200; i++) {
-        maWrite(q, "line %04d 012345678901234567890123456789012345678901234567890123456789\r\n", i);
-    }
-}
-
-
-static void exitApp(MaQueue *q)
-{
-    mprLog(q, 0, "Instructed to exit ...");
-    mprTerminate(q, 1);
-}
-
-
-static void printVars(MaQueue *q)
-{
-    MaConn      *conn;
-    MaResponse  *resp;
-    MaRequest   *req;
-    char        *sw;
-    char        *newLocation;
-    int         responseStatus;
-
-    conn = q->conn;
-    resp = conn->response;
-    req = conn->request;
-    newLocation = 0;
-    responseStatus = 0;
-    sw = 0;
-
-    /*
-     *  Parse the switches
-     */
-    if (req->parsedUri->query) {
-        sw = (char*) strstr(req->parsedUri->query, "SWITCHES=");
-        if (sw) {
-            sw = mprUrlDecode(resp, &sw[9]);
-            if (*sw == '-') {
-                if (sw[1] == 'l') {
-                    newLocation = sw + 3;
-                } else if (sw[1] == 's') {
-                    responseStatus = atoi(sw + 3);
-                }
-            }
-        }
-    }
-
-    maSetResponseCode(conn, 200);
-    maSetResponseMimeType(conn, "text/html");
-    maDontCacheResponse(conn);
-
-    /*
-     *  Test writing headers. The Server header overwrote the "Server" header
-     *
-     *  maSetHeader(conn, "MyCustomHeader", "true");
-     *  maSetHeader(conn, "Server", "private");
-     */
-
-    if (maGetCookies(conn) == 0) {
-        maSetCookie(conn, "appwebTest", "Testing can be fun", "/", NULL, 43200, 0);
-    }
-
-    if (newLocation) {
-        maRedirect(conn, 302, newLocation);
-
-    } else if (responseStatus) {
-        maFailRequest(conn, responseStatus, "Custom Status");
-
-    } else {
-        maWrite(q, "<HTML><TITLE>egiProgram: EGI Output</TITLE><BODY>\r\n");
-
-        printRequestHeaders(q);
-        printFormVars(q);
-        printQueryData(q);
-        printBodyData(q);
-
-        maWrite(q, "</BODY></HTML>\r\n");
-    }
-    if (sw) {
-        mprFree(sw);
-    }
-}
-
-
-static void printRequestHeaders(MaQueue *q)
-{
-    MprHashTable    *env;
-    MprHash         *hp;
-
-    maWrite(q, "<H2>Request Headers</H2>\r\n");
-
-    env = q->conn->request->headers;
-
-    for (hp = 0; (hp = mprGetNextHash(env, hp)) != 0; ) {
-        maWrite(q, "<P>%s=%s</P>\r\n", hp->key, hp->data ? hp->data: "");
-    }
-    maWrite(q, "\r\n");
-}
-
-
-static void printFormVars(MaQueue *q)
-{
-    MprHashTable    *env;
-    MprHash         *hp;
-
-    maWrite(q, "<H2>Request Form Variables</H2>\r\n");
-
-    env = q->conn->request->formVars;
-
-    for (hp = 0; (hp = mprGetNextHash(env, hp)) != 0; ) {
-        maWrite(q, "<P>%s=%s</P>\r\n", hp->key, hp->data ? hp->data: "");
-    }
-    maWrite(q, "\r\n");
-}
-
-
-static void printQueryData(MaQueue *q)
-{
-    MaRequest   *req;
-    char        buf[MPR_MAX_STRING], **keys, *value;
-    int         i, numKeys;
-
-    req = q->conn->request;
-    if (req->parsedUri->query == 0) {
-        return;
-    }
-    mprStrcpy(buf, sizeof(buf), req->parsedUri->query);
-    numKeys = getVars(q, &keys, buf, (int) strlen(buf));
-
-    if (numKeys == 0) {
-        maWrite(q, "<H2>No Query Data Found</H2>\r\n");
-    } else {
-        maWrite(q, "<H2>Decoded Query Data Variables</H2>\r\n");
-        for (i = 0; i < (numKeys * 2); i += 2) {
-            value = keys[i+1];
-            maWrite(q, "<p>QVAR %s=%s</p>\r\n", keys[i], value ? value: "");
-        }
-    }
-    maWrite(q, "\r\n");
-    mprFree(keys);
-}
-
-
-static void printBodyData(MaQueue *q)
-{
-    MprBuf  *buf;
-    char    **keys, *value;
-    int     i, numKeys;
-    
-    if (q->pair == 0 || q->pair->first == 0) {
-        return;
-    }
-    
-    buf = q->pair->first->content;
-    mprAddNullToBuf(buf);
-    
-    numKeys = getVars(q, &keys, mprGetBufStart(buf), mprGetBufLength(buf));
-
-    if (numKeys == 0) {
-        maWrite(q, "<H2>No Body Data Found</H2>\r\n");
-    } else {
-        maWrite(q, "<H2>Decoded Body Data</H2>\r\n");
-        for (i = 0; i < (numKeys * 2); i += 2) {
-            value = keys[i+1];
-            maWrite(q, "<p>PVAR %s=%s</p>\r\n", keys[i], value ? value: "");
-        }
-    }
-    maWrite(q, "\r\n");
-    mprFree(keys);
-}
-
-
-static int getVars(MaQueue *q, char ***keys, char *buf, int len)
-{
-    char**  keyList;
-    char    *eq, *cp, *pp, *tok;
-    int     i, keyCount;
-
-    *keys = 0;
-
-    /*
-     *  Change all plus signs back to spaces
-     */
-    keyCount = (len > 0) ? 1 : 0;
-    for (cp = buf; cp < &buf[len]; cp++) {
-        if (*cp == '+') {
-            *cp = ' ';
-        } else if (*cp == '&' && (cp > buf && cp < &buf[len - 1])) {
-            keyCount++;
-        }
-    }
-
-    if (keyCount == 0) {
-        return 0;
-    }
-
-    /*
-     *  Crack the input into name/value pairs 
-     */
-    keyList = (char**) mprAlloc(q, (keyCount * 2) * (int) sizeof(char**));
-
-    i = 0;
-    tok = 0;
-    for (pp = mprStrTok(buf, "&", &tok); pp; pp = mprStrTok(0, "&", &tok)) {
-        if ((eq = strchr(pp, '=')) != 0) {
-            *eq++ = '\0';
-            pp = mprUrlDecode(q, pp);
-            eq = mprUrlDecode(q, eq);
-        } else {
-            pp = mprUrlDecode(q, pp);
-            eq = 0;
-        }
-        if (i < (keyCount * 2)) {
-            keyList[i++] = pp;
-            keyList[i++] = eq;
-        }
-    }
-    *keys = keyList;
-    return keyCount;
-}
-
-
-static void upload(MaQueue *q)
-{
-    MaConn      *conn;
-    char        *sw;
-    char        *newLocation;
-    int         responseStatus;
-
-    conn = q->conn;
-    newLocation = 0;
-    responseStatus = 0;
-
-    sw = (char*) strstr(maGetFormVar(conn, "QUERY_STRING", ""), "SWITCHES=");
-    if (sw) {
-        sw = mprUrlDecode(sw, &sw[9]);
-        if (*sw == '-') {
-            if (sw[1] == 'l') {
-                newLocation = sw + 3;
-            } else if (sw[1] == 's') {
-                responseStatus = atoi(sw + 3);
-            }
-        }
-    }
-
-    maSetResponseCode(conn, 200);
-    maSetResponseMimeType(conn, "text/html");
-    maDontCacheResponse(conn);
-
-    /*
-     *  Test writing headers. The Server header overwrote the "Server" header
-     *
-     *  maSetHeader(conn, "MyCustomHeader: true");
-     *  maSetHeader(conn, "Server: private");
-     */
-
-    if (maGetCookies(conn) == 0) {
-        maSetCookie(conn, "appwebTest", "Testing can be fun", "/", NULL, 43200, 0);
-    }
-
-    if (newLocation) {
-        maRedirect(conn, 302, newLocation);
-
-    } else if (responseStatus) {
-        maFailRequest(conn, responseStatus, "Custom Status");
-
-    } else {
-        maWrite(q, "<HTML><TITLE>egiProgram: EGI Output</TITLE><BODY>\r\n");
-
-        printRequestHeaders(q);
-        printQueryData(q);
-        printBodyData(q);
-
-        maWrite(q, "</BODY></HTML>\r\n");
-    }
-    if (sw) {
-        mprFree(sw);
-    }
-}
-
-
-static int egiTestInit(MaHttp *http, cchar *path)
-{
-    /*
-     *  Five instances of the same program. Location blocks must be defined in appweb.conf to test these.
-     */
-    maDefineEgiForm(http, "/egi/exit", exitApp);
-    maDefineEgiForm(http, "/egi/egiProgram", printVars);
-    maDefineEgiForm(http, "/egi/egiProgram.egi", printVars);
-    maDefineEgiForm(http, "/egi/egi Program.egi", printVars);
-    maDefineEgiForm(http, "/egiProgram.egi", printVars);
-    maDefineEgiForm(http, "/MyInProcScripts/egiProgram.egi", printVars);
-    maDefineEgiForm(http, "/myEgi/egiProgram.egi", printVars);
-    maDefineEgiForm(http, "/myEgi/egiProgram", printVars);
-    maDefineEgiForm(http, "/upload/upload.egi", upload);
-    maDefineEgiForm(http, "/egi/test", simpleTest);
-    maDefineEgiForm(http, "/test.egi", simpleTest);
-    maDefineEgiForm(http, "/big.egi", bigTest);
-
-    return 0;
-}
-#endif /* EGI_TEST */
-
-
-#else
-
-MprModule *maEgiHandlerInit(MaHttp *http, cchar *path)
-{
-    return 0;
-}
-
-#endif /* BLD_FEATURE_EGI */
-
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/handlers/egiHandler.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/handlers/cgiHandler.c"
- */
-/************************************************************************/
-
-/* 
-    cgiHandler.c -- Common Gateway Interface Handler
-
-    Support the CGI/1.1 standard for external gateway programs to respond to HTTP requests.
-    This CGI handler uses async-pipes and non-blocking I/O for all communications.
-
-    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
-
-
-
-#if BLD_FEATURE_CGI
-
-static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp);
-static int cgiCallback(MprCmd *cmd, int channel, void *data);
-static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel);
-static char *getCgiToken(MprBuf *buf, cchar *delim);
-static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd);
-static bool parseHeader(MaConn *conn, MprCmd *cmd);
-static void writeToCGI(MaQueue *q);
-static void startCgi(MaQueue *q);
-
-#if BLD_DEBUG
-static void traceCGIData(MprCmd *cmd, char *src, int size);
-#define traceData(cmd, src, size) traceCGIData(cmd, src, size)
-#else
-#define traceData(cmd, src, size)
-#endif
-
-#if BLD_WIN_LIKE || VXWORKS
-static void findExecutable(MaConn *conn, char **program, char **script, char **bangScript, char *fileName);
-#endif
-#if BLD_WIN_LIKE
-static void checkCompletion(MaQueue *q, MprEvent *event);
-#endif
-
-
-static void closeCgi(MaQueue *q)
-{
-    MprCmd  *cmd;
-
-    cmd = (MprCmd*) q->queueData;
-    mprAssert(cmd);
-    if (cmd && cmd->pid) {
-        mprStopCmd(cmd);
-    }
-}
-
-
-static void startCgi(MaQueue *q)
-{
-    MaRequest       *req;
-    MaConn          *conn;
-    MprCmd          *cmd;
-    MprHash         *hp;
-    cchar           *baseName;
-    char            **argv, **envv, *fileName;
-    int             index, argc, varCount;
-
-    argv = 0;
-    argc = 0;
-    conn = q->conn;
-    req = conn->request;
-    if ((req->form || req->flags & MA_REQ_UPLOADING) && conn->state <= MPR_HTTP_STATE_CONTENT) {
+    if (ipAddr == 0) {
         /*
-            Delay starting the CGI process if uploading files or a form request. This enables env vars to be defined
-            with file upload and form data before starting the CGI gateway.
+         *  If no IP:PORT specified, find the first listening endpoint. In this case, we expect the caller to
+         *  have setup the lisenting endponts and to have added them to the host address hash.
          */
-        return;
-    }
-
-    cmd = q->queueData = mprCreateCmd(req);
-    if (conn->http->forkCallback) {
-        cmd->forkCallback = conn->http->forkCallback;
-        cmd->forkData = conn->http->forkData;
-    }
-    /*
-        Build the commmand line arguments
-     */
-    argc = 1;                                   /* argv[0] == programName */
-    buildArgs(conn, cmd, &argc, &argv);
-    fileName = argv[0];
-
-    baseName = mprGetPathBase(q, fileName);
-    if (strncmp(baseName, "nph-", 4) == 0 || 
-            (strlen(baseName) > 4 && strcmp(&baseName[strlen(baseName) - 4], "-nph") == 0)) {
-        /*
-            Pretend we've seen the header for Non-parsed Header CGI programs
-         */
-        cmd->userFlags |= MA_CGI_SEEN_HEADER;
-    }
-
-    /*
-        Build environment variables
-     */
-    varCount = mprGetHashCount(req->headers) + mprGetHashCount(req->formVars);
-    envv = (char**) mprAlloc(cmd, (varCount + 1) * (int) sizeof(char*));
-
-    index = 0;
-    hp = mprGetFirstHash(req->headers);
-    while (hp) {
-        if (hp->data) {
-            envv[index] = mprStrcat(cmd, -1, hp->key, "=", (char*) hp->data, NULL);
-            index++;
-        }
-        hp = mprGetNextHash(req->headers, hp);
-    }
-    hp = mprGetFirstHash(req->formVars);
-    while (hp) {
-        if (hp->data) {
-            envv[index] = mprStrcat(cmd, -1, hp->key, "=", (char*) hp->data, NULL);
-            index++;
-        }
-        hp = mprGetNextHash(req->formVars, hp);
-    }
-    envv[index] = 0;
-    mprAssert(index <= varCount);
-
-    cmd->stdoutBuf = mprCreateBuf(cmd, MA_BUFSIZE, -1);
-    cmd->stderrBuf = mprCreateBuf(cmd, MA_BUFSIZE, -1);
-    cmd->lastActivity = mprGetTime(cmd);
-
-    mprSetCmdDir(cmd, mprGetPathDir(q, fileName));
-    mprSetCmdCallback(cmd, cgiCallback, conn);
-
-    maSetHeader(conn, 0, "Last-Modified", req->host->currentDate);
-    maDontCacheResponse(conn);
-    maPutForService(q, maCreateHeaderPacket(q), 0);
-
-    if (mprStartCmd(cmd, argc, argv, envv, MPR_CMD_IN | MPR_CMD_OUT | MPR_CMD_ERR) < 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't run CGI process: %s, URI %s", fileName, req->url);
-        return;
-    }
-    /*
-        This will dedicate this thread to the connection. It will also put the socket into blocking mode.
-     */
-    maDedicateThreadToConn(conn);
-}
-
-
-/*
-    This routine runs after all incoming data has been received
- */
-static void runCgi(MaQueue *q)
-{
-    MaConn      *conn;
-    MprCmd      *cmd;
-
-    conn = q->conn;
-    cmd = (MprCmd*) q->queueData;
-
-    if (cmd == 0) {
-        startCgi(q);
-        cmd = (MprCmd*) q->queueData;
-        if (q->pair->count > 0) {
-            writeToCGI(q->pair);
-        }
-    }
-
-    /*
-        Close the CGI program's stdin. This will allow it to exit if it was expecting input data.
-     */
-    mprCloseCmdFd(cmd, MPR_CMD_STDIN);
-
-    if (conn->requestFailed) {
-        maPutForService(q, maCreateEndPacket(q), 1);
-        return;
-    }
-    while (mprWaitForCmd(cmd, 1000) < 0) {
-        if (mprGetElapsedTime(cmd, cmd->lastActivity) >= conn->host->timeout) {
-            break;
-        }
-    }
-    if (cmd->pid == 0) {
-        maPutForService(q, maCreateEndPacket(q), 1);
-    } else {
-        mprStopCmd(cmd);
-        mprReapCmd(cmd, MPR_TIMEOUT_STOP_TASK);
-        cmd->status = 255;
-    }
-}
-
-
-/*
-    Accept incoming body data from the client (via the pipeline) destined for the CGI gateway. This is typically
-    POST or PUT data.
- */
-static void incomingCgiData(MaQueue *q, MaPacket *packet)
-{
-    MaConn      *conn;
-    MaRequest   *req;
-    MprCmd      *cmd;
-
-    mprAssert(q);
-    mprAssert(packet);
-    
-    conn = q->conn;
-    req = conn->request;
-    cmd = (MprCmd*) q->pair->queueData;
-    if (cmd) {
-        cmd->lastActivity = mprGetTime(cmd);
-    }
-    if (maGetPacketLength(packet) == 0) {
-        /*
-            End of input
-         */
-        if (req->remainingContent > 0) {
-            /*
-                Short incoming body data. Just kill the CGI process.
-             */
-            mprFree(cmd);
-            q->queueData = 0;
-            maFailRequest(conn, MPR_HTTP_CODE_BAD_REQUEST, "Client supplied insufficient body data");
-        }
-        if (req->form) {
-            maAddVarsFromQueue(req->formVars, q);
-        }
-
-    } else {
-        /*
-            No service routine, we just need it to be queued for writeToCGI
-         */
-        if (req->form) {
-            maJoinForService(q, packet, 0);
-        } else {
-            maPutForService(q, packet, 0);
-        }
-    }
-    if (cmd) {
-        writeToCGI(q);
-    }
-}
-
-
-static void writeToCGI(MaQueue *q)
-{
-    MaConn      *conn;
-    MaPacket    *packet;
-    MprCmd      *cmd;
-    MprBuf      *buf;
-    int         len, rc, err;
-
-    cmd = (MprCmd*) q->pair->queueData;
-    mprAssert(cmd);
-    conn = q->conn;
-
-    for (packet = maGet(q); packet && !conn->requestFailed; packet = maGet(q)) {
-        buf = packet->content;
-        len = mprGetBufLength(buf);
-        mprAssert(len > 0);
-        rc = mprWriteCmdPipe(cmd, MPR_CMD_STDIN, mprGetBufStart(buf), len);
-        mprLog(q, 5, "CGI: write %d bytes to gateway. Rc rc %d, errno %d", len, rc, mprGetOsError());
-        if (rc < 0) {
-            err = mprGetError();
-            if (err == EINTR) {
-                continue;
-            } else if (err == EAGAIN || err == EWOULDBLOCK) {
-                break;
-            }
-            mprLog(q, 2, "CGI: write to gateway failed for %d bytes, rc %d, errno %d", len, rc, mprGetOsError());
-            mprCloseCmdFd(cmd, MPR_CMD_STDIN);
-            maFailRequest(conn, MPR_HTTP_CODE_BAD_GATEWAY, "Can't write body data to CGI gateway");
-            break;
+        listen = mprGetFirstItem(server->listens);
+        if (listen) {
+            ipAddr = listen->ipAddr;
+            port = listen->port;
 
         } else {
-            mprLog(q, 5, "CGI: write to gateway %d bytes asked to write %d", rc, len);
-            mprAdjustBufStart(buf, rc);
-            if (mprGetBufLength(buf) > 0) {
-                maPutBack(q, packet);
-            } else {
-                maFreePacket(q, packet);
-            }
+            listen = maCreateListen(server, "localhost", MA_SERVER_DEFAULT_PORT_NUM, 0);
+            maAddListen(server, listen);
+            ipAddr = "localhost";
+            port = MA_SERVER_DEFAULT_PORT_NUM;
         }
-    }
-}
-
-
-/*
-    Write data back to the client (browser). Must be locked when called.
- */
-static int writeToClient(MaQueue *q, MprCmd *cmd, MprBuf *buf, int channel)
-{
-    MaConn  *conn;
-    int     rc, len;
-
-    conn = q->conn;
-
-    /*
-        Write to the browser. We write as much as we can. Service queues to get the filters and connectors pumping.
-     */
-    while ((len = mprGetBufLength(buf)) > 0) {
-        if (!conn->requestFailed) {
-            rc = maWriteBlock(q, mprGetBufStart(buf), len, 1);
-            mprLog(q, 5, "CGI: write %d bytes to client. Rc rc %d, errno %d", len, rc, mprGetOsError());
-        } else {
-            /* Request has failed so just eat the data */
-            rc = len;
-            mprAssert(len > 0);
-        }
-        if (rc < 0) {
-            return MPR_ERR_CANT_WRITE;
-        }
-        mprAssert(rc == len);
-        mprAdjustBufStart(buf, rc);
-        mprResetBufIfEmpty(buf);
-        maServiceQueues(conn);
-    }
-    return 0;
-}
-
-
-/*
-    Read the output data from the CGI script and return it to the client. This is called for stdout/stderr data from
-    the CGI script and for EOF from the CGI's stdin.
- */
-static int cgiCallback(MprCmd *cmd, int channel, void *data)
-{
-    MaQueue     *q;
-    MaConn      *conn;
-
-    conn = (MaConn*) data;
-
-    mprAssert(cmd);
-    mprAssert(conn);
-    mprAssert(conn->response);
-
-    q = conn->response->queue[MA_QUEUE_SEND].nextQ;
-    mprAssert(q);
-    mprLog(q, 5, "CGI: gateway I/O event on channel %d, state %d", channel, conn->state);
-
-    cgiEvent(q, cmd, channel);
-    return 0;
-}
-
-
-static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
-{
-    MaConn      *conn;
-    MaResponse  *resp;
-    MprBuf      *buf;
-    int         space, nbytes, err;
-
-    mprLog(cmd, 6, "CGI callback channel %d", channel);
-    
-    buf = 0;
-    conn = q->conn;
-    resp = conn->response;
-    mprAssert(resp);
-
-    cmd->lastActivity = mprGetTime(cmd);
-
-    switch (channel) {
-    case MPR_CMD_STDIN:
-        writeToCGI(q->pair);
-        return;
-
-    case MPR_CMD_STDOUT:
-        buf = cmd->stdoutBuf;
-        break;
-
-    case MPR_CMD_STDERR:
-        buf = cmd->stderrBuf;
-        break;
-    }
-    mprAssert(buf);
-    mprResetBufIfEmpty(buf);
-
-    /*
-        Come here for CGI stdout, stderr events. ie. reading data from the CGI program.
-     */
-    while (mprGetCmdFd(cmd, channel) >= 0) {
-        /*
-            Read as much data from the CGI as possible
-         */
-        do {
-            if ((space = mprGetBufSpace(buf)) == 0) {
-                mprGrowBuf(buf, MA_BUFSIZE);
-                if ((space = mprGetBufSpace(buf)) == 0) {
-                    break;
-                }
-            }
-            nbytes = mprReadCmdPipe(cmd, channel, mprGetBufEnd(buf), space);
-            mprLog(q, 5, "CGI: read from gateway %d on channel %d. errno %d", nbytes, channel, 
-                    nbytes >= 0 ? 0 : mprGetOsError());
-            if (nbytes < 0) {
-                err = mprGetError();
-                if (err == EINTR) {
-                    continue;
-                } else if (err == EAGAIN || err == EWOULDBLOCK) {
-                    break;
-                }
-                mprLog(cmd, 5, "CGI read error %d for %", mprGetError(), (channel == MPR_CMD_STDOUT) ? "stdout" : "stderr");
-                mprCloseCmdFd(cmd, channel);
-                
-            } else if (nbytes == 0) {
-                /*
-                    This may reap the terminated child and thus clear cmd->process if both stderr and stdout are closed.
-                 */
-                mprLog(cmd, 5, "CGI EOF for %s", (channel == MPR_CMD_STDOUT) ? "stdout" : "stderr");
-                mprCloseCmdFd(cmd, channel);
-                break;
-
-            } else {
-                mprLog(cmd, 5, "CGI read %d bytes from %s", nbytes, (channel == MPR_CMD_STDOUT) ? "stdout" : "stderr");
-                mprAdjustBufEnd(buf, nbytes);
-                traceData(cmd, mprGetBufStart(buf), nbytes);
-            }
-        } while ((space = mprGetBufSpace(buf)) > 0);
-
-        if (mprGetBufLength(buf) == 0) {
-            return;
-        }
-        if (channel == MPR_CMD_STDERR) {
-            /*
-                If we have an error message, send that to the client
-             */
-            if (mprGetBufLength(buf) > 0) {
-                mprAddNullToBuf(buf);
-                mprLog(conn, 4, mprGetBufStart(buf));
-                if (writeToClient(q, cmd, buf, channel) < 0) {
-                    return;
-                }
-                maSetResponseCode(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE);
-                cmd->userFlags |= MA_CGI_SEEN_HEADER;
-                cmd->status = 0;
-            }
-        } else {
-            if (!(cmd->userFlags & MA_CGI_SEEN_HEADER) && !parseHeader(conn, cmd)) {
-                return;
-            } 
-            if (cmd->userFlags & MA_CGI_SEEN_HEADER) {
-                if (writeToClient(q, cmd, buf, channel) < 0) {
-                    return;
-                }
-            }
-        }
-    }
-}
-
-
-/*
-    Parse the CGI output first line
- */
-static bool parseFirstCgiResponse(MaConn *conn, MprCmd *cmd)
-{
-    MprBuf          *buf;
-    char            *protocol, *code, *message;
-    
-    buf = mprGetCmdBuf(cmd, MPR_CMD_STDOUT);
-    
-    protocol = getCgiToken(buf, " ");
-    if (protocol == 0 || protocol[0] == '\0') {
-        maFailRequest(conn, MPR_HTTP_CODE_BAD_GATEWAY, "Bad CGI HTTP protocol response");
-        return 0;
-    }
-    if (strncmp(protocol, "HTTP/1.", 7) != 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_BAD_GATEWAY, "Unsupported CGI protocol");
-        return 0;
-    }
-    code = getCgiToken(buf, " ");
-    if (code == 0 || *code == '\0') {
-        maFailRequest(conn, MPR_HTTP_CODE_BAD_GATEWAY, "Bad CGI header response");
-        return 0;
-    }
-    message = getCgiToken(buf, "\n");
-    mprLog(conn, 4, "CGI status line: %s %s %s", protocol, code, message);
-    return 1;
-}
-
-
-/*
-    Parse the CGI output headers. 
-    Sample CGI program:
-
-    Content-type: text/html
-   
-    <html.....
- */
-static bool parseHeader(MaConn *conn, MprCmd *cmd)
-{
-    MaResponse      *resp;
-    MaQueue         *q;
-    MprBuf          *buf;
-    char            *endHeaders, *headers, *key, *value, *location;
-    int             fd, len;
-
-    resp = conn->response;
-    location = 0;
-    value = 0;
-
-    buf = mprGetCmdBuf(cmd, MPR_CMD_STDOUT);
-    mprAddNullToBuf(buf);
-    headers = mprGetBufStart(buf);
-
-    /*
-        Split the headers from the body.
-     */
-    len = 0;
-    fd = mprGetCmdFd(cmd, MPR_CMD_STDOUT);
-    if ((endHeaders = strstr(headers, "\r\n\r\n")) == NULL) {
-        if ((endHeaders = strstr(headers, "\n\n")) == NULL) {
-            if (fd >= 0 && strlen(headers) < MA_MAX_HEADERS) {
-                /* Not EOF and less than max headers and have not yet seen an end of headers delimiter */
-                return 0;
-            }
-        } else len = 2;
-    } else {
-        len = 4;
-    }
-    if (endHeaders) {
-        endHeaders[len - 1] = '\0';
-        endHeaders += len;
-    }
-
-    /*
-        Want to be tolerant of CGI programs that omit the status line.
-     */
-    if (strncmp((char*) buf->start, "HTTP/1.", 7) == 0) {
-        if (!parseFirstCgiResponse(conn, cmd)) {
-            /* maFailConnection already called */
-            return 0;
-        }
-    }
-    
-    if (endHeaders && strchr(mprGetBufStart(buf), ':')) {
-        mprLog(conn, 4, "CGI: parseHeader: header\n%s", headers);
-
-        while (mprGetBufLength(buf) > 0 && buf->start[0] && (buf->start[0] != '\r' && buf->start[0] != '\n')) {
-
-            if ((key = getCgiToken(buf, ":")) == 0) {
-                maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad header format");
-                return 0;
-            }
-            value = getCgiToken(buf, "\n");
-            while (isspace((int) *value)) {
-                value++;
-            }
-            len = (int) strlen(value);
-            while (len > 0 && (value[len - 1] == '\r' || value[len - 1] == '\n')) {
-                value[len - 1] = '\0';
-                len--;
-            }
-            mprStrLower(key);
-
-            if (strcmp(key, "location") == 0) {
-                location = value;
-
-            } else if (strcmp(key, "status") == 0) {
-                maSetResponseCode(conn, atoi(value));
-
-            } else if (strcmp(key, "content-type") == 0) {
-                maSetResponseMimeType(conn, value);
-
-            } else if (strcmp(key, "content-length") == 0) {
-                maSetEntityLength(conn, (MprOff) mprAtoi(value, 10));
-                resp->chunkSize = 0;
-
-            } else {
-                /*
-                    Now pass all other headers back to the client
-                 */
-                maSetHeader(conn, 0, key, "%s", value);
-            }
-        }
-        buf->start = endHeaders;
-    }
-    if (location) {
-        maRedirect(conn, resp->code, location);
-        q = resp->queue[MA_QUEUE_SEND].nextQ;
-        maPutForService(q, maCreateEndPacket(q), 1);
-    }
-    cmd->userFlags |= MA_CGI_SEEN_HEADER;
-    return 1;
-}
-
-
-/*
-    Build the command arguments. NOTE: argv is untrusted input.
- */
-static void buildArgs(MaConn *conn, MprCmd *cmd, int *argcp, char ***argvp)
-{
-    MaRequest   *req;
-    MaResponse  *resp;
-    char        *fileName, **argv, status[8], *indexQuery, *cp, *tok;
-    cchar       *actionProgram;
-    int         argc, argind, len;
-
-    req = conn->request;
-    resp = conn->response;
-    fileName = resp->filename;
-    mprAssert(fileName);
-
-    actionProgram = 0;
-    argind = 0;
-    argc = *argcp;
-
-    if (resp->extension) {
-        actionProgram = maGetMimeActionProgram(req->host, resp->extension);
-        if (actionProgram != 0) {
-            argc++;
-        }
-    }
-    /*
-        This is an Apache compatible hack for PHP 5.3
-     */
-    mprItoa(status, sizeof(status), MPR_HTTP_CODE_MOVED_TEMPORARILY, 10);
-    mprAddHash(req->headers, "REDIRECT_STATUS", mprStrdup(req, status));
-
-    /*
-        Count the args for ISINDEX queries. Only valid if there is not a "=" in the query. 
-        If this is so, then we must not have these args in the query env also?
-     */
-    indexQuery = req->parsedUri->query;
-    if (indexQuery && !strchr(indexQuery, '=')) {
-        argc++;
-        for (cp = indexQuery; *cp; cp++) {
-            if (*cp == '+') {
-                argc++;
-            }
-        }
-    } else {
-        indexQuery = 0;
-    }
-
-#if BLD_WIN_LIKE || VXWORKS
-{
-    char    *bangScript, *cmdBuf, *program, *cmdScript;
-
-    /*
-        On windows we attempt to find an executable matching the fileName.
-        We look for *.exe, *.bat and also do unix style processing "#!/program"
-     */
-    findExecutable(conn, &program, &cmdScript, &bangScript, fileName);
-    mprAssert(program);
-
-    if (cmdScript) {
-        /*
-            Cmd/Batch script (.bat | .cmd)
-            Convert the command to the form where there are 4 elements in argv
-            that cmd.exe can interpret.
-
-                argv[0] = cmd.exe
-                argv[1] = /Q
-                argv[2] = /C
-                argv[3] = ""script" args ..."
-         */
-        argc = 4;
-
-        len = (argc + 1) * sizeof(char*);
-        argv = (char**) mprAlloc(cmd, len);
-        memset(argv, 0, len);
-
-        argv[argind++] = program;               /* Duped in findExecutable */
-        argv[argind++] = mprStrdup(cmd, "/Q");
-        argv[argind++] = mprStrdup(cmd, "/C");
-
-        len = (int) strlen(cmdScript) + 2 + 1;
-        cmdBuf = (char*) mprAlloc(cmd, len);
-        mprSprintf(cmdBuf, len, "\"%s\"", cmdScript);
-        argv[argind++] = cmdBuf;
-
-        mprSetCmdDir(cmd, cmdScript);
-        mprFree(cmdScript);
-        /*  program will get freed when argv[] gets freed */
-        
-    } else if (bangScript) {
-        /*
-            Script used "#!/program". NOTE: this may be overridden by a mime
-            Action directive.
-         */
-        argc++;     /* Adding bangScript arg */
-
-        len = (argc + 1) * sizeof(char*);
-        argv = (char**) mprAlloc(cmd, len);
-        memset(argv, 0, len);
-
-        argv[argind++] = program;       /* Will get freed when argv[] is freed */
-        argv[argind++] = bangScript;    /* Will get freed when argv[] is freed */
-        mprSetCmdDir(cmd, bangScript);
+        host = maCreateHost(server, ipAddr, NULL);
 
     } else {
         /*
-            Either unknown extension or .exe (.out) program.
+         *  Create a new listening endpoint
          */
-        len = (argc + 1) * sizeof(char*);
-        argv = (char**) mprAlloc(cmd, len);
-        memset(argv, 0, len);
-
-        if (actionProgram) {
-            argv[argind++] = mprStrdup(cmd, actionProgram);
-        }
-        argv[argind++] = program;
+        listen = maCreateListen(server, ipAddr, port, 0);
+        maAddListen(server, listen);
+        host = maCreateHost(server, ipAddr, NULL);
     }
-}
-#else
-    len = (argc + 1) * (int) sizeof(char*);
-    argv = (char**) mprAlloc(cmd, len);
-    memset(argv, 0, len);
 
-    if (actionProgram) {
-        argv[argind++] = mprStrdup(cmd, actionProgram);
+    if (maOpenMimeTypes(host, "mime.types") < 0) {
+        maAddStandardMimeTypes(host);
     }
-    argv[argind++] = mprStrdup(cmd, fileName);
-
-#endif
 
     /*
-        ISINDEX queries. Only valid if there is not a "=" in the query. If this is so, then we must not
-        have these args in the query env also?
+     *  Insert the host and create a directory object for the docRoot
      */
-    if (indexQuery) {
-        indexQuery = mprStrdup(cmd, indexQuery);
+    maAddHost(server, host);
+    maInsertDir(host, maCreateBareDir(host, docRoot));
+    maSetDocumentRoot(host, docRoot);
 
-        cp = mprStrTok(indexQuery, "+", &tok);
-        while (cp) {
-            argv[argind++] = mprEscapeCmd(resp, mprUrlDecode(resp, cp), 0);
-            cp = mprStrTok(NULL, "+", &tok);
-        }
+    /*
+     *  Ensure we are in the hash lookup of all the addresses to listen to acceptWrapper uses this hash to find
+     *  the host to serve the request.
+     */
+    address = maLookupHostAddress(server, ipAddr, port);
+    if (address == 0) {
+        address = maCreateHostAddress(server, ipAddr, port);
+        mprAddItem(server->hostAddresses, address);
     }
-    
-    mprAssert(argind <= argc);
-    argv[argind] = 0;
-    *argcp = argc;
-    *argvp = argv;
+    maInsertVirtualHost(address, host);
+
+    if (server->defaultHost == 0) {
+        server->defaultHost = host;
+    }
+    return host;
 }
 
 
-#if BLD_WIN_LIKE || VXWORKS
-/*
-    If the program has a UNIX style "#!/program" string at the start of the file that program will be selected 
-    and the original program will be passed as the first arg to that program with argv[] appended after that. If 
-    the program is not found, this routine supports a safe intelligent search for the command. If all else fails, 
-    we just return in program the fileName we were passed in. script will be set if we are modifying the program 
-    to run and we have extracted the name of the file to run as a script.
- */
-static void findExecutable(MaConn *conn, char **program, char **script, char **bangScript, char *fileName)
+
+#if BLD_UNIX_LIKE
+static int allDigits(cchar *s)
 {
-    MaRequest       *req;
-    MaResponse      *resp;
-    MaLocation      *location;
-    MprHash         *hp;
-    MprFile         *file;
-    cchar           *actionProgram, *ext, *cmdShell;
-    char            *tok, buf[MPR_MAX_FNAME + 1], *path;
-
-    req = conn->request;
-    resp = conn->response;
-    location = req->location;
-
-    *bangScript = 0;
-    *script = 0;
-    *program = 0;
-    path = 0;
-
-    actionProgram = maGetMimeActionProgram(conn->host, req->mimeType);
-    ext = resp->extension;
-
-    /*
-        If not found, go looking for the fileName with the extensions defined in appweb.conf. 
-        NOTE: we don't use PATH deliberately!!!
-     */
-    if (access(fileName, X_OK) < 0 /* && *ext == '\0' */) {
-        for (hp = 0; (hp = mprGetNextHash(location->extensions, hp)) != 0; ) {
-            path = mprStrcat(resp, -1, fileName, ".", hp->key, NULL);
-            if (access(path, X_OK) == 0) {
-                break;
-            }
-            mprFree(path);
-            path = 0;
-        }
-        if (hp) {
-            ext = hp->key;
-        } else {
-            path = fileName;
-        }
-
-    } else {
-        path = fileName;
-    }
-    mprAssert(path && *path);
-
-#if BLD_WIN_LIKE
-    if (ext && (strcmp(ext, ".bat") == 0 || strcmp(ext, ".cmd") == 0)) {
-        /*
-            Let a mime action override COMSPEC
-         */
-        if (actionProgram) {
-            cmdShell = actionProgram;
-        } else {
-            cmdShell = getenv("COMSPEC");
-        }
-        if (cmdShell == 0) {
-            cmdShell = "cmd.exe";
-        }
-        *script = mprStrdup(resp, path);
-        *program = mprStrdup(resp, cmdShell);
-        return;
-    }
-#endif
-
-    if ((file = mprOpen(resp, path, O_RDONLY, 0)) != 0) {
-        if (mprRead(file, buf, MPR_MAX_FNAME) > 0) {
-            mprFree(file);
-            buf[MPR_MAX_FNAME] = '\0';
-            if (buf[0] == '#' && buf[1] == '!') {
-                cmdShell = mprStrTok(&buf[2], " \t\r\n", &tok);
-                if (cmdShell[0] != '/' && (cmdShell[0] != '\0' && cmdShell[1] != ':')) {
-                    /*
-                        If we can't access the command shell and the command is not an absolute path, 
-                        look in the same directory as the script.
-                     */
-                    if (mprPathExists(resp, cmdShell, X_OK)) {
-                        cmdShell = mprJoinPath(resp, mprGetPathDir(resp, path), cmdShell);
-                    }
-                }
-                if (actionProgram) {
-                    *program = mprStrdup(resp, actionProgram);
-                } else {
-                    *program = mprStrdup(resp, cmdShell);
-                }
-                *bangScript = mprStrdup(resp, path);
-                return;
-            }
-        } else {
-            mprFree(file);
-        }
-    }
-
-    if (actionProgram) {
-        *program = mprStrdup(resp, actionProgram);
-        *bangScript = mprStrdup(resp, path);
-    } else {
-        *program = mprStrdup(resp, path);
-    }
-    return;
+    return strspn(s, "1234567890") == strlen(s);
 }
 #endif
- 
-
-/*
-    Get the next input token. The content buffer is advanced to the next token. This routine always returns a 
-    non-zero token. The empty string means the delimiter was not found.
- */
-static char *getCgiToken(MprBuf *buf, cchar *delim)
-{
-    char    *token, *nextToken;
-    int     len;
-
-    len = mprGetBufLength(buf);
-    if (len == 0) {
-        return "";
-    }
-
-    token = mprGetBufStart(buf);
-    nextToken = mprStrnstr(mprGetBufStart(buf), delim, len);
-    if (nextToken) {
-        *nextToken = '\0';
-        len = (int) strlen(delim);
-        nextToken += len;
-        buf->start = nextToken;
-
-    } else {
-        buf->start = mprGetBufEnd(buf);
-    }
-    return token;
-}
-
-
-#if BLD_DEBUG
-/*
-    Trace output received from the cgi process
- */
-static void traceCGIData(MprCmd *cmd, char *src, int size)
-{
-    char    dest[512];
-    int     index, i;
-
-    mprRawLog(cmd, 5, "@@@ CGI process wrote => \n");
-
-    for (index = 0; index < size; ) { 
-        for (i = 0; i < (sizeof(dest) - 1) && index < size; i++) {
-            dest[i] = src[index];
-            index++;
-        }
-        dest[i] = '\0';
-        mprRawLog(cmd, 5, "%s", dest);
-    }
-    mprRawLog(cmd, 5, "\n");
-}
-#endif
-
-
-#if BLD_FEATURE_CONFIG_PARSE
-static int parseCgi(MaHttp *http, cchar *key, char *value, MaConfigState *state)
-{
-    MaLocation  *location;
-    MaServer    *server;
-    MaHost      *host;
-    MaAlias     *alias;
-    MaDir       *parent;
-    char        *program, *mimeType, *prefix, *path;
-
-    host = state->host;
-    server = state->server;
-    location = state->location;
-
-    if (mprStrcmpAnyCase(key, "Action") == 0) {
-        if (maSplitConfigValue(http, &mimeType, &program, value, 1) < 0) {
-            return MPR_ERR_BAD_SYNTAX;
-        }
-        maSetMimeActionProgram(host, mimeType, program);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "ScriptAlias") == 0) {
-        if (maSplitConfigValue(server, &prefix, &path, value, 1) < 0 || path == 0 || prefix == 0) {
-            return MPR_ERR_BAD_SYNTAX;
-        }
-
-        /*
-            Create an alias and location with a cgiHandler and pathInfo processing
-         */
-        path = maMakePath(host, path);
-
-        if (maLookupDir(host, path) == 0) {
-            parent = mprGetFirstItem(host->dirs);
-            maCreateDir(host, path, parent);
-        }
-        alias = maCreateAlias(host, prefix, path, 0);
-        mprLog(server, 4, "ScriptAlias \"%s\" for \"%s\"", prefix, path);
-        mprFree(path);
-
-        maInsertAlias(host, alias);
-
-        if ((location = maLookupLocation(host, prefix)) == 0) {
-            location = maCreateLocation(host, state->location);
-            maSetLocationAuth(location, state->dir->auth);
-            maSetLocationPrefix(location, prefix);
-            maAddLocation(host, location);
-        } else {
-            maSetLocationPrefix(location, prefix);
-        }
-        maSetHandler(http, host, location, "cgiHandler");
-        return 1;
-    }
-    return 0;
-}
-#endif
-
-
-/*
-    Dynamic module initialization
- */
-MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
-{
-    MprModule   *module;
-    MaStage     *handler;
-
-    if ((module = mprCreateModule(http, "cgiHandler", BLD_VERSION, NULL, NULL, NULL)) == NULL) {
-        return 0;
-    }
-    handler = maCreateHandler(http, "cgiHandler", 
-        MA_STAGE_ALL | MA_STAGE_VARS | MA_STAGE_ENV_VARS | MA_STAGE_PATH_INFO | MA_STAGE_MISSING_EXT);
-    if (handler == 0) {
-        mprFree(module);
-        return 0;
-    }
-    http->cgiHandler = handler;
-    handler->close = closeCgi; 
-    handler->start = startCgi; 
-    handler->incomingData = incomingCgiData; 
-    handler->run = runCgi; 
-    handler->parse = parseCgi; 
-    return module;
-}
-
-
-#else
-
-MprModule *maCgiHandlerInit(MaHttp *http, cchar *path)
-{
-    return 0;
-}
-
-#endif /* BLD_FEATURE_CGI */
-
-/*
-    @copy   default
-    
-    Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
-    Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
-    
-    This software is distributed under commercial and open source licenses.
-    You may use the GPL open source license described below or you may acquire 
-    a commercial license from Embedthis Software. You agree to be fully bound 
-    by the terms of either license. Consult the LICENSE.TXT distributed with 
-    this software for full details.
-    
-    This software is open source; you can redistribute it and/or modify it 
-    under the terms of the GNU General Public License as published by the 
-    Free Software Foundation; either version 2 of the License, or (at your 
-    option) any later version. See the GNU General Public License for more 
-    details at: http://www.embedthis.com/downloads/gplLicense.html
-    
-    This program is distributed WITHOUT ANY WARRANTY; without even the 
-    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
-    
-    This GPL license does NOT permit incorporating this software into 
-    proprietary programs. If you are unable to comply with the GPL, you must
-    acquire a commercial license to use this software. Commercial licenses 
-    for this software and support services are available from Embedthis 
-    Software at http://www.embedthis.com 
-    
-    Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/handlers/cgiHandler.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/handlers/fileHandler.c"
- */
-/************************************************************************/
-
-/*
- *  fileHandler.c -- Static file content handler
- *
- *  This handler manages static file based content such as HTML, GIF /or JPEG pages. It supports all methods including:
- *  GET, PUT, DELETE, OPTIONS and TRACE.
- *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
-
-
-
-#if BLD_FEATURE_FILE
-
-
-static void handleDeleteRequest(MaQueue *q);
-static int  readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size);
-static void handlePutRequest(MaQueue *q);
-
-/*
- *  Initialize a handler instance for the file handler.
- */
-static void openFile(MaQueue *q)
-{
-    MaRequest       *req;
-    MaResponse      *resp;
-    MaLocation      *location;
-    MaConn          *conn;
-    char            *date;
-
-    conn = q->conn;
-    resp = conn->response;
-    req = conn->request;
-    location = req->location;
-
-    switch (req->method) {
-    case MA_REQ_GET:
-    case MA_REQ_HEAD:
-    case MA_REQ_POST:
-        if (resp->fileInfo.valid && resp->fileInfo.mtime) {
-            date = maGetDateString(conn->arena, &resp->fileInfo);
-            maSetHeader(conn, 0, "Last-Modified", date);
-            mprFree(date);
-        }
-        if (maContentNotModified(conn)) {
-            maSetResponseCode(conn, MPR_HTTP_CODE_NOT_MODIFIED);
-            maOmitResponseBody(conn);
-        } else {
-            maSetEntityLength(conn, resp->fileInfo.size);
-        }
-        
-        if (!resp->fileInfo.isReg && !resp->fileInfo.isLink) {
-            maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't locate document: %s", req->url);
-            
-        } else if (!(resp->connector == conn->http->sendConnector)) {
-            /*
-             *  Open the file if a body must be sent with the response. The file will be automatically closed when 
-             *  the response is freed. Cool eh?
-             */
-            resp->file = mprOpen(resp, resp->filename, O_RDONLY | O_BINARY, 0);
-            if (resp->file == 0) {
-                maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't open document: %s", resp->filename);
-            }
-        }
-        break;
-                
-    case MA_REQ_PUT:
-    case MA_REQ_DELETE:
-        if (location->flags & MA_LOC_PUT_DELETE) {
-            maOmitResponseBody(conn);
-            break;
-        }
-        /* Method not supported - fall through */
-            
-    default:
-        maFailRequest(q->conn, MPR_HTTP_CODE_BAD_METHOD, 
-            "Method %s not supported by file handler at this location %s", req->methodName, location->prefix);
-        break;
-    }
-}
-
-
-/*
-    Called after auth has run
- */
-static void startFile(MaQueue *q)
-{
-    MaRequest       *req;
-    MaLocation      *location;
-    MaConn          *conn;
-
-    conn = q->conn;
-    req = conn->request;
-    location = req->location;
-
-    if (conn->requestFailed) {
-        return;
-    }
-    switch (req->method) {
-    case MA_REQ_PUT:
-    case MA_REQ_DELETE:
-        if (location->flags & MA_LOC_PUT_DELETE) {
-            if (req->method == MA_REQ_PUT) {
-                handlePutRequest(q);
-            } else {
-                handleDeleteRequest(q);
-            }
-            break;
-        }
-    }
-}
-
-
-static void runFile(MaQueue *q)
-{
-    MaConn          *conn;
-    MaRequest       *req;
-    MaResponse      *resp;
-    MaPacket        *packet;
-
-    conn = q->conn;
-    req = conn->request;
-    resp = conn->response;
-    
-    maPutForService(q, maCreateHeaderPacket(q), 0);
-   
-    if (!(resp->flags & MA_RESP_NO_BODY) || req->method & MA_REQ_HEAD) {
-        /*
-         *  Create a single data packet based on the entity length.
-         */
-        packet = maCreateEntityPacket(q, 0, resp->entityLength, readFileData);
-        if (!req->ranges) {
-            resp->length = resp->entityLength;
-        }
-        maPutForService(q, packet, 0);
-    }
-
-    /*
-     *  Append end-of-data packet. Signifies end of stream.
-     */
-    maPutForService(q, maCreateEndPacket(q), 1);
-}
-
-
-/*  
-    Return true if the next queue will accept this packet. If not, then disable the queue's service procedure.
-    This may split the packet if it exceeds the downstreams maximum packet size.
- */
-static int prepPacket(MaQueue *q, MaPacket *packet)
-{
-    MaConn      *conn;
-    MaResponse  *resp;
-    MaQueue     *nextQ;
-    int         size, nbytes;
-
-    conn = q->conn;
-    resp = conn->response;
-    nextQ = q->nextQ;
-
-    if (packet->esize > nextQ->packetSize) {
-        maPutBack(q, maSplitPacket(resp, packet, nextQ->packetSize));
-        size = nextQ->packetSize;
-    } else {
-        size = (int) packet->esize;
-    }
-    if ((size + nextQ->count) > nextQ->max) {
-        /*  
-            The downstream queue is full, so disable the queue and mark the downstream queue as full and service 
-            Will re-enable via a writable event on the connection.
-         */
-        mprLog(q, 7, "Disable queue %s", q->owner);
-        maDisableQueue(q);
-        nextQ->flags |= MA_QUEUE_FULL;
-        if (!(nextQ->flags & MA_QUEUE_DISABLED)) {
-            maScheduleQueue(nextQ);
-        }
-        return 0;
-    }
-    nbytes = readFileData(q, packet, q->ioPos, size);
-    if (nbytes > 0) {
-        q->ioPos += nbytes;
-    }
-    return nbytes;
-}
-
-
-/*
- *  The service routine will be called when all incoming data has been received. This routine may flow control if the 
- *  downstream stage cannot accept all the file data. It will then be re-called as required to send more data.
- */
-static void outgoingFileService(MaQueue *q)
-{
-    MaConn      *conn;
-    MaRequest   *req;
-    MaResponse  *resp;
-    MaPacket    *packet;
-    bool        usingSend;
-    int         len;
-
-    conn = q->conn;
-    req = conn->request;
-    resp = conn->response;
-    usingSend = resp->connector == conn->http->sendConnector;
-
-    mprLog(q, 7, "\noutgoingFileService");
-
-    for (packet = maGet(q); packet; packet = maGet(q)) {
-        if (!req->ranges && !usingSend && packet->flags & MA_PACKET_DATA) {
-            if ((len = prepPacket(q, packet)) <= 0) {
-                if (len < 0) {
-                    return;
-                }
-                maPutBack(q, packet);
-                return;
-            }
-        }
-        maPutNext(q, packet);
-    }
-    mprLog(q, 7, "outgoingFileService complete");
-}
-
-
-static void incomingFileData(MaQueue *q, MaPacket *packet)
-{
-    MaConn      *conn;
-    MaResponse  *resp;
-    MaRequest   *req;
-    MaRange     *range;
-    MprBuf      *buf;
-    MprFile     *file;
-    int         len;
-
-    conn = q->conn;
-    resp = conn->response;
-    req = conn->request;
-
-    file = (MprFile*) q->queueData;
-    if (file == 0) {
-        /* 
-         *  Not a PUT so just ignore the incoming data.
-         */
-        maFreePacket(q, packet);
-        return;
-    }
-    if (maGetPacketLength(packet) == 0) {
-        /*
-         *  End of input
-         */
-        mprFree(file);
-        q->queueData = 0;
-        return;
-    }
-    buf = packet->content;
-    len = mprGetBufLength(buf);
-    mprAssert(len > 0);
-
-    range = req->inputRange;
-    if (range && mprSeek(file, SEEK_SET, range->start) != range->start) {
-        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Can't seek to range start to %d", range->start);
-
-    } else if (mprWrite(file, mprGetBufStart(buf), len) != len) {
-        maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Can't PUT to %s", resp->filename);
-    }
-    maFreePacket(q, packet);
-}
-
-
-/*
- *  Populate a packet with file data
- */
-static int readFileData(MaQueue *q, MaPacket *packet, MprOff pos, int size)
-{
-    MaConn      *conn;
-    MaResponse  *resp;
-    int         nbytes;
-
-    conn = q->conn;
-    resp = conn->response;
-    
-    if (packet->content == 0 && (packet->content = mprCreateBuf(packet, size, -1)) == 0) {
-        return MPR_ERR_NO_MEMORY;
-    }
-    mprLog(q, 7, "readFileData size %Ld, pos %Ld", size, pos);
-    
-    if (pos >= 0) {
-        mprSeek(resp->file, SEEK_SET, pos);
-    }
-    if ((nbytes = mprRead(resp->file, mprGetBufStart(packet->content), size)) != size) {
-        /*
-         *  As we may have sent some data already to the client, the only thing we can do is abort and hope the client 
-         *  notices the short data.
-         */
-        maFailRequest(conn, MPR_HTTP_CODE_SERVICE_UNAVAILABLE, "Can't read file %s", resp->filename);
-        return MPR_ERR_CANT_READ;
-    }
-    mprAdjustBufEnd(packet->content, nbytes);
-    packet->esize -= nbytes;
-    mprAssert(packet->esize == 0);
-    return nbytes;
-}
-
-
-/*
- *  This is called to setup for a HTTP PUT request. It is called before receiving the post data via incomingFileData
- */
-static void handlePutRequest(MaQueue *q)
-{
-    MaConn          *conn;
-    MaRequest       *req;
-    MaResponse      *resp;
-    MprFile         *file;
-    char            *path;
-
-    mprAssert(q->pair->queueData == 0);
-
-    conn = q->conn;
-    req = conn->request;
-    resp = conn->response;
-    path = resp->filename;
-
-    if (req->ranges) {
-        /*
-         *  Open an existing file with fall-back to create
-         */
-        file = mprOpen(q, path, O_BINARY | O_WRONLY, 0644);
-        if (file == 0) {
-            file = mprOpen(q, path, O_CREAT | O_TRUNC | O_BINARY | O_WRONLY, 0644);
-            if (file == 0) {
-                maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Can't create the put URI");
-                return;
-            }
-        } else {
-            mprSeek(file, SEEK_SET, 0);
-        }
-    } else {
-        file = mprOpen(q, path, O_CREAT | O_TRUNC | O_BINARY | O_WRONLY, 0644);
-        if (file == 0) {
-            maFailRequest(conn, MPR_HTTP_CODE_INTERNAL_SERVER_ERROR, "Can't create the put URI");
-            return;
-        }
-    }
-    maSetResponseCode(conn, resp->fileInfo.isReg ? MPR_HTTP_CODE_NO_CONTENT : MPR_HTTP_CODE_CREATED);
-    q->pair->queueData = (void*) file;
-}
-
-
-/*
- *  Immediate processing of delete requests
- */
-static void handleDeleteRequest(MaQueue *q)
-{
-    MaConn      *conn;
-    char        *path;
-
-    conn = q->conn;
-    path = conn->response->filename;
-
-    if (!conn->response->fileInfo.isReg) {
-        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "URI not found");
-        return;
-    }
-    if (mprDeletePath(q, path) < 0) {
-        maFailRequest(conn, MPR_HTTP_CODE_NOT_FOUND, "Can't remove URI");
-        return;
-    }
-    maSetResponseCode(conn, MPR_HTTP_CODE_NO_CONTENT);
-}
-
-
-/*
- *  Dynamic module initialization
- */
-MprModule *maFileHandlerInit(MaHttp *http, cchar *path)
-{
-    MprModule   *module;
-    MaStage     *handler;
-
-    module = mprCreateModule(http, "fileHandler", BLD_VERSION, NULL, NULL, NULL);
-    if (module == 0) {
-        return 0;
-    }
-    handler = maCreateHandler(http, "fileHandler", 
-        MA_STAGE_GET | MA_STAGE_HEAD | MA_STAGE_POST | MA_STAGE_PUT | MA_STAGE_DELETE | MA_STAGE_VERIFY_ENTITY);
-    if (handler == 0) {
-        mprFree(module);
-        return 0;
-    }
-    handler->open = openFile;
-    handler->start = startFile;
-    handler->run = runFile;
-    handler->outgoingService = outgoingFileService;
-    handler->incomingData = incomingFileData;
-    http->fileHandler = handler;
-    return module;
-}
-
-
-#else
-
-MprModule *maFileHandlerInit(MaHttp *http, cchar *path)
-{
-    return 0;
-}
-#endif /* BLD_FEATURE_FILE */
 
 /*
  *  @copy   default
@@ -14434,7 +17057,7 @@ MprModule *maFileHandlerInit(MaHttp *http, cchar *path)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/handlers/fileHandler.c"
+ *  End of file "../src/http/server.c"
  */
 /************************************************************************/
 
@@ -14442,141 +17065,15 @@ MprModule *maFileHandlerInit(MaHttp *http, cchar *path)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/auth.c"
+ *  Start of file "../src/http/stage.c"
  */
 /************************************************************************/
 
 /*
- *  auth.c - Generic authorization code
+ *  stages.c -- Stage module to processes HTTP requests.
  *
- *  Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-
-
-#if BLD_FEATURE_AUTH
-
-MaAuth *maCreateAuth(MprCtx ctx, MaAuth *parent)
-{
-    MaAuth      *auth;
-
-    auth = mprAllocObjZeroed(ctx, MaAuth);
-
-    if (parent) {
-        auth->allow = parent->allow;
-        auth->anyValidUser = parent->anyValidUser;
-        auth->type = parent->type;
-        auth->deny = parent->deny;
-        auth->method = parent->method;
-        auth->flags = parent->flags;
-        auth->order = parent->order;
-        auth->qop = parent->qop;
-        auth->requiredRealm = parent->requiredRealm;
-        auth->requiredUsers = parent->requiredUsers;
-        auth->requiredGroups = parent->requiredGroups;
-#if BLD_FEATURE_AUTH_FILE
-        auth->userFile = parent->userFile;
-        auth->groupFile = parent->groupFile;
-        auth->users = parent->users;
-        auth->groups = parent->groups;
-#endif
-
-    } else{
-#if BLD_FEATURE_AUTH_PAM
-        auth->method = MA_AUTH_METHOD_PAM;
-#elif BLD_FEATURE_AUTH_FILE
-        auth->method = MA_AUTH_METHOD_FILE;
-#endif
-    }
-
-    return auth;
-}
-
-
-void maSetAuthAllow(MaAuth *auth, cchar *allow)
-{
-    mprFree(auth->allow);
-    auth->allow = mprStrdup(auth, allow);
-}
-
-
-void maSetAuthAnyValidUser(MaAuth *auth)
-{
-    auth->anyValidUser = 1;
-    auth->flags |= MA_AUTH_REQUIRED;
-}
-
-
-void maSetAuthDeny(MaAuth *auth, cchar *deny)
-{
-    mprFree(auth->deny);
-    auth->deny = mprStrdup(auth, deny);
-}
-
-
-void maSetAuthOrder(MaAuth *auth, int o)
-{
-    auth->order = o;
-}
-
-
-#else
-void __dummyAuth() {}
-#endif /* BLD_FEATURE_AUTH */
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/auth.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/location.c"
- */
-/************************************************************************/
-
-/*
- *  location.c -- Implement Location directives.
- *
- *  Location directives provide authorization and handler matching based on URL prefixes.
+ *  Stages support the extensible and modular processing of HTTP requests. Handlers are a kind of stage that are the 
+ *  first line processing of a request. Connectors are the last stage in a chain to send/receive data over a network.
  *
  *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -14584,2456 +17081,162 @@ void __dummyAuth() {}
 
 
 
-MaLocation *maCreateBareLocation(MprCtx ctx)
+static void defaultOpen(MaQueue *q)
 {
-    MaLocation  *location;
+    MaResponse      *resp;
 
-    location = mprAllocObjZeroed(ctx, MaLocation);
-    if (location == 0) {
-        return 0;
-    }
-    location->errorDocuments = mprCreateHash(location, MA_ERROR_HASH_SIZE);
-    location->handlers = mprCreateList(location);
-
-    location->extensions = mprCreateHash(location, MA_HANDLER_HASH_SIZE);
-    mprSetHashCaseless(location->extensions);
-
-    location->expires = mprCreateHash(location, MA_HANDLER_HASH_SIZE);
-    location->inputStages = mprCreateList(location);
-    location->outputStages = mprCreateList(location);
-    location->prefix = mprStrdup(location, "");
-    location->prefixLen = (int) strlen(location->prefix);
-#if BLD_FEATURE_AUTH
-    location->auth = maCreateAuth(location, 0);
-#endif
-    return location;
+    resp = q->conn->response;
+    q->packetSize = (resp->chunkSize > 0) ? min(q->max, resp->chunkSize): q->max;
 }
 
 
-/*
- *  Create a new location block. Inherit from the parent. We use a copy-on-write scheme if these are modified later.
- */
-MaLocation *maCreateLocation(MprCtx ctx, MaLocation *parent)
+static void defaultClose(MaQueue *q)
 {
-    MaLocation  *location;
-
-    if (parent == 0) {
-        return maCreateBareLocation(ctx);
-    }
-    location = mprAllocObjZeroed(ctx, MaLocation);
-    if (location == 0) {
-        return 0;
-    }
-    location->prefix = mprStrdup(location, parent->prefix);
-    location->parent = parent;
-    location->prefixLen = parent->prefixLen;
-    location->flags = parent->flags;
-    location->inputStages = parent->inputStages;
-    location->outputStages = parent->outputStages;
-    location->handlers = parent->handlers;
-    location->extensions = parent->extensions;
-    location->expires = parent->expires;
-    location->connector = parent->connector;
-    location->errorDocuments = parent->errorDocuments;
-    location->sessionTimeout = parent->sessionTimeout;
-#if BLD_FEATURE_EJS
-    location->ejsPath = parent->ejsPath;
-#endif
-#if BLD_FEATURE_UPLOAD
-    location->uploadDir = parent->uploadDir;
-    location->autoDelete = parent->autoDelete;
-#endif
-#if BLD_FEATURE_SSL
-    location->ssl = parent->ssl;
-#endif
-#if BLD_FEATURE_AUTH
-    location->auth = maCreateAuth(location, parent->auth);
-#endif
-    return location;
 }
 
 
-void maFinalizeLocation(MaLocation *location)
+static int defaultParse(MaHttp *http, cchar *key, char *value, MaConfigState *state)
 {
-#if BLD_FEATURE_SSL
-    if (location->ssl) {
-        mprConfigureSsl(location->ssl);
-    }
-#endif
-}
-
-
-void maSetLocationAuth(MaLocation *location, MaAuth *auth)
-{
-    location->auth = auth;
-}
-
-
-/*
- *  Add a handler. This adds a handler to the set of possible handlers for a set of file extensions.
- */
-int maAddHandler(MaHttp *http, MaLocation *location, cchar *name, cchar *extensions)
-{
-    MaStage     *handler;
-    char        *extlist, *word, *tok;
-
-    mprAssert(location);
-    
-    if (mprGetParent(location->handlers) == location->parent) {
-        location->extensions = mprCopyHash(location, location->parent->extensions);
-        location->handlers = mprDupList(location, location->parent->handlers);
-    }
-    handler = maLookupStage(http, name);
-    if (handler == 0) {
-        mprError(http, "Can't find stage %s", name); 
-        return MPR_ERR_NOT_FOUND;
-    }
-    if (extensions && *extensions) {
-        /*
-         *  Add to the handler extension hash
-         */ 
-        extlist = mprStrdup(location, extensions);
-        word = mprStrTok(extlist, " \t\r\n", &tok);
-        while (word) {
-            if (*word == '*' && word[1] == '.') {
-                word += 2;
-            } else if (*word == '.') {
-                word++;
-            } else if (*word == '\"' && word[1] == '\"') {
-                word = "";
-            }
-            mprAddHash(location->extensions, word, handler);
-            word = mprStrTok(NULL, " \t\r\n", &tok);
-        }
-        mprFree(extlist);
-        mprAddItem(location->handlers, handler);
-
-    } else {
-        if (handler->match == 0) {
-            /*
-             *  Only match by extension if the handler does not provide a match() routine
-             */
-            mprAddHash(location->extensions, "", handler);
-        }
-        mprAddItem(location->handlers, handler);
-    }
-    if (extensions && *extensions) {
-        mprLog(location, MPR_CONFIG, "Add handler \"%s\" for \"%s\"", name, extensions);
-    } else {
-        mprLog(location, MPR_CONFIG, "Add handler \"%s\" for \"%s\"", name, location->prefix);
-    }
+    mprAssert(http);
+    mprAssert(key && *key);
+    mprAssert(state);
     return 0;
 }
 
 
 /*
- *  Set a handler to universally apply to requests in this location block.
+ *  The default put will put the packet on the service queue.
  */
-int maSetHandler(MaHttp *http, MaHost *host, MaLocation *location, cchar *name)
+static void outgoingData(MaQueue *q, MaPacket *packet)
 {
-    MaStage     *handler;
-
-    mprAssert(location);
-    
-    if (mprGetParent(location->handlers) == location->parent) {
-        location->extensions = mprCopyHash(location, location->parent->extensions);
-        location->handlers = mprDupList(location, location->parent->handlers);
-    }
-    handler = maLookupStage(http, name);
-    if (handler == 0) {
-        mprError(http, "Can't find handler %s", name); 
-        return MPR_ERR_NOT_FOUND;
-    }
-    location->handler = handler;
-    mprLog(location, MPR_CONFIG, "SetHandler \"%s\" \"%s\", prefix %s", name, (host) ? host->name: "unknown", 
-        location->prefix);
-    return 0;
-}
-
-
-/*
- *  Add a filter. Direction defines what direction the stage filter be defined.
- */
-int maAddFilter(MaHttp *http, MaLocation *location, cchar *name, cchar *extensions, int direction)
-{
-    MaStage     *stage;
-    MaFilter    *filter;
-    char        *extlist, *word, *tok;
-
-    mprAssert(location);
-    
-    stage = maLookupStage(http, name);
-    if (stage == 0) {
-        mprError(http, "Can't find filter %s", name); 
-        return MPR_ERR_NOT_FOUND;
-    }
-
-    filter = mprAllocObjZeroed(location, MaFilter);
-    filter->stage = stage;
-
-    if (extensions && *extensions) {
-        filter->extensions = mprCreateHash(filter, 0);
-        mprSetHashCaseless(filter->extensions);
-        extlist = mprStrdup(location, extensions);
-        word = mprStrTok(extlist, " \t\r\n", &tok);
-        while (word) {
-            if (*word == '*' && word[1] == '.') {
-                word += 2;
-            } else if (*word == '.') {
-                word++;
-            } else if (*word == '\"' && word[1] == '\"') {
-                word = "";
-            }
-            mprAddHash(filter->extensions, word, filter);
-            word = mprStrTok(0, " \t\r\n", &tok);
-        }
-        mprFree(extlist);
-    }
-
-    if (direction & MA_FILTER_INCOMING) {
-        if (mprGetParent(location->inputStages) == location->parent) {
-            location->inputStages = mprDupList(location, location->parent->inputStages);
-        }
-        mprAddItem(location->inputStages, filter);
-    }
-    if (direction & MA_FILTER_OUTGOING) {
-        if (mprGetParent(location->outputStages) == location->parent) {
-            location->outputStages = mprDupList(location, location->parent->outputStages);
-        }
-        mprAddItem(location->outputStages, filter);
-    }
-
-    if (extensions && *extensions) {
-        mprLog(location, MPR_CONFIG, "Add filter \"%s\" to location \"%s\" for extensions \"%s\"", name, 
-            location->prefix, extensions);
-    } else {
-        mprLog(location, MPR_CONFIG, "Add filter \"%s\" to location \"%s\" for all extensions", name, location->prefix);
-    }
-
-    return 0;
-}
-
-
-/*
- *  Set the network connector.
- */
-int maSetConnector(MaHttp *http, MaLocation *location, cchar *name)
-{
-    MaStage     *stage;
-
-    mprAssert(location);
-    
-    stage = maLookupStage(http, name);
-    if (stage == 0) {
-        mprError(http, "Can't find connector %s", name); 
-        return MPR_ERR_NOT_FOUND;
-    }
-    location->connector = stage;
-    mprLog(location, MPR_CONFIG, "Set connector \"%s\"", name);
-    return 0;
-}
-
-
-void maAddLocationExpiry(MaLocation *location, MprTime when, cchar *mimeTypes)
-{
-    char    *types, *mime, *tok;
-
-    if (mimeTypes && *mimeTypes) {
-        if (mprGetParent(location->expires) == location->parent) {
-            location->expires = mprCopyHash(location, location->parent->expires);
-        }
-        types = mprStrdup(location, mimeTypes);
-        mime = mprStrTok(types, " ,\t\r\n", &tok);
-        while (mime) {
-            mprAddHash(location->expires, mime, ITOP(when));
-            mime = mprStrTok(0, " \t\r\n", &tok);
-        }
-        mprFree(types);
-    }
-}
-
-
-void maResetHandlers(MaLocation *location)
-{
-    if (mprGetParent(location->handlers) == location) {
-        mprFree(location->handlers);
-    }
-    location->handlers = mprCreateList(location);
-}
-
-
-void maResetPipeline(MaLocation *location)
-{
-    if (mprGetParent(location->extensions) == location) {
-        mprFree(location->extensions);
-    }
-    location->extensions = mprCreateHash(location, 0);
-    mprSetHashCaseless(location->extensions);
-    
-    if (mprGetParent(location->handlers) == location) {
-        mprFree(location->handlers);
-    }
-    location->handlers = mprCreateList(location);
-    
-    if (mprGetParent(location->inputStages) == location) {
-        mprFree(location->inputStages);
-    }
-    location->inputStages = mprCreateList(location);
-    
-    if (mprGetParent(location->outputStages) == location) {
-        mprFree(location->outputStages);
-    }
-    location->outputStages = mprCreateList(location);
-}
-
-
-MaStage *maGetHandlerByExtension(MaLocation *location, cchar *ext)
-{
-    return (MaStage*) mprLookupHash(location->extensions, ext);
-}
-
-
-void maSetLocationPrefix(MaLocation *location, cchar *uri)
-{
-    mprAssert(location);
-
-    mprFree(location->prefix);
-    location->prefix = mprStrdup(location, uri);
-    location->prefixLen = (int) strlen(location->prefix);
-}
-
-
-void maSetLocationFlags(MaLocation *location, int flags)
-{
-    location->flags = flags;
-}
-
-
-void maAddErrorDocument(MaLocation *location, cchar *code, cchar *url)
-{
-    if (mprGetParent(location->errorDocuments) == location->parent) {
-        location->errorDocuments = mprCopyHash(location, location->parent->errorDocuments);
-    }
-    mprAddHash(location->errorDocuments, code, mprStrdup(location, url));
-}
-
-
-cchar *maLookupErrorDocument(MaLocation *location, int code)
-{
-    char        numBuf[16];
-
-    if (location->errorDocuments == 0) {
-        return 0;
-    }
-    mprItoa(numBuf, sizeof(numBuf), code, 10);
-    return (cchar*) mprLookupHash(location->errorDocuments, numBuf);
-}
-
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/location.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/modules/sslModule.c"
- */
-/************************************************************************/
-
-/*
- *  sslModule.c - Module for SSL support
- *
- *  Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-
-#include    "mprSsl.h"
-
-#if BLD_FEATURE_SSL
-
-static int parseSsl(MaHttp *http, cchar *key, char *value, MaConfigState *state)
-{
-    MaLocation  *location;
-    MaHost      *host;
-    char        *path, prefix[MPR_MAX_FNAME];
-    char        *tok, *word;
-    int         protoMask, mask;
-    static int  hasBeenWarned = 0;
-
-    host = state->host;
-    location = state->location;
-
-    mprStrcpy(prefix, sizeof(prefix), key);
-    prefix[3] = '\0';
-
-    if (mprStrcmpAnyCase(prefix, "SSL") != 0) {
-        return 0;
-    }
-
-    if (!mprHasSecureSockets(http)) {
-        if (!hasBeenWarned++) {
-            mprError(http, "Missing an SSL Provider");
-        }
-        return 0;
-        /* return MPR_ERR_BAD_SYNTAX; */
-    }
-
-    if (location->ssl == 0) {
-        location->ssl = mprCreateSsl(location);
-    }
-
-    if (mprStrcmpAnyCase(key, "SSLEngine") == 0) {
-        mprStrTok(value, " \t", &tok);
-        mprStrTok(0, " \t", &tok);
-        if (mprStrcmpAnyCase(value, "on") == 0) {
-            maSecureHost(host, location->ssl);
-        }
-        return 1;
-    }
-
-    path = maMakePath(host, mprStrTrim(value, "\""));
-
-    if (mprStrcmpAnyCase(key, "SSLCACertificatePath") == 0) {
-        mprSetSslCaPath(location->ssl, path);
-        mprFree(path);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "SSLCACertificateFile") == 0) {
-        mprSetSslCaFile(location->ssl, path);
-        mprFree(path);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "SSLCertificateFile") == 0) {
-        mprSetSslCertFile(location->ssl, path);
-        mprFree(path);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "SSLCertificateKeyFile") == 0) {
-        mprSetSslKeyFile(location->ssl, path);
-        mprFree(path);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "SSLCipherSuite") == 0) {
-        mprSetSslCiphers(location->ssl, value);
-        mprFree(path);
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "SSLVerifyClient") == 0) {
-        mprFree(path);
-        if (mprStrcmpAnyCase(value, "require") == 0) {
-            mprVerifySslClients(location->ssl, 1);
-
-        } else if (mprStrcmpAnyCase(value, "none") == 0) {
-            mprVerifySslClients(location->ssl, 0);
-
-        } else {
-            return -1;
-        }
-        return 1;
-
-    } else if (mprStrcmpAnyCase(key, "SSLProtocol") == 0) {
-        mprFree(path);
-        protoMask = 0;
-        word = mprStrTok(value, " \t", &tok);
-        while (word) {
-            mask = -1;
-            if (*word == '-') {
-                word++;
-                mask = 0;
-            } else if (*word == '+') {
-                word++;
-            }
-            if (mprStrcmpAnyCase(word, "SSLv2") == 0) {
-                protoMask &= ~(MPR_HTTP_PROTO_SSLV2 & ~mask);
-                protoMask |= (MPR_HTTP_PROTO_SSLV2 & mask);
-
-            } else if (mprStrcmpAnyCase(word, "SSLv3") == 0) {
-                protoMask &= ~(MPR_HTTP_PROTO_SSLV3 & ~mask);
-                protoMask |= (MPR_HTTP_PROTO_SSLV3 & mask);
-
-            } else if (mprStrcmpAnyCase(word, "TLSv1") == 0) {
-                protoMask &= ~(MPR_HTTP_PROTO_TLSV1 & ~mask);
-                protoMask |= (MPR_HTTP_PROTO_TLSV1 & mask);
-
-            } else if (mprStrcmpAnyCase(word, "ALL") == 0) {
-                protoMask &= ~(MPR_HTTP_PROTO_ALL & ~mask);
-                protoMask |= (MPR_HTTP_PROTO_ALL & mask);
-            }
-            word = mprStrTok(0, " \t", &tok);
-        }
-        mprSetSslProtocols(location->ssl, protoMask);
-        return 1;
-    }
-    mprFree(path);
-    return 0;
-}
-
-
-/*
- *  Loadable module initialization. 
- */
-MprModule *maSslModuleInit(MaHttp *http, cchar *path)
-{
-    MprModule   *module;
-    MaStage     *stage;
-
-    if ((module = mprLoadSsl(http, 1)) == 0) {
-        return 0;
-    }
-    if ((stage = maCreateStage(http, "sslModule", MA_STAGE_MODULE)) == 0) {
-        mprFree(module);
-        return 0;
-    }
-    stage->parse = parseSsl; 
-
-    return module;
-}
-
-
-#else
-
-MprModule *maSslModuleInit(MaHttp *http, cchar *path)
-{
-    return 0;
-}
-#endif /* BLD_FEATURE_SSL */
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/modules/sslModule.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/authFile.c"
- */
-/************************************************************************/
-
-/*
- *  authFile.c - File based authorization using httpPassword files.
- *
- *  Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-
-
-#if BLD_FEATURE_AUTH_FILE
-
-static bool isUserValid(MaAuth *auth, cchar *realm, cchar *user);
-static char *trimWhiteSpace(char *str);
-
-
-cchar *maGetNativePassword(MaConn *conn, cchar *realm, cchar *user)
-{
-    MaUser      *up;
-    MaAuth      *auth;
-    char        *key;
-
-    auth = conn->request->auth;
-
-    up = 0;
-    key = mprStrcat(conn, -1, realm, ":", user, NULL);
-    if (auth->users) {
-        up = (MaUser*) mprLookupHash(auth->users, key);
-    }
-    mprFree(key);
-    if (up == 0) {
-        return 0;
-    }
-    return up->password;
-}
-
-
-bool maValidateNativeCredentials(MaConn *conn, cchar *realm, cchar *user, cchar *password, cchar *requiredPassword, 
-        char **msg)
-{
-    MaAuth  *auth;
-    char    passbuf[MA_MAX_PASS * 2], *hashedPassword;
-    int     len;
-
-    hashedPassword = 0;
-    auth = conn->request->auth;
-    
-    if (auth->type == MA_AUTH_BASIC) {
-        mprSprintf(passbuf, sizeof(passbuf), "%s:%s:%s", user, realm, password);
-        len = (int) strlen(passbuf);
-        hashedPassword = mprGetMD5Hash(conn, passbuf, len, NULL);
-        password = hashedPassword;
-    }
-    if (!isUserValid(auth, realm, user)) {
-        *msg = "Access Denied, Unknown User.";
-        mprFree(hashedPassword);
-        return 0;
-    }
-    if (strcmp(password, requiredPassword)) {
-        *msg = "Access Denied, Wrong Password.";
-        mprFree(hashedPassword);
-        return 0;
-    }
-    mprFree(hashedPassword);
-    return 1;
-}
-
-
-/*
- *  Determine if this user is specified as being eligible for this realm. We examine the requiredUsers and requiredGroups.
- */
-static bool isUserValid(MaAuth *auth, cchar *realm, cchar *user)
-{
-    MaGroup         *gp;
-    MaUser          *up;
-    cchar           *tok, *gtok;
-    char            ubuf[80], gbuf[80], *key, *requiredUser, *group, *name;
-    int             rc, next;
-
-    if (auth->anyValidUser) {
-        key = mprStrcat(auth, -1, realm, ":", user, NULL);
-        if (auth->users == 0) {
-            return 0;
-        }
-        rc = mprLookupHash(auth->users, key) != 0;
-        mprFree(key);
-        return rc;
-    }
-
-    if (auth->requiredUsers) {
-        tok = NULL;
-        requiredUser = mprGetWordTok(ubuf, sizeof(ubuf), auth->requiredUsers, " \t", &tok);
-        while (requiredUser) {
-            if (strcmp(user, requiredUser) == 0) {
-                return 1;
-            }
-            requiredUser = mprGetWordTok(ubuf, sizeof(ubuf), 0, " \t", &tok);
-        }
-    }
-
-    if (auth->requiredGroups) {
-        gtok = NULL;
-        group = mprGetWordTok(gbuf, sizeof(gbuf), auth->requiredGroups, " \t", &gtok);
-        /*
-         *  For each group, check all the users in the group.
-         */
-        while (group) {
-            if (auth->groups == 0) {
-                gp = 0;
-            } else {
-                gp = (MaGroup*) mprLookupHash(auth->groups, group);
-            }
-            if (gp == 0) {
-                mprError(auth, "Can't find group %s", group);
-                group = mprGetWordTok(gbuf, sizeof(gbuf), 0, " \t", &gtok);
-                continue;
-            }
-
-            for (next = 0; (name = mprGetNextItem(gp->users, &next)) != 0; ) {
-                if (strcmp(user, name) == 0) {
-                    return 1;
-                }
-            }
-            group = mprGetWordTok(gbuf, sizeof(gbuf), 0, " \t", &gtok);
-        }
-    }
-
-    if (auth->requiredAcl != 0) {
-        key = mprStrcat(auth, -1, realm, ":", user, NULL);
-        up = (MaUser*) mprLookupHash(auth->users, key);
-        if (up) {
-            mprLog(auth, 6, "UserRealm \"%s\" has ACL %lx, Required ACL %lx", key, up->acl, auth->requiredAcl);
-            if (up->acl & auth->requiredAcl) {
-                mprFree(key);
-                return 1;
-            }
-        }
-        mprFree(key);
-    }
-    return 0;
-}
-
-
-MaGroup *maCreateGroup(MaAuth *auth, cchar *name, MaAcl acl, bool enabled)
-{
-    MaGroup     *gp;
-
-    gp = mprAllocObjZeroed(auth, MaGroup);
-    if (gp == 0) {
-        return 0;
-    }
-
-    gp->acl = acl;
-    gp->name = mprStrdup(gp, name);
-    gp->enabled = enabled;
-    gp->users = mprCreateList(gp);
-    return gp;
-}
-
-
-int maAddGroup(MaAuth *auth, char *group, MaAcl acl, bool enabled)
-{
-    MaGroup     *gp;
-
-    mprAssert(auth);
-    mprAssert(group && *group);
-
-    gp = maCreateGroup(auth, group, acl, enabled);
-    if (gp == 0) {
-        return MPR_ERR_NO_MEMORY;
-    }
+    int     enableService;
 
     /*
-     *  Create the index on demand
+     *  Handlers service routines must only be enabled if in the processing state.
      */
-    if (auth->groups == 0) {
-        auth->groups = mprCreateHash(auth, -1);
-    }
-
-    if (mprLookupHash(auth->groups, group)) {
-        return MPR_ERR_ALREADY_EXISTS;
-    }
-
-    if (mprAddHash(auth->groups, group, gp) == 0) {
-        return MPR_ERR_NO_MEMORY;
-    }
-    return 0;
-}
-
-
-MaUser *maCreateUser(MaAuth *auth, cchar *realm, cchar *user, cchar *password, bool enabled)
-{
-    MaUser      *up;
-
-    up = mprAllocObjZeroed(auth, MaUser);
-    if (up == 0) {
-        return 0;
-    }
-
-    up->name = mprStrdup(up, user);
-    up->realm = mprStrdup(up, realm);
-    up->password = mprStrdup(up, password);
-    up->enabled = enabled;
-    return up;
-}
-
-
-int maAddUser(MaAuth *auth, cchar *realm, cchar *user, cchar *password, bool enabled)
-{
-    MaUser  *up;
-
-    char    *key;
-
-    up = maCreateUser(auth, realm, user, password, enabled);
-    if (up == 0) {
-        return MPR_ERR_NO_MEMORY;
-    }
-
-    if (auth->users == 0) {
-        auth->users = mprCreateHash(auth, -1);
-    }
-    key = mprStrcat(auth, -1, realm, ":", user, NULL);
-    if (mprLookupHash(auth->users, key)) {
-        mprFree(key);
-        return MPR_ERR_ALREADY_EXISTS;
-    }
-
-    if (mprAddHash(auth->users, key, up) == 0) {
-        mprFree(key);
-        return MPR_ERR_NO_MEMORY;
-    }
-    mprFree(key);
-    return 0;
-}
-
-
-int maAddUserToGroup(MaAuth *auth, MaGroup *gp, cchar *user)
-{
-    char        *name;
-    int         next;
-
-    for (next = 0; (name = mprGetNextItem(gp->users, &next)) != 0; ) {
-        if (strcmp(name, user) == 0) {
-            return MPR_ERR_ALREADY_EXISTS;
-        }
-    }
-    mprAddItem(gp->users, mprStrdup(gp, user));
-    return 0;
-}
-
-
-int maAddUsersToGroup(MaAuth *auth, cchar *group, cchar *users)
-{
-    MaGroup     *gp;
-    cchar       *tok;
-    char        ubuf[80], *user;
-
-    gp = 0;
-
-    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
-        return MPR_ERR_CANT_ACCESS;
-    }
-
-    tok = NULL;
-    user = mprGetWordTok(ubuf, sizeof(ubuf), users, " \t", &tok);
-    while (user) {
-        /* Ignore already exists errors */
-        maAddUserToGroup(auth, gp, user);
-        user = mprGetWordTok(ubuf, sizeof(ubuf), 0, " \t", &tok);
-    }
-    return 0;
-}
-
-
-int maDisableGroup(MaAuth *auth, cchar *group)
-{
-    MaGroup     *gp;
-
-    gp = 0;
-
-    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
-        return MPR_ERR_CANT_ACCESS;
-    }
-    gp->enabled = 0;
-    return 0;
-}
-
-
-int maDisableUser(MaAuth *auth, cchar *realm, cchar *user)
-{
-    MaUser      *up;
-    char        *key;
-
-    up = 0;
-    key = mprStrcat(auth, -1, realm, ":", user, NULL);
-    if (auth->users == 0 || (up = (MaUser*) mprLookupHash(auth->users, key)) == 0) {
-        mprFree(key);
-        return MPR_ERR_CANT_ACCESS;
-    }
-    mprFree(key);
-    up->enabled = 0;
-    return 0;
-}
-
-
-int maEnableGroup(MaAuth *auth, cchar *group)
-{
-    MaGroup     *gp;
-
-    gp = 0;
-
-    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
-        return MPR_ERR_CANT_ACCESS;
-    }
-    gp->enabled = 1;
-    return 0;
-}
-
-
-int maEnableUser(MaAuth *auth, cchar *realm, cchar *user)
-{
-    MaUser      *up;
-    char        *key;
-
-    up = 0;
-    key = mprStrcat(auth, -1, realm, ":", user, NULL);    
-    if (auth->users == 0 || (up = (MaUser*) mprLookupHash(auth->users, key)) == 0) {
-        return MPR_ERR_CANT_ACCESS;
-    }
-    up->enabled = 1;
-    return 0;
-}
-
-
-MaAcl maGetGroupAcl(MaAuth *auth, char *group)
-{
-    MaGroup     *gp;
-
-    gp = 0;
-
-    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
-        return MPR_ERR_CANT_ACCESS;
-    }
-    return gp->acl;
-}
-
-
-bool maIsGroupEnabled(MaAuth *auth, cchar *group)
-{
-    MaGroup     *gp;
-
-    gp = 0;
-    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
-        return 0;
-    }
-    return gp->enabled;
-}
-
-
-bool maIsUserEnabled(MaAuth *auth, cchar *realm, cchar *user)
-{
-    MaUser  *up;
-    char    *key;
-
-    up = 0;
-    key = mprStrcat(auth, -1, realm, ":", user, NULL);
-    if (auth->users == 0 || (up = (MaUser*) mprLookupHash(auth->users, key)) == 0) {
-        mprFree(key);
-        return 0;
-    }
-    mprFree(key);
-    return up->enabled;
+    enableService = !(q->stage->flags & MA_STAGE_HANDLER) || (q->conn->state & MPR_HTTP_STATE_PROCESSING) ? 1 : 0;
+    maPutForService(q, packet, enableService);
 }
 
 
 /*
- *  ACLs are simple hex numbers
+ *  Default incoming data routine. This is also used by the netConnector which is the default connector for incoming data.
+ *  Simply transfer the data upstream to the next filter or handler.
  */
-MaAcl maParseAcl(MaAuth *auth, cchar *aclStr)
+static void incomingData(MaQueue *q, MaPacket *packet)
 {
-    MaAcl   acl = 0;
-    int     c;
-
-    if (aclStr) {
-        if (aclStr[0] == '0' && aclStr[1] == 'x') {
-            aclStr += 2;
-        }
-        for (; isxdigit((int) *aclStr); aclStr++) {
-            c = (int) tolower((int) *aclStr);
-            if ('0' <= c && c <= '9') {
-                acl = (acl * 16) + c - '0';
-            } else {
-                acl = (acl * 16) + c - 'a' + 10;
-            }
-        }
-    }
-    return acl;
-}
-
-
-/*
- *  Update the total ACL for each user. We do this by oring all the ACLs for each group the user is a member of. 
- *  For fast access, this union ACL is stored in the MaUser object
- */
-void maUpdateUserAcls(MaAuth *auth)
-{
-    MprHash     *groupHash, *userHash;
-    MaUser      *user;
-    MaGroup     *gp;
-    
-    /*
-     *  Reset the ACL for each user
-     */
-    if (auth->users != 0) {
-        for (userHash = 0; (userHash = mprGetNextHash(auth->users, userHash)) != 0; ) {
-            ((MaUser*) userHash->data)->acl = 0;
-        }
-    }
-
-    /*
-     *  Get the union of all ACLs defined for a user over all groups that the user is a member of.
-     */
-    if (auth->groups != 0 && auth->users != 0) {
-        for (groupHash = 0; (groupHash = mprGetNextHash(auth->groups, groupHash)) != 0; ) {
-            gp = ((MaGroup*) groupHash->data);
-            for (userHash = 0; (userHash = mprGetNextHash(auth->users, userHash)) != 0; ) {
-                user = ((MaUser*) userHash->data);
-                if (strcmp(user->name, user->name) == 0) {
-                    user->acl = user->acl | gp->acl;
-                    break;
-                }
-            }
-        }
-    }
-}
-
-
-int maRemoveGroup(MaAuth *auth, cchar *group)
-{
-    if (auth->groups == 0 || !mprLookupHash(auth->groups, group)) {
-        return MPR_ERR_CANT_ACCESS;
-    }
-    mprRemoveHash(auth->groups, group);
-    return 0;
-}
-
-
-int maRemoveUser(MaAuth *auth, cchar *realm, cchar *user)
-{
-    char    *key;
-
-    key = mprStrcat(auth, -1, realm, ":", user, NULL);
-    if (auth->users == 0 || !mprLookupHash(auth->users, key)) {
-        mprFree(key);
-        return MPR_ERR_CANT_ACCESS;
-    }
-    mprRemoveHash(auth->users, key);
-    mprFree(key);
-    return 0;
-}
-
-
-int maRemoveUsersFromGroup(MaAuth *auth, cchar *group, cchar *users)
-{
-    MaGroup     *gp;
-    cchar       *tok;
-    char        ubuf[80], *user;
-
-    gp = 0;
-    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
-        return MPR_ERR_CANT_ACCESS;
-    }
-
-    tok = NULL;
-    user = mprGetWordTok(ubuf, sizeof(ubuf), users, " \t", &tok);
-    while (user) {
-        maRemoveUserFromGroup(gp, user);
-        user = mprGetWordTok(ubuf, sizeof(ubuf), 0, " \t", &tok);
-    }
-    return 0;
-}
-
-
-int maSetGroupAcl(MaAuth *auth, cchar *group, MaAcl acl)
-{
-    MaGroup     *gp;
-
-    gp = 0;
-    if (auth->groups == 0 || (gp = (MaGroup*) mprLookupHash(auth->groups, group)) == 0) {
-        return MPR_ERR_CANT_ACCESS;
-    }
-    gp->acl = acl;
-    return 0;
-}
-
-
-void maSetRequiredAcl(MaAuth *auth, MaAcl acl)
-{
-    auth->requiredAcl = acl;
-}
-
-
-int maRemoveUserFromGroup(MaGroup *gp, cchar *user)
-{
-    char    *name;
-    int     next;
-
-    for (next = 0; (name = mprGetNextItem(gp->users, &next)) != 0; ) {
-        if (strcmp(name, user) == 0) {
-            mprRemoveItem(gp->users, name);
-            return 0;
-        }
-    }
-    return MPR_ERR_CANT_ACCESS;
-}
-
-
-int maReadGroupFile(MaServer *server, MaAuth *auth, char *path)
-{
-    MprFile     *file;
-    MaAcl       acl;
-    char        buf[MPR_MAX_STRING];
-    char        *users, *group, *enabled, *aclSpec, *tok, *cp;
-
-    mprFree(auth->groupFile);
-    auth->groupFile = mprStrdup(server, path);
-
-    if ((file = mprOpen(auth, path, O_RDONLY | O_TEXT, 0444)) == 0) {
-        return MPR_ERR_CANT_OPEN;
-    }
-
-    while (mprGets(file, buf, sizeof(buf))) {
-        enabled = mprStrTok(buf, " :\t", &tok);
-        if (!enabled) {
-            continue;
-        }
-        for (cp = enabled; isspace((int) *cp); cp++) {
-            ;
-        }
-        if (*cp == '\0' || *cp == '#') {
-            continue;
-        }
-        aclSpec = mprStrTok(0, " :\t", &tok);
-        group = mprStrTok(0, " :\t", &tok);
-        users = mprStrTok(0, "\r\n", &tok);
-
-        acl = maParseAcl(auth, aclSpec);
-        maAddGroup(auth, group, acl, (*enabled == '0') ? 0 : 1);
-        maAddUsersToGroup(auth, group, users);
-    }
-    mprFree(file);
-
-    maUpdateUserAcls(auth);
-    return 0;
-}
-
-
-int maReadUserFile(MaServer *server, MaAuth *auth, char *path)
-{
-    MprFile     *file;
-    char        buf[MPR_MAX_STRING];
-    char        *enabled, *user, *password, *realm, *tok, *cp;
-
-    mprFree(auth->userFile);
-    auth->userFile = mprStrdup(auth, path);
-
-    if ((file = mprOpen(auth, path, O_RDONLY | O_TEXT, 0444)) == 0) {
-        return MPR_ERR_CANT_OPEN;
-    }
-
-    while (mprGets(file, buf, sizeof(buf))) {
-        enabled = mprStrTok(buf, " :\t", &tok);
-        if (!enabled) {
-            continue;
-        }
-        for (cp = enabled; isspace((int) *cp); cp++) {
-            ;
-        }
-        if (*cp == '\0' || *cp == '#') {
-            continue;
-        }
-        user = mprStrTok(0, ":", &tok);
-        realm = mprStrTok(0, ":", &tok);
-        password = mprStrTok(0, " \t\r\n", &tok);
-
-        user = trimWhiteSpace(user);
-        realm = trimWhiteSpace(realm);
-        password = trimWhiteSpace(password);
-
-        maAddUser(auth, realm, user, password, (*enabled == '0' ? 0 : 1));
-    }
-    mprFree(file);
-    maUpdateUserAcls(auth);
-    return 0;
-}
-
-
-int maWriteUserFile(MaServer *server, MaAuth *auth, char *path)
-{
-    MprFile         *file;
-    MprHash         *hp;
-    MaUser          *up;
-    char            buf[MA_MAX_PASS * 2];
-    char            *tempFile;
-
-    tempFile = mprGetTempPath(auth, NULL);
-    if ((file = mprOpen(auth, tempFile, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0444)) == 0) {
-        mprError(server, "Can't open %s", tempFile);
-        mprFree(tempFile);
-        return MPR_ERR_CANT_OPEN;
-    }
-    mprFree(tempFile);
-
-    hp = mprGetNextHash(auth->users, 0);
-    while (hp) {
-        up = (MaUser*) hp->data;
-        mprSprintf(buf, sizeof(buf), "%d: %s: %s: %s\n", up->enabled, up->name, up->realm, up->password);
-        mprWrite(file, buf, (int) strlen(buf));
-        hp = mprGetNextHash(auth->users, hp);
-    }
-
-    mprFree(file);
-
-    unlink(path);
-    if (rename(tempFile, path) < 0) {
-        mprError(server, "Can't create new %s", path);
-        return MPR_ERR_CANT_WRITE;
-    }
-    return 0;
-}
-
-
-int maWriteGroupFile(MaServer *server, MaAuth *auth, char *path)
-{
-    MprHash         *hp;
-    MprFile         *file;
-    MaGroup         *gp;
-    char            buf[MPR_MAX_STRING], *tempFile, *name;
-    int             next;
-
-    tempFile = mprGetTempPath(server, NULL);
-    if ((file = mprOpen(auth, tempFile, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0444)) == 0) {
-        mprError(server, "Can't open %s", tempFile);
-        mprFree(tempFile);
-        return MPR_ERR_CANT_OPEN;
-    }
-    mprFree(tempFile);
-
-    hp = mprGetNextHash(auth->groups, 0);
-    while (hp) {
-        gp = (MaGroup*) hp->data;
-        mprSprintf(buf, sizeof(buf), "%d: %x: %s: ", gp->enabled, gp->acl, gp->name);
-        mprWrite(file, buf, (int) strlen(buf));
-        for (next = 0; (name = mprGetNextItem(gp->users, &next)) != 0; ) {
-            mprWrite(file, name, (int) strlen(name));
-        }
-        mprWrite(file, "\n", 1);
-        hp = mprGetNextHash(auth->groups, hp);
-    }
-    mprFree(file);
-
-    unlink(path);
-    if (rename(tempFile, path) < 0) {
-        mprError(server, "Can't create new %s", path);
-        return MPR_ERR_CANT_WRITE;
-    }
-    return 0;
-}
-
-
-static char *trimWhiteSpace(char *str)
-{
-    int     len;
-
-    if (str == 0) {
-        return str;
-    }
-    while (isspace((int) *str)) {
-        str++;
-    }
-    len = (int) strlen(str) - 1;
-    while (isspace((int) str[len])) {
-        str[len--] = '\0';
-    }
-    return str;
-}
-
-
-#else
-void __nativeAuthFile() {}
-#endif /* BLD_FEATURE_AUTH_FILE */
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/authFile.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/alias.c"
- */
-/************************************************************************/
-
-/*
- *  alias.c -- Alias service for aliasing URLs to file storage.
- *
- *  This module supports the alias directives and mapping URLs to physical locations. 
- *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
-
-
-
-/*
- *  Create an alias for a URI prefix. During processing, a request URI prefix is substituted to the target which
- *  may be either a physical path or a URI if a non-zero redirect code is supplied.
- */
-
-MaAlias *maCreateAlias(MprCtx ctx, cchar *prefix, cchar *target, int code)
-{
-    MaAlias     *ap;
-
-    mprAssert(ctx);
-    mprAssert(prefix);
-
-    ap = mprAllocObjZeroed(ctx, MaAlias);
-    if (ap == 0) {
-        return 0;
-    }
-
-    ap->prefix = mprStrdup(ctx, prefix);
-    ap->prefixLen = (int) strlen(prefix);
-
-    /*
-     *  Always strip trailing "/". Note this is a URL and not a path.
-     */
-    if (ap->prefixLen > 0 && ap->prefix[ap->prefixLen - 1] == '/') {
-        ap->prefix[--ap->prefixLen] = '\0';
-    }
-
-    if (code) {
-        ap->redirectCode = code;
-        ap->uri = mprStrdup(ctx, target);
-    } else {
-        mprAssert(target && *target);
-        ap->filename = mprGetAbsPath(ctx, target);
-    }
-    return ap;
-}
-
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/alias.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/queue.c"
- */
-/************************************************************************/
-
-/*
- *  queue.c -- Queue support routines. Queues are the bi-directional data flow channels for the request/response pipeline.
- *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
-
-
-
-
-#if BLD_DEBUG
-void maCheckQueueCount(MaQueue *q);
-#else
-#define maCheckQueueCount(q)
-#endif
-
-/*
- *  Createa a new queue for the given stage. If prev is given, then link the new queue after the previous queue.
- */
-MaQueue *maCreateQueue(MaConn *conn, MaStage *stage, int direction, MaQueue *prev)
-{
-    MaQueue     *q;
     MaResponse  *resp;
-    MaLimits    *limits;
-
-    resp = conn->response;
-    limits = &conn->http->limits;
-
-    q = mprAllocObjZeroed(resp, MaQueue);
-    if (q == 0) {
-        return 0;
-    }
+    MaRequest   *req;
     
-    maInitQueue(conn->http, q, stage->name);
-    maInitSchedulerQueue(q);
-
-    q->conn = conn;
-    q->stage = stage;
-    q->close = stage->close;
-    q->open = stage->open;
-    q->start = stage->start;
-    q->direction = direction;
-
-    q->max = limits->maxStageBuffer;
-    q->packetSize = limits->maxStageBuffer;
-
-    if (direction == MA_QUEUE_SEND) {
-        q->put = stage->outgoingData;
-        q->service = stage->outgoingService;
-        
-    } else {
-        q->put = stage->incomingData;
-        q->service = stage->incomingService;
-    }
-    if (prev) {
-        maInsertQueue(prev, q);
-    }
-    return q;
-}
-
-
-/*
- *  Initialize a bare queue. Used for dummy heads.
- */
-void maInitQueue(MaHttp *http, MaQueue *q, cchar *name)
-{
-    q->nextQ = q;
-    q->prevQ = q;
-    q->owner = name;
-    q->max = http->limits.maxStageBuffer;
-    q->low = q->max / 100 * 5;
-}
-
-
-/*
- *  Insert a queue after the previous element
- */
-void maAppendQueue(MaQueue *head, MaQueue *q)
-{
-    q->nextQ = head;
-    q->prevQ = head->prevQ;
-    head->prevQ->nextQ = q;
-    head->prevQ = q;
-}
-
-
-/*
- *  Insert a queue after the previous element
- */
-void maInsertQueue(MaQueue *prev, MaQueue *q)
-{
-    q->nextQ = prev->nextQ;
-    q->prevQ = prev;
-    prev->nextQ->prevQ = q;
-    prev->nextQ = q;
-}
-
-
-void maRemoveQueue(MaQueue *q)
-{
-    q->prevQ->nextQ = q->nextQ;
-    q->nextQ->prevQ = q->prevQ;
-    q->prevQ = q->nextQ = q;
-}
-
-
-MaQueue *findPreviousQueue(MaQueue *q)
-{
-    while (q->prevQ) {
-        q = q->prevQ;
-        if (q->service) {
-            return q;
-        }
-    }
-    return 0;
-}
-
-
-bool maIsQueueEmpty(MaQueue *q)
-{
-    return q->first == 0;
-}
-
-
-/*
- *  Get the next packet from the queue
- */
-MaPacket *maGet(MaQueue *q)
-{
-    MaConn      *conn;
-    MaQueue     *prev;
-    MaPacket    *packet;
-
-    maCheckQueueCount(q);
-
-    conn = q->conn;
-    while (q->first) {
-        if ((packet = q->first) != 0) {
-            if (packet->flags & MA_PACKET_DATA && conn->requestFailed) {
-                q->first = packet->next;
-                q->count -= maGetPacketLength(packet);
-                maFreePacket(q, packet);
-                continue;
-            }
-            q->first = packet->next;
-            packet->next = 0;
-            q->count -= maGetPacketLength(packet);
-            mprAssert(q->count >= 0);
-            if (packet == q->last) {
-                q->last = 0;
-                mprAssert(q->first == 0);
-            }
-        }
-        maCheckQueueCount(q);
-        if (q->flags & MA_QUEUE_FULL && q->count < q->low) {
-            /*
-             *  This queue was full and now is below the low water mark. Back-enable the previous queue.
-             */
-            q->flags &= ~MA_QUEUE_FULL;
-            prev = findPreviousQueue(q);
-            if (prev && prev->flags & MA_QUEUE_DISABLED) {
-                maEnableQueue(prev);
-            }
-        }
-        maCheckQueueCount(q);
-        return packet;
-    }
-    return 0;
-}
-
-
-/*
- *  Create a new packet. If size is -1, then also create a default growable buffer -- used for incoming body content. If 
- *  size > 0, then create a non-growable buffer of the requested size.
- */
-MaPacket *maCreatePacket(MprCtx ctx, int size)
-{
-    MaPacket    *packet;
-
-    packet = mprAllocObjZeroed(ctx, MaPacket);
-    if (packet == 0) {
-        return 0;
-    }
-    if (size != 0) {
-        packet->content = mprCreateBuf(packet, size < 0 ? MA_BUFSIZE: size, -1);
-        if (packet->content == 0) {
-            mprFree(packet);
-            return 0;
-        }
-    }
-    return packet;
-}
-
-
-/*
- *  Create a packet for the connection to read into. This may come from the connection packet free list
- */
-MaPacket *maCreateConnPacket(MaConn *conn, int size)
-{
-    if (conn->state == MPR_HTTP_STATE_COMPLETE) {
-        return maCreatePacket((MprCtx) conn, size);
-    }
-    return maCreatePacket(conn->request ? (MprCtx) conn->request: (MprCtx) conn, size);
-}
-
-
-void maFreePacket(MaQueue *q, MaPacket *packet)
-{
-    mprFree(packet);
-} 
-
-
-/*
- *  Create the response header packet
- */
-MaPacket *maCreateHeaderPacket(MprCtx ctx)
-{
-    MaPacket    *packet;
-
-    packet = maCreatePacket(ctx, MA_BUFSIZE);
-    if (packet == 0) {
-        return 0;
-    }
-    packet->flags = MA_PACKET_HEADER;
-    return packet;
-}
-
-
-MaPacket *maCreateDataPacket(MprCtx ctx, int size)
-{
-    MaPacket    *packet;
-
-    packet = maCreatePacket(ctx, size);
-    if (packet == 0) {
-        return 0;
-    }
-    packet->flags = MA_PACKET_DATA;
-    return packet;
-}
-
-
-MaPacket *maCreateEntityPacket(MprCtx ctx, MprOff pos, MprOff size, MaFillProc fill)
-{
-    MaPacket    *packet;
-
-    packet = maCreatePacket(ctx, 0);
-    if (packet == 0) {
-        return 0;
-    }
-    packet->flags = MA_PACKET_DATA;
-    packet->epos = pos;
-    packet->esize = size;
-    packet->fill = fill;
-    return packet;
-}
-
-
-MaPacket *maCreateEndPacket(MprCtx ctx)
-{
-    MaPacket    *packet;
-
-    packet = maCreatePacket(ctx, 0);
-    if (packet == 0) {
-        return 0;
-    }
-    packet->flags = MA_PACKET_END;
-    return packet;
-}
-
-
-#if BLD_DEBUG
-void maCheckQueueCount(MaQueue *q)
-{
-    MaPacket    *packet;
-    int64       count;
-
-    count = 0;
-    for (packet = q->first; packet; packet = packet->next) {
-        count += maGetPacketLength(packet);
-    }
-    mprAssert(count == q->count);
-}
-#endif
-
-
-/*
- *  Put a packet on the service queue.
- */
-void maPutForService(MaQueue *q, MaPacket *packet, bool serviceQ)
-{
+    mprAssert(q);
     mprAssert(packet);
-   
-    maCheckQueueCount(q);
-    q->count += maGetPacketLength(packet);
-    packet->next = 0;
     
-    if (q->first) {
-        q->last->next = packet;
-        q->last = packet;
-        
-    } else {
-        q->first = packet;
-        q->last = packet;
-    }
-    maCheckQueueCount(q);
-    if (serviceQ && !(q->flags & MA_QUEUE_DISABLED))  {
-        maScheduleQueue(q);
-    }
-}
+    resp = q->conn->response;
+    req = q->conn->request;
 
+    if (q->nextQ->put) {
+        maPutNext(q, packet);
 
-/*
- *  Join a packet onto the service queue
- */
-void maJoinForService(MaQueue *q, MaPacket *packet, bool serviceQ)
-{
-    MaPacket    *old;
+    } else if (maGetPacketLength(packet)) { 
+        maJoinForService(q, packet, 0);
 
-    if (q->first == 0) {
+    } else if (req->form && (q->stage->flags & MA_STAGE_HANDLER) && resp->handler->flags & MA_STAGE_VARS) {
         /*
-         *  Just use the service queue as a holding queue while we aggregate the post data.
+            Do this just for handlers that don't want to define an incoming data handler but do want query/form vars (EGI)
          */
-        maPutForService(q, packet, 0);
-        maCheckQueueCount(q);
-
-    } else {
-        maCheckQueueCount(q);
-        q->count += maGetPacketLength(packet);
-        if (q->first && maGetPacketLength(q->first) == 0) {
-            old = q->first;
-            packet = q->first->next;
-            q->first = packet;
-            maFreePacket(q, old);
-
-        } else {
-            /*
-             *  Aggregate all data into one packet and free the packet.
-             */
-            maJoinPacket(q->first, packet);
-            maCheckQueueCount(q);
-            maFreePacket(q, packet);
-        }
-    }
-    maCheckQueueCount(q);
-    if (serviceQ && !(q->flags & MA_QUEUE_DISABLED))  {
-        maScheduleQueue(q);
+        maAddVarsFromQueue(req->formVars, q);
     }
 }
 
 
 /*
- *  Pass to a queue
+ *  The service routine runs when all input data has been received.
  */
-void maPut(MaQueue *q, MaPacket *packet)
-{
-    mprAssert(packet);
-    
-    mprAssert(q->put);
-    q->put(q, packet);
-}
-
-
-/*
- *  Pass to the next queue
- */
-void maPutNext(MaQueue *q, MaPacket *packet)
-{
-    mprAssert(packet);
-    
-    mprAssert(q->nextQ->put);
-    q->nextQ->put(q->nextQ, packet);
-}
-
-
-/*
- *  Put the packet back at the front of the queue
- */
-void maPutBack(MaQueue *q, MaPacket *packet)
-{
-    mprAssert(packet);
-    mprAssert(packet->next == 0);
-    
-    packet->next = q->first;
-
-    if (q->first == 0) {
-        q->last = packet;
-    }
-    q->first = packet;
-
-    mprAssert(maGetPacketLength(packet) >= 0);
-    q->count += maGetPacketLength(packet);
-    mprAssert(q->count >= 0);
-    maCheckQueueCount(q);
-}
-
-
-/*
- *  Return true if the next queue will accept this packet. If not, then disable the queue's service procedure.
- *  This may split the packet if it exceeds the downstreams maximum packet size.
- */
-bool maWillNextQueueAccept(MaQueue *q, MaPacket *packet)
-{
-    MaQueue     *next;
-    int64       size;
-
-    next = q->nextQ;
-    size = maGetPacketLength(packet);
-    if (size <= next->packetSize && (size + next->count) <= next->max) {
-        return 1;
-    }
-    if (maResizePacket(q, packet, 0) < 0) {
-        return 0;
-    }
-    size = maGetPacketLength(packet);
-    if (size <= next->packetSize && (size + next->count) <= next->max) {
-        return 1;
-    }
-
-    /*
-     *  The downstream queue is full, so disable the queue and mark the downstream queue as full and service immediately. 
-     */
-    maDisableQueue(q);
-    next->flags |= MA_QUEUE_FULL;
-    maScheduleQueue(next);
-    return 0;
-}
-
-
-bool maWillNextQueueAcceptSize(MaQueue *q, int size)
-{
-    MaQueue     *next;
-
-    next = q->nextQ;
-    if (size <= next->packetSize && (size + next->count) <= next->max) {
-        return 1;
-    }
-    /*
-     *  The downstream queue is full, so disable the queue and mark the downstream queue as full and service immediately. 
-     */
-    maDisableQueue(q);
-    next->flags |= MA_QUEUE_FULL;
-    maScheduleQueue(next);
-    return 0;
-}
-
-
-void maSendEndPacket(MaQueue *q)
-{
-    maPutNext(q, maCreateEndPacket(q));
-    q->flags |= MA_QUEUE_EOF;
-}
-
-
-void maSendPackets(MaQueue *q)
+void maDefaultOutgoingServiceStage(MaQueue *q)
 {
     MaPacket    *packet;
 
     for (packet = maGet(q); packet; packet = maGet(q)) {
+        if (!maWillNextQueueAccept(q, packet)) {
+            maPutBack(q, packet);
+            return;
+        }
         maPutNext(q, packet);
     }
 }
 
 
-void maDisableQueue(MaQueue *q)
+static void incomingService(MaQueue *q)
 {
-    mprLog(q, 7, "Disable queue %s", q->owner);
-    q->flags |= MA_QUEUE_DISABLED;
 }
 
 
-void maScheduleQueue(MaQueue *q)
+MaStage *maCreateStage(MaHttp *http, cchar *name, int flags)
 {
-    MaQueue     *head;
-    
-    mprAssert(q->conn);
-    head = &q->conn->serviceq;
-    
-    if (q->scheduleNext == q) {
-        q->scheduleNext = head;
-        q->schedulePrev = head->schedulePrev;
-        head->schedulePrev->scheduleNext = q;
-        head->schedulePrev = q;
-    }
-}
+    MaStage     *stage;
 
-
-MaQueue *maGetNextQueueForService(MaQueue *q)
-{
-    MaQueue     *next;
-    
-    if (q->scheduleNext != q) {
-        next = q->scheduleNext;
-        next->schedulePrev->scheduleNext = next->scheduleNext;
-        next->scheduleNext->schedulePrev = next->schedulePrev;
-        next->schedulePrev = next->scheduleNext = next;
-        return next;
-    }
-    return 0;
-}
-
-
-void maInitSchedulerQueue(MaQueue *q)
-{
-    q->scheduleNext = q;
-    q->schedulePrev = q;
-}
-
-
-void maServiceQueue(MaQueue *q)
-{
-    /*
-     *  Since we are servicing the queue, remove it from the service queue if it is at the front of the queue.
-     */
-    if (q->conn->serviceq.scheduleNext == q) {
-        maGetNextQueueForService(&q->conn->serviceq);
-    }
-    if (!(q->flags & MA_QUEUE_DISABLED)) {
-        q->service(q);
-        q->flags |= MA_QUEUE_SERVICED;
-    }
-}
-
-
-void maEnableQueue(MaQueue *q)
-{
-    mprLog(q, 7, "Enable q %s", q->owner);
-    q->flags &= ~MA_QUEUE_DISABLED;
-    maScheduleQueue(q);
-}
-
-
-/*
- *  Return the number of bytes the queue will accept. Always positive.
- */
-int maGetQueueRoom(MaQueue *q)
-{
-    mprAssert(q->max > 0);
-    mprAssert(q->count >= 0);
-    
-    if (q->count >= q->max) {
-        return 0;
-    }
-    return q->max - q->count;
-}
-
-
-/*
- *  Return true if the packet is too large to be accepted by the downstream queue.
- */
-bool maPacketTooBig(MaQueue *q, MaPacket *packet)
-{
-    int     size;
-    
-    size = mprGetBufLength(packet->content);
-    return size > q->max || size > q->packetSize;
-}
-
-
-/*
- *  Split a packet if required so it fits in the downstream queue. Put back the 2nd portion of the split packet on the queue.
- *  Ensure that the packet is not larger than "size" if it is greater than zero.
- */
-int maResizePacket(MaQueue *q, MaPacket *packet, int size)
-{
-    MaPacket    *tail;
-    MaConn      *conn;
-    MprCtx      ctx;
-    int         len;
-    
-    conn = q->conn;
-    if (size <= 0) {
-        size = MAXINT;
-    }
-    ctx = conn->request ? (MprCtx) conn->request : (MprCtx) conn;
-
-    if (packet->esize > size) {
-        if ((tail = maSplitPacket(ctx, packet, size)) == 0) {
-            return MPR_ERR_NO_MEMORY;
-        }
-    } else {
-        /*
-         *  Calculate the size that will fit
-         */
-        len = packet->content ? maGetPacketLength(packet) : 0;
-        size = min(size, len);
-        size = min(size, q->nextQ->max);
-        size = min(size, q->nextQ->packetSize);
-        if (size == 0 || size == len) {
-            return 0;
-        }
-        if ((tail = maSplitPacket(ctx, packet, size)) == 0) {
-            return MPR_ERR_NO_MEMORY;
-        }
-    }
-    maPutBack(q, tail);
-    return 0;
-}
-
-
-MaPacket *maCloneEntityPacket(MprCtx ctx, MaPacket *orig)
-{
-    MaPacket  *packet;
-
-    if ((packet = maCreatePacket(ctx, 0)) == 0) {
-        return 0;
-    }
-    packet->flags = orig->flags;
-    packet->esize = orig->esize;
-    packet->epos = orig->epos;
-    packet->fill = orig->fill;
-    return packet;
-}
-
-
-/*
- *  Drain a service queue by scheduling the queue and servicing all queues. Return true if there is room for more data.
- */
-static bool drain(MaQueue *q, bool block)
-{
-    MaConn      *conn;
-    MaQueue     *next;
-    int         oldMode;
-
-    conn = q->conn;
-
-    /*
-     *  Queue is full. Need to drain the service queue if possible.
-     */
-    do {
-        oldMode = mprSetSocketBlockingMode(conn->sock, block);
-        maScheduleQueue(q);
-        next = q->nextQ;
-        if (next->count >= next->max) {
-            maScheduleQueue(next);
-        }
-        maServiceQueues(conn);
-        mprSetSocketBlockingMode(conn->sock, oldMode);
-    } while (block && q->count >= q->max);
-    
-    return (q->count < q->max) ? 1 : 0;
-}
-
-
-/*
- *  Write a block of data. This is the lowest level write routine for dynamic data. If block is true, this routine will 
- *  block until all the block is written. If block is false, then it may return without having written all the data.
- */
-int maWriteBlock(MaQueue *q, cchar *buf, int size, bool block)
-{
-    MaPacket    *packet;
-    MaConn      *conn;
-    MaResponse  *resp;
-    int         bytes, written, packetSize;
-
-    mprAssert(q->stage->flags & MA_STAGE_HANDLER);
-               
-    conn = q->conn;
-    resp = conn->response;
-    packetSize = (resp->chunkSize > 0) ? resp->chunkSize : q->max;
-    packetSize = min(packetSize, size);
-    
-    if ((q->flags & MA_QUEUE_DISABLED) || (q->count > 0 && (q->count + size) >= q->max)) {
-        if (!drain(q, block)) {
-            return 0;
-        }
-    }
-    for (written = 0; size > 0; ) {
-        if (q->count >= q->max && !drain(q, block)) {
-            maCheckQueueCount(q);
-            break;
-        }
-        if (conn->disconnected) {
-            return MPR_ERR_CANT_WRITE;
-        }
-        if ((packet = maCreateDataPacket(q, packetSize)) == 0) {
-            return MPR_ERR_NO_MEMORY;
-        }
-        if ((bytes = mprPutBlockToBuf(packet->content, buf, size)) == 0) {
-            return MPR_ERR_NO_MEMORY;
-        }
-        buf += bytes;
-        size -= bytes;
-        written += bytes;
-        maPutForService(q, packet, 1);
-        maCheckQueueCount(q);
-    }
-    maCheckQueueCount(q);
-    return written;
-}
-
-
-int maWriteString(MaQueue *q, cchar *s)
-{
-    return maWriteBlock(q, s, (int) strlen(s), 1);
-}
-
-
-int maWrite(MaQueue *q, cchar *fmt, ...)
-{
-    va_list     vargs;
-    char        *buf;
-    int         rc;
-    
-    va_start(vargs, fmt);
-    buf = mprVasprintf(q, -1, fmt, vargs);
-    va_end(vargs);
-
-    rc = maWriteString(q, buf);
-    mprFree(buf);
-    return rc;
-}
-
-
-/*
- *  Join two packets by pulling the content from the second into the first.
- */
-int maJoinPacket(MaPacket *packet, MaPacket *p)
-{
-    int     len;
-
-    mprAssert(packet->esize == 0);
-    mprAssert(p->esize == 0);
-
-    len = maGetPacketLength(p);
-    if (mprPutBlockToBuf(packet->content, mprGetBufStart(p->content), len) != len) {
-        return MPR_ERR_NO_MEMORY;
-    }
-    return 0;
-}
-
-
-/*
- *  Split a packet at a given offset and return a new packet containing the data after the offset.
- *  The suffix data migrates to the new packet. 
- */
-MaPacket *maSplitPacket(MprCtx ctx, MaPacket *orig, int offset)
-{
-    MaPacket    *packet;
-    int         count, size;
-
-    if (orig->esize) {
-        if ((packet = maCreateEntityPacket(ctx, orig->epos + offset, orig->esize - offset, orig->fill)) == 0) {
-            return 0;
-        }
-        orig->esize = offset;
-
-    } else {
-        if (offset >= maGetPacketLength(orig)) {
-            mprAssert(offset < maGetPacketLength(orig));
-            return 0;
-        }
-        count = maGetPacketLength(orig) - offset;
-        size = max(count, MA_BUFSIZE);
-        size = MA_PACKET_ALIGN(size);
-        if ((packet = maCreateDataPacket(ctx, size)) == 0) {
-            return 0;
-        }
-        mprAdjustBufEnd(orig->content, -count);
-        if (mprPutBlockToBuf(packet->content, mprGetBufEnd(orig->content), count) != count) {
-            return 0;
-        }
-#if BLD_DEBUG
-        mprAddNullToBuf(orig->content);
-#endif
-    }
-    packet->flags = orig->flags;
-    return packet;
-}
-
-
-void maAdjustPacketStart(MaPacket *packet, MprOff size)
-{
-    if (packet->esize) {
-        packet->epos += size;
-        packet->esize -= size;
-    } else if (packet->content) {
-        mprAdjustBufStart(packet->content, (int) size);
-    }
-}
-
-
-void maAdjustPacketEnd(MaPacket *packet, MprOff size)
-{
-    if (packet->esize) {
-        packet->esize += size;
-    } else if (packet->content) {
-        mprAdjustBufEnd(packet->content, (int) size);
-    }
-}
-
-
-void maJoinPackets(MaQueue *q)
-{
-    MaPacket    *first, *packet, *next;
-
-    if (q->first) {
-        first = (q->first->flags & MA_PACKET_HEADER) ? q->first->next : q->first;
-
-        for (packet = first->next; packet; packet = next) {
-            next = packet->next;
-            maJoinPacket(first, packet);
-            maCheckQueueCount(q);
-            maFreePacket(q, packet);
-        }
-    }
-}
-
-
-/*
- *  Remove packets from a queue which do not need to be processed.
- *  Remove data packets if no body is required (HEAD|TRACE|OPTIONS|PUT|DELETE method, not modifed content, or error)
- *  This actually removes and frees the data packets whereas maDiscardData will just flush the data packets.
- */
-void maCleanQueue(MaQueue *q)
-{
-    MaConn      *conn;
-    MaResponse  *resp;
-    MaPacket    *packet, *next, *prev;
-
-    conn = q->conn;
-    resp = conn->response;
-
-    if (!(resp->flags & MA_RESP_NO_BODY)) {
-        return;
-    }
-
-    for (prev = 0, packet = q->first; packet; packet = next) {
-        next = packet->next;
-        if (packet->flags & (MA_PACKET_RANGE | MA_PACKET_DATA)) {
-            if (prev) {
-                prev->next = next;
-            } else {
-                q->first = next;
-            }
-            q->count -= maGetPacketLength(packet);
-            maFreePacket(q, packet);
-            continue;
-        }
-        prev = packet;
-    }
-    maCheckQueueCount(q);
-}
-
-
-/*
- *  Remove all data from non-header packets in the queue. Don't worry about freeing. Will happen automatically at 
- *  the request end. See also maCleanQueue above.
- */
-void maDiscardData(MaQueue *q, bool removePackets)
-{
-    MaPacket    *packet;
-    int         len;
-
-    if (q->first) {
-        /*
-         *  Skip the header packet
-         */
-        if (q->first->flags & MA_PACKET_HEADER) {
-            packet = q->first->next;
-        } else {
-            packet = q->first;
-        }
-
-        /*
-         *  Just flush each packet. Don't remove so the EOF packet is preserved
-         */
-        for (; packet; packet = packet->next) {
-            if (packet->content) {
-                len = maGetPacketLength(packet);
-                q->conn->response->length -= len;
-                q->count -= len;
-                mprFlushBuf(packet->content);
-            }
-        }
-        maCheckQueueCount(q);
-    }
-}
-
-
-/*
- *  @copy   default
- *  
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *  
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire 
- *  a commercial license from Embedthis Software. You agree to be fully bound 
- *  by the terms of either license. Consult the LICENSE.TXT distributed with 
- *  this software for full details.
- *  
- *  This software is open source; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at your 
- *  option) any later version. See the GNU General Public License for more 
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *  
- *  This program is distributed WITHOUT ANY WARRANTY; without even the 
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  
- *  This GPL license does NOT permit incorporating this software into 
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses 
- *  for this software and support services are available from Embedthis 
- *  Software at http://www.embedthis.com 
- *  
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
-
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/queue.c"
- */
-/************************************************************************/
-
-
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/dir.c"
- */
-/************************************************************************/
-
-/*
- *  dir.c -- Support authorization on a per-directory basis.
- *
- *  Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-
-
-
-MaDir *maCreateBareDir(MaHost *host, cchar *path)
-{
-    MaDir   *dir;
-
-    mprAssert(host);
-    mprAssert(path);
-
-    dir = mprAllocObjZeroed(host, MaDir);
-    if (dir == 0) {
-        return 0;
-    }
-    dir->indexName = mprStrdup(dir, "index.html");
-    dir->host = host;
-
-#if BLD_FEATURE_AUTH
-    dir->auth = maCreateAuth(dir, 0);
-#endif
-
-    if (path) {
-        dir->path = mprStrdup(dir, path);
-        dir->pathLen = (int) strlen(path);
-    }
-
-    return dir;
-}
-
-
-MaDir *maCreateDir(MaHost *host, cchar *path, MaDir *parent)
-{
-    MaDir   *dir;
-
-    mprAssert(host);
-    mprAssert(path);
-    mprAssert(parent);
-
-    dir = mprAllocObjZeroed(host, MaDir);
-    if (dir == 0) {
-        return 0;
-    }
-    
-    dir->host = host;
-    dir->indexName = mprStrdup(dir, parent->indexName);
-
-    if (path == 0) {
-        path = parent->path;
-    }
-    maSetDirPath(dir, path);
-
-#if BLD_FEATURE_AUTH
-    dir->auth = maCreateAuth(dir, parent->auth);
-#endif
-
-    return dir;
-}
-
-
-void maSetDirPath(MaDir *dir, cchar *fileName)
-{
-    mprAssert(dir);
-    mprAssert(fileName);
-
-    mprFree(dir->path);
-    dir->path = mprGetAbsPath(dir, fileName);
-    dir->pathLen = (int) strlen(dir->path);
-}
-
-
-void maSetDirIndex(MaDir *dir, cchar *name) 
-{ 
-    mprAssert(dir);
+    mprAssert(http);
     mprAssert(name && *name);
 
-    mprFree(dir->indexName);
-    dir->indexName = mprStrdup(dir, name); 
+    stage = mprAllocObjZeroed(http, MaStage);
+    if (stage == 0) {
+        return 0;
+    }
+    stage->flags = flags;
+    stage->name = mprStrdup(stage, name);
+
+    /*
+     *  Caller will selectively override
+     */
+    stage->open = defaultOpen;
+    stage->close = defaultClose;
+    stage->parse = defaultParse;
+    
+    stage->incomingData = incomingData;
+    stage->incomingService = incomingService;
+    
+    stage->outgoingData = outgoingData;
+    stage->outgoingService = maDefaultOutgoingServiceStage;
+
+    maRegisterStage(http, stage);
+    return stage;
 }
 
+
+MaStage *maCreateHandler(MaHttp *http, cchar *name, int flags)
+{
+    MaStage     *stage;
+    
+    stage = maCreateStage(http, name, flags);
+    stage->flags |= MA_STAGE_HANDLER;
+    return stage;
+}
+
+
+MaStage *maCreateFilter(MaHttp *http, cchar *name, int flags)
+{
+    MaStage     *stage;
+    
+    stage = maCreateStage(http, name, flags);
+    stage->flags |= MA_STAGE_FILTER;
+    return stage;
+}
+
+
+MaStage *maCreateConnector(MaHttp *http, cchar *name, int flags)
+{
+    MaStage     *stage;
+    
+    stage = maCreateStage(http, name, flags);
+    stage->flags |= MA_STAGE_CONNECTOR;
+    return stage;
+}
+
+
+bool maMatchFilterByExtension(MaFilter *filter, cchar *ext)
+{
+    return mprLookupHash(filter->extensions, ext) != 0;
+}
 
 /*
  *  @copy   default
@@ -17072,7 +17275,7 @@ void maSetDirIndex(MaDir *dir, cchar *name)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/dir.c"
+ *  End of file "../src/http/stage.c"
  */
 /************************************************************************/
 
@@ -17080,512 +17283,309 @@ void maSetDirIndex(MaDir *dir, cchar *name)
 
 /************************************************************************/
 /*
- *  Start of file "../src/http/conn.c"
+ *  Start of file "../src/http/var.c"
  */
 /************************************************************************/
 
-/*
- *  conn.c -- Connection module to handle individual HTTP connections.
+ /*
+ *  var.c -- Create header and query variables.
  *
  *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
 
 
-
-static int  connectionDestructor(MaConn *conn);
-static inline MaPacket *getPacket(MaConn *conn, int *bytesToRead);
-static void readEvent(MaConn *conn);
-static int  ioEvent(MaConn *conn, int mask);
-#if SHOW_REQUEST
-static void showRequest(MprBuf *content, int nbytes, int len);
-#else
-#define showRequest(content, nbytes, len)
-#endif
-
 /*
- *  The connection lock is the master per connection/request lock. This lock is held when multithreaded 
- *  throughout an incoming I/O event. Handlers with callbacks (CGI) will assert this lock to prevent reentrant modification
- *  of the connection or request.
+ *  Define standard CGI environment variables
  */
-#undef lock
-#undef unlock
-#define lock(conn) mprLock(conn->mutex)
-#define unlock(conn) mprUnlock(conn->mutex)
-
-/*
- *  Create a new connection object.
- */
-static MaConn *createConn(MprCtx ctx, MaHost *host, MprSocket *sock, cchar *ipAddr, int port, MaHostAddress *address)
+void maCreateEnvVars(MaConn *conn)
 {
-    MaConn      *conn;
-
-    conn = mprAllocObjWithDestructorZeroed(ctx, MaConn, connectionDestructor);
-    if (conn == 0) {
-        return 0;
-    }
-    if (host->keepAlive) {
-        conn->keepAliveCount = host->maxKeepAlive;
-    }
-    conn->http = host->server->http;
-    conn->sock = sock;
-    mprStealBlock(conn, sock);
-
-    conn->state = MPR_HTTP_STATE_BEGIN;
-    conn->timeout = host->timeout;
-    conn->remotePort = port;
-    conn->remoteIpAddr = mprStrdup(conn, ipAddr);
-    conn->address = address;
-    conn->host = host;
-    conn->originalHost = host;
-    conn->expire = mprGetTime(conn) + host->timeout;
-    conn->eventMask = -1;
-
-    maInitSchedulerQueue(&conn->serviceq);
-
-#if BLD_FEATURE_MULTITHREAD
-    conn->mutex = mprCreateLock(conn);
-#endif
-    return conn;
-}
-
-
-/*
- *  Cleanup a connection. Invoked automatically whenever the connection is freed.
- */
-static int connectionDestructor(MaConn *conn)
-{
-    mprAssert(conn);
-    mprAssert(conn->host);
-    mprAssert(conn->sock);
-
-    /*
-     *  Must remove from the connection list first. This ensures that the host timer will not find the connection 
-     *  nor mess with it anymore.
-     */
-    maRemoveConn(conn->host, conn);
-
-    if (conn->sock) {
-        mprLog(conn, 4, "Closing connection fd %d", conn->sock->fd);
-        mprCloseSocket(conn->sock, conn->connectionFailed ? 0 : MPR_SOCKET_GRACEFUL);
-        mprFree(conn->sock);
-    }
-    return 0;
-}
-
-
-/*
- *  Set the connection for disconnection when the I/O event returns. Setting keepAliveCount to zero will cause a 
- *  server-led disconnection.
- */
-void maDisconnectConn(MaConn *conn)
-{
-    conn->canProceed = 0;
-    conn->disconnected = 1;
-    conn->keepAliveCount = 0;
-    conn->requestFailed = 1;
-
-    if (conn->response) {
-        mprLog(conn, 4, "Disconnect conn fd %d", conn->sock ? conn->sock->fd : 0);
-        maCompleteRequest(conn);
-        maDiscardPipeData(conn);
-    }
-}
-
-
-/*
- *  Prepare a connection after completing a request for a new request.
- */
-void maPrepConnection(MaConn *conn)
-{
-    mprAssert(conn);
-
-    conn->requestFailed = 0;
-    conn->request = 0;
-    conn->response = 0;
-    conn->trace = 0;
-    conn->state =  MPR_HTTP_STATE_BEGIN;
-    conn->flags &= ~MA_CONN_CLEAN_MASK;
-    conn->expire = mprGetTime(conn) + conn->host->keepAliveTimeout;
-    conn->dedicated = 0;
-    if (conn->sock) {
-        mprSetSocketBlockingMode(conn->sock, 0);
-    }
-}
-
-
-/*
- *  Accept a new client connection. If multithreaded, this will come in on a worker thread dedicated to this connection.
- *  This is called from the listen wait handler.
- */
-int maAcceptConn(MprSocket *sock, MaServer *server, cchar *ip, int port)
-{
-    MaHostAddress   *address;
+    MaRequest       *req;
+    MaResponse      *resp;
     MaHost          *host;
-    MaConn          *conn;
     MprSocket       *listenSock;
-    MprHeap         *arena;
-    int             rc;
-
-    mprAssert(server);
-    mprAssert(sock);
-    mprAssert(ip);
-    mprAssert(port > 0);
-
-    rc = 0;
-    listenSock = sock->listenSock;
-
-    mprLog(server, 4, "New connection from %s:%d for %s:%d %s",
-        ip, port, listenSock->ipAddr, listenSock->port, listenSock->sslSocket ? "(secure)" : "");
-
-    /*
-     *  Map the address onto a suitable host to initially serve the request initially until we can parse the Host header.
-     */
-    address = (MaHostAddress*) maLookupHostAddress(server, listenSock->ipAddr, listenSock->port);
-
-    if (address == 0 || (host = mprGetFirstItem(address->vhosts)) == 0) {
-        mprError(server, "No host configured for request %s:%d", listenSock->ipAddr, listenSock->port);
-        mprFree(sock);
-        return 1;
-    }
-    arena = mprAllocHeap(host, "conn", 1, 0, NULL);
-    if (arena == 0) {
-        mprError(server, "Can't create connect arena object. Insufficient memory.");
-        mprFree(sock);
-        return 1;
-    }
-
-    conn = createConn(arena, host, sock, ip, port, address);
-    if (conn == 0) {
-        mprError(server, "Can't create connect object. Insufficient memory.");
-        mprFree(sock);
-        return 1;
-    }
-    conn->arena = arena;
-    maAddConn(host, conn);
-
-    mprSetSocketCallback(conn->sock, (MprSocketProc) ioEvent, conn, MPR_READABLE, MPR_NORMAL_PRIORITY);
- 
-#if BLD_FEATURE_MULTITHREAD
-    mprEnableSocketEvents(listenSock);
-#endif
-    return rc;
-}
-
-
-/*
- *  IO event handler. If multithreaded, this will be run by a worker thread. NOTE: a request is not typically permanently 
- *  assigned to a worker thread. Each io event may be serviced by a different worker thread. The exception is CGI
- *  requests which block to wait for the child to complete (Needed on some platforms that don't permit cross thread
- *  waiting).
- */
-static int ioEvent(MaConn *conn, int mask)
-{
-    mprAssert(conn);
-
-    lock(conn);
-    conn->time = mprGetTime(conn);
-
-    mprLog(conn, 7, "ioEvent for fd %d, mask %d\n", conn->sock->fd);
-    if (mask & MPR_WRITABLE) {
-        maProcessWriteEvent(conn);
-    }
-    if (mask & MPR_READABLE) {
-        readEvent(conn);
-    }
-    conn->time = mprGetTime(conn);
-    if (mprIsSocketEof(conn->sock) || conn->disconnected || conn->connectionFailed || 
-            (conn->request == 0 && conn->keepAliveCount < 0)) {
-        /*
-         *  This will close the connection and free all connection resources. NOTE: we compare keepAliveCount with "< 0" 
-         *  so that the client can have one more keep alive request. It should respond to the "Connection: close" and 
-         *  thus initiate a client-led close. This reduces TIME_WAIT states on the server. Must unlock the connection 
-         *  to allow pending callbacks to run and complete.
-         */
-        unlock(conn);
-        maDestroyPipeline(conn);
-        mprFree(conn->arena);
-        return 1;
-    }
-
-    /*
-     *  We allow read events even if the current request is not complete and does not have body data. The pipelined
-     *  request will be buffered and be ready for when the current request completes.
-     */
-    maEnableConnEvents(conn, MPR_READABLE);
-    unlock(conn);
-    return 0;
-}
-
-
-/*
- *  Enable the connection's I/O events
- */
-void maEnableConnEvents(MaConn *conn, int eventMask)
-{
-    if (conn->request) {
-        if (conn->response->queue[MA_QUEUE_SEND].prevQ->first) {
-            eventMask |= MPR_WRITABLE;
-        }
-    }
-    mprLog(conn, 7, "Enable conn events mask %x", eventMask);
-    conn->expire = mprGetTime(conn);
-    conn->expire += (conn->state == MPR_HTTP_STATE_BEGIN) ? conn->host->keepAliveTimeout : conn->host->timeout;
-    eventMask &= conn->eventMask;
-    mprSetSocketCallback(conn->sock, (MprSocketProc) ioEvent, conn, eventMask, MPR_NORMAL_PRIORITY);
-}
-
-
-/*
- *  Process a socket readable event
- */
-static void readEvent(MaConn *conn)
-{
-    MaPacket    *packet;
-    MprBuf      *content;
-    int         nbytes, len;
-
-    do {
-        if ((packet = getPacket(conn, &len)) == 0) {
-            break;
-        }
-        mprAssert(len > 0);
-        content = packet->content;
-        nbytes = mprReadSocket(conn->sock, mprGetBufEnd(content), len);
-        showRequest(content, nbytes, len);
-       
-        if (nbytes > 0) {
-            mprAdjustBufEnd(content, nbytes);
-            maProcessReadEvent(conn, packet);
-        } else {
-            if (mprIsSocketEof(conn->sock)) {
-                conn->dedicated = 0;
-                if (conn->request) {
-                    maProcessReadEvent(conn, packet);
-                }
-            } else if (nbytes < 0) {
-                maFailConnection(conn, MPR_HTTP_CODE_COMMS_ERROR, "Communications read error");
-            }
-        }
-    } while (!conn->disconnected && conn->dedicated);
-}
-
-
-/*
- *  Get the packet into which to read data. This may be owned by the connection or if mid-request, may be owned by the
- *  request. Also return in *bytesToRead the length of data to attempt to read.
- */
-static inline MaPacket *getPacket(MaConn *conn, int *bytesToRead)
-{
-    MaPacket    *packet;
-    MaRequest   *req;
-    MprBuf      *content;
-    MprOff      remaining;
-    int         len;
+    MprHashTable    *vars;
+    char            port[16];
 
     req = conn->request;
-    len = MA_BUFSIZE;
+    resp = conn->response;
+    host = conn->host;
+    
+    vars = req->headers;
 
+    mprAddHash(vars, "AUTH_TYPE", req->authType);
+    mprAddHash(vars, "AUTH_USER", (req->user && *req->user) ? req->user : 0);
+    mprAddHash(vars, "AUTH_GROUP", req->group);
+    mprAddHash(vars, "AUTH_ACL", "");
+    mprAddHash(vars, "CONTENT_LENGTH", req->contentLengthStr);
+    mprAddHash(vars, "CONTENT_TYPE", req->mimeType);
+    mprAddHash(vars, "DOCUMENT_ROOT", host->documentRoot);
+    mprAddHash(vars, "GATEWAY_INTERFACE", "CGI/1.1");
+    mprAddHash(vars, "QUERY_STRING", req->parsedUri->query);
+
+    mprAddHash(vars, "REMOTE_ADDR", conn->remoteIpAddr);
+    mprItoa(port, sizeof(port) - 1, conn->remotePort, 10);
+    mprAddHash(vars, "REMOTE_PORT", mprStrdup(vars, port));
+
+
+#if BLD_FEATURE_REVERSE_DNS && !WIN
     /*
-     *  The input packet may have pipelined headers and data left from the prior request. It may also have incomplete
-     *  chunk boundary data.
+     *  This feature has denial of service risks. Doing a reverse DNS will be slower,
+     *  and can potentially hang the web server. Use at your own risk!!  Not supported for windows.
      */
-    if ((packet = conn->input) == NULL) {
-        conn->input = packet = maCreateConnPacket(conn, len);
+    {
+        struct addrinfo *result;
+        char            name[MPR_MAX_STRING];
+        int             rc;
 
-    } else {
-        content = packet->content;
-        mprResetBufIfEmpty(content);
-        if (req) {
-            /*
-             *  Don't read more than the remainingContent unless chunked. We do this to minimize requests split 
-             *  across packets.
-             */
-            if (req->remainingContent) {
-                remaining = req->remainingContent;
-                if (req->flags & MA_REQ_CHUNKED) {
-                    remaining = max(remaining, MA_BUFSIZE);
-                }
-                len = (int) min(remaining, MAXINT);
+        if (getaddrinfo(remoteIpAddr, NULL, NULL, &result) == 0) {
+            rc = getnameinfo(result->ai_addr, sizeof(struct sockaddr), name, sizeof(name), NULL, 0, NI_NAMEREQD);
+            freeaddrinfo(result);
+            if (rc == 0) {
+                mprAddHash(vars, "REMOTE_HOST", remoteIpAddr);
             }
-            len = min(len, MA_BUFSIZE);
-            mprAssert(len > 0);
-            if (mprGetBufSpace(content) < len) {
-                mprGrowBuf(content, len);
-            }
-
-        } else {
-            /*
-             *  Still reading the request headers
-             */
-            if (mprGetBufLength(content) >= conn->http->limits.maxHeader) {
-                maFailConnection(conn, MPR_HTTP_CODE_REQUEST_TOO_LARGE, "Header too big");
-                return 0;
-            }
-            if (mprGetBufSpace(content) < MA_BUFSIZE) {
-                mprGrowBuf(content, MA_BUFSIZE);
-            }
-            len = mprGetBufSpace(content);
         }
+        mprAddHash(vars, "REMOTE_HOST", (rc == 0) ? name : remoteIpAddr);
     }
-    mprAssert(len > 0);
-    *bytesToRead = len;
-    return packet;
-}
-
-
-void maDedicateThreadToConn(MaConn *conn)
-{
-    mprAssert(conn);
-
-    conn->dedicated = 1;
-    if (conn->sock) {
-        mprSetSocketBlockingMode(conn->sock, 1);
-    }
-}
-
-
-void *maGetHandlerQueueData(MaConn *conn)
-{
-    MaQueue     *q;
-
-    q = &conn->response->queue[MA_QUEUE_SEND];
-    return q->nextQ->queueData;
-}
-
-
-#if SHOW_REQUEST
-static void showRequest(MprBuf *content, int nbytes, int len);
-{
-    mprLog(content, 5, "readEvent: read nbytes %d, bufsize %d", nbytes, len);
-    char *buf = mprGetBufStart(content);
-    buf[nbytes] = '\0';
-    print("\n>>>>>>>>>>>>>>>>>>>>>>>>>");
-    write(1, buf, nbytes);
-    print("<<<<<<<<<<<<<<<<<<<<<<<<<\n");
-}
+#else
+    mprAddHash(vars, "REMOTE_HOST", conn->remoteIpAddr);
 #endif
 
+    /*
+     *  Same as AUTH_USER (yes this is right)
+     */
+    mprAddHash(vars, "REMOTE_USER", (req->user && *req->user) ? req->user : 0);
+    mprAddHash(vars, "REQUEST_METHOD", req->methodName);
 
-/*
- *  @copy   default
- *
- *  Copyright (c) Embedthis Software LLC, 2003-2011. All Rights Reserved.
- *  Copyright (c) Michael O'Brien, 1993-2011. All Rights Reserved.
- *
- *  This software is distributed under commercial and open source licenses.
- *  You may use the GPL open source license described below or you may acquire
- *  a commercial license from Embedthis Software. You agree to be fully bound
- *  by the terms of either license. Consult the LICENSE.TXT distributed with
- *  this software for full details.
- *
- *  This software is open source; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by the
- *  Free Software Foundation; either version 2 of the License, or (at your
- *  option) any later version. See the GNU General Public License for more
- *  details at: http://www.embedthis.com/downloads/gplLicense.html
- *
- *  This program is distributed WITHOUT ANY WARRANTY; without even the
- *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- *  This GPL license does NOT permit incorporating this software into
- *  proprietary programs. If you are unable to comply with the GPL, you must
- *  acquire a commercial license to use this software. Commercial licenses
- *  for this software and support services are available from Embedthis
- *  Software at http://www.embedthis.com
- *
- *  Local variables:
-    tab-width: 4
-    c-basic-offset: 4
-    End:
-    vim: sw=4 ts=4 expandtab
+#if BLD_FEATURE_SSL
+    mprAddHash(vars, "REQUEST_TRANSPORT", (char*) ((host->secure) ? "https" : "http"));
+#else
+    mprAddHash(vars, "REQUEST_TRANSPORT", "http");
+#endif
+    
+    listenSock = conn->sock->listenSock;
+    mprAddHash(vars, "SERVER_ADDR", listenSock->ipAddr);
+    mprItoa(port, sizeof(port) - 1, listenSock->port, 10);
+    mprAddHash(vars, "SERVER_PORT", mprStrdup(req, port));
+    mprAddHash(vars, "SERVER_NAME", host->name);
+    mprAddHash(vars, "SERVER_PROTOCOL", req->parsedUri->scheme);
+    mprAddHash(vars, "SERVER_SOFTWARE", MA_SERVER_NAME);
 
-    @end
- */
-/************************************************************************/
-/*
- *  End of file "../src/http/conn.c"
- */
-/************************************************************************/
+    /*
+     *  This is the complete URI before decoding
+     */ 
+    mprAddHash(vars, "REQUEST_URI", req->parsedUri->originalUri);
 
+    /*
+     *  URLs are broken into the following: http://{SERVER_NAME}:{SERVER_PORT}{SCRIPT_NAME}{PATH_INFO}
+     */
+    mprAddHash(vars, "SCRIPT_NAME", req->url);
+    mprAddHash(vars, "SCRIPT_FILENAME", resp->filename);
+    mprAddHash(vars, "PATH_INFO", req->pathInfo);
 
-
-/************************************************************************/
-/*
- *  Start of file "../src/http/listen.c"
- */
-/************************************************************************/
-
-/*
- *  listen.c -- Listen for client connections.
- *
- *  Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
-
+    if (req->pathTranslated) {
+        /*
+         *  Only set PATH_TRANSLATED if PATH_INFO is set (CGI spec)
+         */
+        mprAddHash(vars, "PATH_TRANSLATED", req->pathTranslated);
+    }
+}
 
 
 /*
- *  Listen on an ipAddress:port. NOTE: ipAddr may be empty which means bind to all addresses.
+ *  Add variables to the vars environment store. This comes from the query string and urlencoded post data.
+ *  Make variables for each keyword in a query string. The buffer must be url encoded (ie. key=value&key2=value2..., 
+ *  spaces converted to '+' and all else should be %HEX encoded).
  */
-MaListen *maCreateListen(MaServer *server, cchar *ipAddr, int port, int flags)
+void maAddVars(MprHashTable *table, cchar *buf, int len)
 {
-    MaListen    *listen;
+    cchar   *oldValue;
+    char    *newValue, *decoded, *keyword, *value, *tok;
 
-    mprAssert(ipAddr);
-    mprAssert(port > 0);
+    mprAssert(table);
 
-    listen = mprAllocObjZeroed(server, MaListen);
-    if (listen == 0) {
+    decoded = (char*) mprAlloc(table, len + 1);
+    decoded[len] = '\0';
+    memcpy(decoded, buf, len);
+
+    keyword = mprStrTok(decoded, "&", &tok);
+    while (keyword != 0) {
+        if ((value = strchr(keyword, '=')) != 0) {
+            *value++ = '\0';
+            value = mprUrlDecode(table, value);
+        } else {
+            value = "";
+        }
+        keyword = mprUrlDecode(table, keyword);
+
+        if (*keyword) {
+            /*
+             *  Append to existing keywords.
+             */
+            oldValue = mprLookupHash(table, keyword);
+            if (oldValue != 0 && *oldValue) {
+                if (*value) {
+                    newValue = mprStrcat(table, MA_MAX_HEADERS, oldValue, " ", value, NULL);
+                    mprAddHash(table, keyword, newValue);
+                }
+            } else {
+                mprAddHash(table, keyword, value);
+            }
+        }
+        keyword = mprStrTok(0, "&", &tok);
+    }
+    /*
+     *  Must not free "decoded". This will be freed when the table is freed.
+     */
+}
+
+
+void maAddVarsFromQueue(MprHashTable *table, MaQueue *q)
+{
+    MaConn      *conn;
+    MaRequest   *req;
+    MprBuf      *content;
+
+    mprAssert(q);
+    
+    conn = q->conn;
+    req = conn->request;
+    
+    if (req->form && q->first && q->first->content) {
+        maJoinPackets(q);
+        content = q->first->content;
+        mprAddNullToBuf(content);
+        mprLog(q, 3, "encoded body data: length %d, \"%s\"", mprGetBufLength(content), mprGetBufStart(content));
+        maAddVars(table, mprGetBufStart(content), mprGetBufLength(content));
+    }
+}
+
+
+int maTestFormVar(MaConn *conn, cchar *var)
+{
+    MprHashTable    *vars;
+    
+    vars = conn->request->formVars;
+    if (vars == 0) {
         return 0;
     }
-    listen->server = server;
-    listen->flags = flags;
-    listen->port = port;
-    listen->ipAddr = mprStrdup(listen, ipAddr);
-    listen->flags = flags;
-    return listen;
+    return vars && mprLookupHash(vars, var) != 0;
 }
 
 
-int maStartListening(MaListen *listen)
+cchar *maGetFormVar(MaConn *conn, cchar *var, cchar *defaultValue)
 {
-    MaHttp      *http;
-    cchar       *proto;
-    char        *ipAddr;
-    int         rc;
-
-    listen->sock = mprCreateSocket(listen, listen->ssl);
-    if (mprOpenServerSocket(listen->sock, listen->ipAddr, listen->port, (MprSocketAcceptProc) maAcceptConn, listen->server,
-            MPR_SOCKET_NODELAY | MPR_SOCKET_THREAD) < 0) {
-        mprError(listen, "Can't open a socket on %s, port %d", listen->ipAddr, listen->port);
-        return MPR_ERR_CANT_OPEN;
+    MprHashTable    *vars;
+    cchar           *value;
+    
+    vars = conn->request->formVars;
+    if (vars) {
+        value = mprLookupHash(vars, var);
+        return (value) ? value : defaultValue;
     }
-    proto = mprIsSocketSecure(listen->sock) ? "HTTPS" : "HTTP";
-    ipAddr = listen->ipAddr;
-    if (ipAddr == 0 || *ipAddr == '\0') {
-        ipAddr = "*";
-    }
-    mprLog(listen, MPR_CONFIG, "Listening for %s on %s:%d", proto, ipAddr, listen->port);
+    return defaultValue;
+}
 
-    http = listen->server->http;
-    if (http->listenCallback) {
-        if ((rc = (http->listenCallback)(http, listen)) < 0) {
-            return rc;
+
+int maGetIntFormVar(MaConn *conn, cchar *var, int defaultValue)
+{
+    MprHashTable    *vars;
+    cchar           *value;
+    
+    vars = conn->request->formVars;
+    if (vars) {
+        value = mprLookupHash(vars, var);
+        return (value) ? (int) mprAtoi(value, 10) : defaultValue;
+    }
+    return defaultValue;
+}
+
+
+void maSetFormVar(MaConn *conn, cchar *var, cchar *value) 
+{
+    MprHashTable    *vars;
+    
+    vars = conn->request->formVars;
+    if (vars == 0) {
+        /* This is allowed. Upload filter uses this when uploading to the file handler */
+        return;
+    }
+    mprAddHash(vars, var, (void*) value);
+}
+
+
+void maSetIntFormVar(MaConn *conn, cchar *var, int value) 
+{
+    MprHashTable    *vars;
+    
+    vars = conn->request->formVars;
+    if (vars == 0) {
+        /* This is allowed. Upload filter uses this when uploading to the file handler */
+        return;
+    }
+    mprAddHash(vars, var, mprAsprintf(vars, -1, "%d", value));
+}
+
+
+int maCompareFormVar(MaConn *conn, cchar *var, cchar *value)
+{
+    MprHashTable    *vars;
+    
+    vars = conn->request->formVars;
+    
+    if (vars == 0) {
+        return 0;
+    }
+    if (strcmp(value, maGetFormVar(conn, var, " __UNDEF__ ")) == 0) {
+        return 1;
+    }
+    return 0;
+}
+
+
+void maAddUploadFile(MaConn *conn, cchar *id, MaUploadFile *upfile)
+{
+    MaRequest   *req;
+
+    req = conn->request;
+    if (req->files == 0) {
+        req->files = mprCreateHash(req, -1);
+    }
+    mprAddHash(req->files, id, upfile);
+}
+
+
+void maRemoveUploadFile(MaConn *conn, cchar *id)
+{
+    MaRequest       *req;
+    MaUploadFile    *upfile;
+
+    req = conn->request;
+
+    upfile = (MaUploadFile*) mprLookupHash(req->files, id);
+    if (upfile) {
+        mprDeletePath(conn, upfile->filename);
+        upfile->filename = 0;
+    }
+}
+
+
+void maRemoveAllUploadedFiles(MaConn *conn)
+{
+    MaRequest       *req;
+    MaUploadFile   *upfile;
+    MprHash         *hp;
+
+    req = conn->request;
+
+    for (hp = 0; req->files && (hp = mprGetNextHash(req->files, hp)) != 0; ) {
+        upfile = (MaUploadFile*) hp->data;
+        if (upfile->filename) {
+            mprDeletePath(conn, upfile->filename);
+            upfile->filename = 0;
         }
     }
-    return 0;
 }
-
-
-int maStopListening(MaListen *listen)
-{
-    if (listen->sock) {
-        mprFree(listen->sock);
-        listen->sock = 0;
-    }
-    return 0;
-}
-
 
 /*
  *  @copy   default
@@ -17624,7 +17624,7 @@ int maStopListening(MaListen *listen)
  */
 /************************************************************************/
 /*
- *  End of file "../src/http/listen.c"
+ *  End of file "../src/http/var.c"
  */
 /************************************************************************/
 
