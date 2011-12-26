@@ -133,7 +133,7 @@ setCompilerOptions()
             if [ $? = 0 ] ; then
                 eval $hasDynLoad=1
             else
-                eval \"${cc}\" -ldl $flags -o $out $file >/dev/null 2>&1
+                eval \"${cc}\" $flags -o $out $file -ldl >/dev/null 2>&1
                 if [ $? = 0 ] ; then
                     eval $hasDynLoad=1
                 fi
@@ -147,7 +147,7 @@ setCompilerOptions()
                 # echo "         ${cc}" $flags -o $out -c $file 
             fi
             echo -e "#include <histedit.h>\nint main() { history_init(); return 0; }\n" >$file
-            eval \"${cc}\" -ledit -lcurses $flags -o $out $file >/dev/null 2>&1
+            eval \"${cc}\" $flags -o $out $file -ledit -lcurses >/dev/null 2>&1
             if [ $? = 0 ] ; then
                 eval $hasLibEdit=1
             fi
