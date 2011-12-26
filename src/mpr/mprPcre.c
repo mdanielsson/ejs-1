@@ -57,6 +57,12 @@
 #define MPR_CPU_SH4         12
 
 
+#if VXWORKS
+    #ifndef _VSB_CONFIG_FILE
+        #define _VSB_CONFIG_FILE "vsbConfig.h"
+    #endif
+#endif
+
 #if BLD_UNIX_LIKE && !VXWORKS && !MACOSX && !FREEBSD
     #include    <sys/types.h>
     #include    <time.h>
@@ -147,7 +153,7 @@
     #include    <stdio.h>
     #include    <stdlib.h>
     #include    <string.h>
-    #include    <symSyncLib.h>
+    #include    <symSync.h>
     #include    <sysSymTbl.h>
     #include    <sys/fcntlcom.h>
     #include    <sys/ioctl.h>
@@ -551,8 +557,12 @@ extern "C" {
     #endif
     #define __WALL          0
 #else
-    #define O_BINARY        0
-    #define O_TEXT          0
+    #ifndef O_BINARY
+        #define O_BINARY    0
+    #endif
+    #ifndef O_TEXT
+        #define O_TEXT      0
+    #endif
 
     /*
      *  For some reason it is removed from fedora 6 pthreads.h and only comes in for UNIX96
@@ -585,8 +595,12 @@ extern "C" {
 
     #define MPR_BINARY      ""
     #define MPR_TEXT        ""
-    #define O_BINARY        0
-    #define O_TEXT          0
+    #ifndef O_BINARY
+        #define O_BINARY    0
+    #endif
+    #ifndef O_TEXT
+        #define O_TEXT      0
+    #endif
     #define SOCKET_ERROR    -1
     #define MSG_NOSIGNAL    0
     #define __WALL          0
@@ -1043,6 +1057,16 @@ extern int gettimeofday(struct timeval *tv, struct timezone *tz);
 #endif
 
 typedef int64 MprOff;
+
+/*
+    Socklen_t
+ */
+#if VXWORKS
+    typedef int MprSocklen;
+#else
+    typedef socklen_t MprSocklen;
+#endif
+
 
 /*
     Backward compatibility aliases
@@ -8564,6 +8588,12 @@ functions whose names all begin with "_pcre_". */
 
 #ifndef PCRE_INTERNAL_H
 #define PCRE_INTERNAL_H
+
+#if VXWORKS
+    #ifndef _VSB_CONFIG_FILE
+        #define _VSB_CONFIG_FILE "vsbConfig.h"
+    #endif
+#endif
 
 #include "buildConfig.h"
 

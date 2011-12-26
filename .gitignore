@@ -93,3 +93,6 @@ test/s-*.es
 .DS_Store
 test/*.es
 releases/ejs*
+bin/i586*
+lib/i586*
+modules/i586*
