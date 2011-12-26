@@ -74,15 +74,11 @@ small:
 speed:
 	./configure --type=release --disable-assert --tune=size
 
-vx:
-	unset WIND_HOME WIND_BASE ; \
-	SEARCH_PATH=/tornado ./configure --host=i386-wrs-vxworks --enable-all --without-ssl
-
 vx5:
 	unset WIND_HOME WIND_BASE ; \
 	SEARCH_PATH=/tornado ./configure --host=i386-wrs-vxworks --enable-all --without-ssl
 
-vx6:
+vx vx6:
 	unset WIND_HOME WIND_BASE ; \
 	./configure --host=pentium-wrs-vxworks --enable-all --without-ssl
 

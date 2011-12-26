@@ -54,7 +54,7 @@ ifeq ($(BLD_FEATURE_EJS_WEB),1)
 	endif
 	ifeq ($(BLD_FEATURE_APPWEB),1)
 		TARGETS		+= $(BLD_BIN_DIR)/ejswebserver$(BLD_EXE)
-		ifeq ($(BLD_UNIX_LIKE),1)
+		ifeq ($(BLD_HOST_UNIX),1)
 			TARGETS	+= $(BLD_BIN_DIR)/angel$(BLD_EXE)
 		endif
 #		ifneq	($(BLD_APPWEB_DIR),)

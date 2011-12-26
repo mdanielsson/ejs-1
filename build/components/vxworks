@@ -9,21 +9,29 @@ defineComponent() {
         return 0
     fi
 
-    name=vxworks
+    if [ "$WIND_BASE" != "" ] ; then
+        if [ "$WIND_HOME" = "" ] ; then
+            WIND_HOME=${WIND_BASE%/*}
+        fi
+        if [ "$WIND_PLATFORM" = "" ] ; then
+            WIND_PLATFORM=${WIND_BASE##*/}
+        fi
+    fi
+    search="$path:$WIND_BASE:$SEARCH_PATH"
+
     partial="target/h/vxWorks.h"
-    path=`probe --emit-dir --path "$1" --partial "$partial" $name`
+    path=`probe --emit-dir --path "$1" --partial "$partial" --search "$search" vxworks`
     if [ "$path" = "" ] ; then
-        warnComponent $name \
+        warnComponent vxworks \
             "Set WIND_HOME to the VxWorks directory containing the \"target\" directory (${partial})\n" \
             "This is usually /Tornado or /WindRiver/VxWorks\n"
         return
 	fi
     if [ "$BLD_CC_DIAB" != 1 ] ; then
-        configureComponent --path "$path" --iflags "-I$path/target/h -I$path/target/h/wrn/coreip" $name
+        configureComponent --path "$path" --iflags "-I$path/target/h -I$path/target/h/wrn/coreip" vxworks
     else
-        configureComponent --path "$path" --iflags "-I$path/target/h -I$path/target/h/wrn/coreip -I$path/target/usr/h" $name
+        configureComponent --path "$path" --iflags "-I$path/target/h -I$path/target/h/wrn/coreip -I$path/target/usr/h" vxworks
     fi
-
     setVxEnv "$path"
 }
 
@@ -34,16 +42,24 @@ setVxEnv()
 
 	path="$1"
 	WIND_BASE="$path"
+    WIND_PLATFORM=${WIND_BASE##*/}
 
     case $BLD_BUILD_OS in
     WIN|CYGWIN)
-        BLD_BUILD_SYSTEM_VX=x86-win32
+        WIND_HOST_TYPE=x86-win32
         ;;
     LINUX)
-        BLD_BUILD_SYSTEM_VX=x86-linux
+        if [ -x $path/host/x86-linux ] ; then
+            WIND_HOST_TYPE=x86-linux
+        elif [ -x $path/host/x86-linux2 ] ; then
+            WIND_HOST_TYPE=x86-linux2
+        else
+            echo "Can't determine WIND_HOST_TYPE: $path"
+            exit 255
+        fi
         ;;
     SOLARIS*)
-        BLD_BUILD_SYSTEM_VX=solaris2
+        WIND_HOST_TYPE=solaris2
         ;;
     *)
         echo "$BLD_BUILD_OS is an not a supported O/S for VxWorks cross compilation"
@@ -63,6 +79,8 @@ setVxEnv()
         echo "Cant find version.h at $version"
         exit 255
     fi
+    BLD_HOST_DIST=WindRiver
+    BLD_HOST_DIST_VER=$version
 
 	#
 	#	Tornado sets both HOME and BASE to /tornado
@@ -70,40 +88,25 @@ setVxEnv()
 	#
 	if [ "${version%.*}" -ge 6 ] ; then
 		WIND_HOME="${path%/*}"
+        eval WIND_GNU_PATH=`echo $WIND_HOME/gnu/*-${WIND_PLATFORM}`
+        search="
+            '\$WIND_GNU_PATH/\$WIND_HOST_TYPE/bin'
+            '\$WIND_GNU_PATH/\$WIND_HOST_TYPE/\$BLD_HOST_SYSTEM/bin'
+            '\$WIND_BASE/host/\$WIND_HOST_TYPE/bin'
+            '\$WIND_BASE/host/resource/hutils/tcl'
+            '\$WIND_HOME/workbench*/foundation/*/\$WIND_HOST_TYPE/bin'
+        "
 	else
 		WIND_HOME="$path"
+        WIND_GNU_PATH
+        search="
+            '\$WIND_BASE/host/\$WIND_HOST_TYPE/bin'
+            '\$WIND_BASE/host/resource/hutils/tcl'
+            '\$WIND_HOME/workbench*/foundation/*/\$WIND_HOST_TYPE/bin'
+        "
 	fi
+    BLD_BUILD_SYSTEM_VX=$WIND_HOST_TYPE
 
-    WIND_HOST_TYPE="$BLD_BUILD_SYSTEM_VX"
-    BLD_HOST_DIST=WindRiver
-    BLD_HOST_DIST_VER=$version
-
-#    eval cc=\$BLD_${KIND}_CC
-#    if [ "$bldPath" = "" ] ; then
-#        bldPath="`dirname $cc`"
-#    else
-#        bldPath="$bldPath:`dirname $cc`"
-#    fi
-#    if [ "$KIND" = HOST ] ; then
-#        CFG_HOST_PATH="$bldPath"
-#    else
-#        CFG_BUILD_PATH="$bldPath"
-#    fi
-
-	eval BLD_${kind}_IFLAGS=\"$BLD_HOST_IFLAGS $CFG_HOST_VXWORKS_IFLAGS\"
-
-	#
-	#	Update search path for base tools to use
-	#
-    search="
-		'\$WIND_HOME/gnu/*/\$BLD_BUILD_SYSTEM_VX/bin'
-		'\$WIND_HOME/gnu/*/\$BLD_BUILD_SYSTEM_VX/\$BLD_HOST_SYSTEM/bin'
-		'\$WIND_HOME/\$BLD_HOST_DIST-\$BLD_HOST_DIST_VER/host/\$BLD_BUILD_SYSTEM_VX/bin'
-		'\$WIND_HOME/\$BLD_HOST_DIST-\$BLD_HOST_DIST_VER/host/resource/hutils/tcl'
-		'\$WIND_HOME/workbench*/foundation/*/\$BLD_BUILD_SYSTEM_VX/bin'
-		'\$WIND_HOME/host/*/bin'
-		'\$WIND_HOME/host/*/\$BLD_HOST_SYSTEM/bin'
-	"
 	SEARCH_PATH="$SEARCH_PATH:`convertSearchPath "$search"`"
 
 	#
@@ -117,5 +120,7 @@ setVxEnv()
 	#
 	#	Export so the "cc" component file can actually run the compiler
 	#
-	export WIND_HOME WIND_BASE
+    export WIND_HOME WIND_BASE WIND_HOST_TYPE WIND_PLATFORM WIND_GNU_PATH
+
+	eval BLD_${kind}_IFLAGS=\"$BLD_HOST_IFLAGS $CFG_HOST_VXWORKS_IFLAGS\"
 }

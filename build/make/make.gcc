@@ -215,9 +215,6 @@ endif
 ifeq			($(BLD_FEATURE_FLOATING_POINT),1)
     _LIBS      	+= -lm
 endif
-ifeq 			($(BLD_FEATURE_AUTH_PAM),1)
-    _LIBS       += -lpam
-endif
 endif
 
 #

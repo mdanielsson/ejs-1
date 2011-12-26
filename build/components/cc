@@ -26,14 +26,15 @@ setCompilerOptions()
     eval os=\$BLD_${KIND}_OS
     eval cc=\$CFG_${KIND}_CC
     eval cpu=\$BLD_${KIND}_CPU
-    eval hasStackProtector=\${KIND}_HAS_STACK_PROTECTOR
+    eval hasCygwin=\${KIND}_HAS_CYGWIN
+    eval hasDiab=\${KIND}_HAS_DIAB
+    eval hasDynLoad=\${KIND}_HAS_DYN_LOAD
     eval hasDoubleBraces=\${KIND}_HAS_DOUBLE_BRACES
     eval hasLibEdit=\${KIND}_HAS_EDITLINE
     eval hasMtune=\${KIND}_HAS_MTUNE
-    eval hasDynLoad=\${KIND}_HAS_DYN_LOAD
     eval hasMmu=\${KIND}_HAS_MMU
-    eval hasCygwin=\${KIND}_HAS_CYGWIN
-    eval hasDiab=\${KIND}_HAS_DIAB
+    eval hasPam=\${KIND}_HAS_PAM
+    eval hasStackProtector=\${KIND}_HAS_STACK_PROTECTOR
     eval hasWarnUnused=\${KIND}_HAS_WARN_UNUSED
     eval flags=\"\$BLD_${KIND}_CFLAGS \$BLD_${KIND}_DFLAGS \$BLD_${KIND}_IFLAGS \$BLD_${KIND}_LDFLAGS\"
     if [ $os = MACOSX -a "${flags}" = "${flags/-arch/}" ] ; then
@@ -46,6 +47,7 @@ setCompilerOptions()
     eval ${hasDynLoad}=0
     eval ${hasLibEdit}=0
     eval ${hasMmu}=0
+    eval ${hasPam}=0
     eval ${hasWarnUnused}=0
 
     if [ $os = CYGWIN -o $os = FREEBSD -o $os = LINUX -o $os = VXWORKS -o $os = MACOSX ] ; then
@@ -151,6 +153,19 @@ setCompilerOptions()
             fi
 
             #
+            #   Search for libpam
+            #
+            if [ "$verbose" != 0 ] ; then
+                echo -e "    Checking for libpam()"
+                # echo "         ${cc}" -o $out -c $file
+            fi
+            echo -e "extern pam_start(); \nint main() { void *x = pam_start; return 0; }\n" >$file
+            eval \"${cc}\" ${flags} -o $out $file -lpam >/dev/null 2>&1
+            if [ $? = 0 ] ; then
+                eval $hasPam=1
+            fi
+
+            #
             #   Check for braces around initializers
             #
             if [ "$verbose" != 0 ] ; then
@@ -169,9 +184,10 @@ setCompilerOptions()
         #
         #   Enable for all non-GNU O/S
         #
-        eval $hasMmu=1
         eval $hasDynLoad=1
         eval $hasDoubleBraces=0
+        eval $hasPam=0
+        eval $hasMmu=1
     fi
     if [ $os = VXWORKS ] ; then
         eval ${hasDynLoad}=1
@@ -199,6 +215,7 @@ emitCompilerOptions()
     eval v=\$${KIND}_HAS_MMU ;              echo -e "\tBLD_CC_MMU=$v"
     eval v=\$${KIND}_HAS_WARN_UNUSED ;      echo -e "\tBLD_CC_WARN_UNUSED=$v"
     eval v=\$${KIND}_HAS_EDITLINE ;         echo -e "\tBLD_CC_EDITLINE=$v"
+    eval v=\$${KIND}_HAS_PAM ;              echo -e "\tBLD_CC_PAM=$v"
     eval v=\$${KIND}_HAS_STACK_PROTECTOR ;  echo -e "\tBLD_CC_STACK_PROTECTOR=$v"
 }
 
