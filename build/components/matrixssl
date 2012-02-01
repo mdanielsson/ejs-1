@@ -14,7 +14,8 @@ defineComponent() {
     ver="latest"
     search="."
 
-    path=`probe --path "$path" --partial "extensions/matrixssl/$ver" --search "$search" $name`
+    packages=../packages-`echo ${BLD_HOST_OS}-${BLD_HOST_CPU} | tr '[:upper:]' '[:lower:]'`
+    path=`probe --path "$path" --partial "$packages/matrixssl/$ver" --search "$search" $name`
     if [ "$path" = "" ] ; then
         warnComponent $name
         return

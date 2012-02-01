@@ -14,8 +14,9 @@ defineComponent() {
     ver="latest"
     search="."
 
+    packages=../packages-`echo ${BLD_HOST_OS}-${BLD_HOST_CPU} | tr '[:upper:]' '[:lower:]'`
     if [ $BLD_HOST_OS = WIN ] ; then
-        path=`probe --path "$path" --partial "extensions/$name/$ver" --search "$search" $name`
+        path=`probe --path "$path" --partial "$packages/$name/$ver" --search "$search" $name`
         imports="$path/out32dll/libeay32.dll $path/out32dll/ssleay32.dll"
         libs="libeay32 ssleay32"
         iflags="-I$path/inc32"
@@ -33,13 +34,13 @@ defineComponent() {
         #
         #   Use shared libraries
         #
-        #       path=`probe --path "$path" --partial "extensions/$name/$ver" --search "$search" $name`
+        #       path=`probe --path "$path" --partial "$packages/$name/$ver" --search "$search" $name`
         #       imports="$path/libssl.dylib $path/libcrypto.dylib"
         #       path=/usr/lib
         #       libs="ssl crypto"
         #       iflags="-I$path/include"
         #
-        #   path=`probe --path "$path" --partial "extensions/$name/$ver" --search "$search" $name`
+        #   path=`probe --path "$path" --partial "$packages/$name/$ver" --search "$search" $name`
         #   imports="$path/libssl.a $path/libcrypto.a"
         #   libs="ssl.a crypto.a"
         #   iflags="-I$path/include"
@@ -51,7 +52,7 @@ defineComponent() {
         iflags="-I$path/include"
 
     else 
-        path=`probe --path "$path" --partial "extensions/$name/$ver" --search "$search" $name`
+        path=`probe --path "$path" --partial "$packages/$name/$ver" --search "$search" $name`
         imports="$path/libssl.so $path/libcrypto.so"
         libs="ssl crypto"
         iflags="-I$path/include"

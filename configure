@@ -123,11 +123,6 @@ checkSetup() {
         echo "Install this file and retry." 1>&2
         exit 255
     fi
-
-    if [ -d ../packages ] ; then
-        rm -f extensions
-        ln -s ../packages extensions
-    fi
 }
 
 
