@@ -8726,7 +8726,7 @@ static int cmdCallback(MprCmd *cmd, int channel, void *data)
 
     len = mprReadCmdPipe(cmd, channel, mprGetBufEnd(buf), space);
     if (len <= 0) {
-        if (len == 0 || (len < 0 && !(errno == EAGAIN || EWOULDBLOCK))) {
+        if (len == 0 || (len < 0 && !(errno == EAGAIN || errno == EWOULDBLOCK))) {
             if (channel == MPR_CMD_STDOUT && cmd->flags & MPR_CMD_ERR) {
                 /*
                  *  Now that stdout is complete, enable stderr to receive an EOF or any error output.
@@ -27666,7 +27666,7 @@ int mprStartOsService(MprOsService *os)
 #if SOLARIS
     openlog(mprGetAppName(os), LOG_CONS, LOG_LOCAL0);
 #else
-    openlog(mprGetAppName(os), LOG_CONS || LOG_PERROR, LOG_LOCAL0);
+    openlog(mprGetAppName(os), LOG_CONS | LOG_PERROR, LOG_LOCAL0);
 #endif
     return 0;
 }

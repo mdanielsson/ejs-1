@@ -155,7 +155,7 @@ static int patch(char *path)
     stat(path, &sbuf);
     inBuf = (char*) malloc((size_t) sbuf.st_size + 1);
     rc = fread(inBuf, 1, (size_t) sbuf.st_size, ifp);
-    if (rc < 0) {
+    if (rc <= 0) {
         fprintf(stderr, "dsi: Can't read file %s\n", path);
         free(inBuf);
         return -1;
@@ -260,7 +260,7 @@ static int patch(char *path)
             if (strncmp(start, tok, strlen(tok)) == 0) {
                 dsiBuf = (char*) malloc((size_t) sbuf.st_size + 1);
                 rc = fread(dsiBuf, 1, (size_t) sbuf.st_size, dsiFp);
-                if (rc < 0) {
+                if (rc <= 0) {
                     fprintf(stderr, "dsi: Can't read DSI %s\n", dsiPath);
                     return -1;
                 }

@@ -996,6 +996,7 @@ typedef struct MaHost {
 
     MprHashTable    *mimeTypes;             /**< Hash table of mime types (key is extension) */
     MprTime         now;                    /**< When was the current date last computed */
+    MprTime         currentTime;            /**< When currentDate was last calculated */
     char            *currentDate;           /**< Date string for HTTP response headers */
 
 #if BLD_FEATURE_MULTITHREAD

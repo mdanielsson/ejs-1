@@ -9940,7 +9940,6 @@ MaHost *maCreateHost(MaServer *server, cchar *ipAddrPort, MaLocation *location)
         host->ipAddrPort = 0;
         host->name = 0;
     }
-
     host->server = server;
     host->flags = MA_HOST_NO_TRACE;
     host->httpVersion = MPR_HTTP_1_1;
@@ -10616,9 +10615,7 @@ void maAddConn(MaHost *host, MaConn *conn)
     conn->started = mprGetTime(conn);
     conn->seqno = host->connCount++;
 
-    if ((host->now + MPR_TICKS_PER_SEC) < conn->started) {
-        updateCurrentDate(host);
-    }
+    updateCurrentDate(host);
     if (host->timer == 0) {
         startTimer(host);
     }
@@ -10630,10 +10627,14 @@ static void updateCurrentDate(MaHost *host)
 {
     char        *oldDate;
 
-    oldDate = host->currentDate;
     host->now = mprGetTime(host);
-    host->currentDate = maGetDateString(host, 0);
-    mprFree(oldDate);
+    if (host->now > (host->currentTime + MPR_TICKS_PER_SEC - 1)) {
+        oldDate = host->currentDate;
+        host->currentTime = host->now;
+        host->now = mprGetTime(host);
+        host->currentDate = maGetDateString(host, 0);
+        mprFree(oldDate);
+    }
 }
 
 
@@ -15842,7 +15843,8 @@ void maTraceOptions(MaConn *conn)
 
         } else {
             flags = resp->handler->flags;
-            maSetHeader(conn, 0, "Allow", "OPTIONS,TRACE%s%s%s%s%s",
+            maSetHeader(conn, 0, "Allow", "OPTIONS%s%s%s%s%s%s",
+                ((req->host->flags & MA_HOST_NO_TRACE) == 0) ? ",TRACE" : "",
                 (flags & MA_STAGE_GET) ? ",GET" : "",
                 (flags & MA_STAGE_HEAD) ? ",HEAD" : "",
                 (flags & MA_STAGE_POST) ? ",POST" : "",
