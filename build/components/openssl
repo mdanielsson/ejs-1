@@ -14,7 +14,11 @@ defineComponent() {
     ver="latest"
     search="."
 
-    packages=../packages-`echo ${BLD_HOST_OS}-${BLD_HOST_CPU} | tr '[:upper:]' '[:lower:]'`
+    if [ "${BLD_HOST_CPU}" = 'i686' ] ; then
+        packages=../packages-`echo ${BLD_HOST_OS}-x86 | tr '[:upper:]' '[:lower:]'`
+    else 
+        packages=../packages-`echo ${BLD_HOST_OS}-${BLD_HOST_CPU} | tr '[:upper:]' '[:lower:]'`
+    fi
     if [ $BLD_HOST_OS = WIN ] ; then
         path=`probe --path "$path" --partial "$packages/$name/$ver" --search "$search" $name`
         imports="$path/out32dll/libeay32.dll $path/out32dll/ssleay32.dll"
