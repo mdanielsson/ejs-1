@@ -9,7 +9,7 @@ if (test.config["http_client"] == 1 && session["http"]) {
     var http: Http = new Http
 
     http.options(URL)
-    assert(http.header("Allow") == "OPTIONS,TRACE,GET,HEAD,POST,PUT,DELETE")
+    assert(http.header("Allow") == "OPTIONS,GET,HEAD,POST,PUT,DELETE")
 
     http.trace(URL)
     assert(http.code == 406)
