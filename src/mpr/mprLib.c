@@ -28142,7 +28142,7 @@ char *mprUrlEncode(MprCtx ctx, cchar *inbuf)
     mprAssert(inbuf);
 
     for (len = 1, ip = inbuf; *ip; ip++, len++) {
-        if (charMatch[(int) *ip] & MPR_HTTP_ESCAPE_URL) {
+        if (charMatch[(uchar) *ip] & MPR_HTTP_ESCAPE_URL) {
             len += 2;
         }
     }
@@ -28229,7 +28229,7 @@ char *mprEscapeCmd(MprCtx ctx, cchar *cmd, int escChar)
     mprAssert(cmd);
 
     for (len = 1, ip = cmd; *ip; ip++, len++) {
-        if (charMatch[(int) *ip] & MPR_HTTP_ESCAPE_SHELL) {
+        if (charMatch[(uchar) *ip] & MPR_HTTP_ESCAPE_SHELL) {
             len++;
         }
     }
@@ -28269,7 +28269,7 @@ char *mprEscapeHtml(MprCtx ctx, cchar *html)
     int     len;
 
     for (len = 1, ip = html; *ip; ip++, len++) {
-        if (charMatch[(int) *ip] & MPR_HTTP_ESCAPE_HTML) {
+        if (charMatch[(uchar) *ip] & MPR_HTTP_ESCAPE_HTML) {
             len += 5;
         }
     }
