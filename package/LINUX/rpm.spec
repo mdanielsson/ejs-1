@@ -43,6 +43,8 @@ fi
 ldconfig -n !!ORIG_BLD_LIB_PREFIX!!
 
 %preun
+rm -f !!ORIG_BLD_PRD_PREFIX!!/latest
+!!ORIG_BLD_PRD_PREFIX!!/linkup Remove /
 
 %postun
 
