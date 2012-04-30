@@ -7,8 +7,11 @@
 
 if [ -x /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker ] ; then
     PMAKER=/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
-elif [ -x /Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker ] ; then
-    PMAKER=/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
+elif [ -x /Applications/PackageMaker.app/Contents/MacOS/PackageMaker ] ; then
+    PMAKER=/Applications/PackageMaker.app/Contents/MacOS/PackageMaker
+else
+    echo Cant find PackageMaker
+    exit 255
 fi
 
 export BLD_HOST_CPU_MAPPED=$BLD_HOST_CPU
