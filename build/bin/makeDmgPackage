@@ -5,7 +5,11 @@
 #
 ################################################################################
 
-PMAKER=/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
+if [ -x /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker ] ; then
+    PMAKER=/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
+elif [ -x /Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker ] ; then
+    PMAKER=/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
+fi
 
 export BLD_HOST_CPU_MAPPED=$BLD_HOST_CPU
 
