@@ -16,6 +16,8 @@ defineComponent() {
 
     if [ "${BLD_HOST_CPU}" = 'i686' ] ; then
         packages=../packages-`echo ${BLD_HOST_OS}-x86 | tr '[:upper:]' '[:lower:]'`
+    elif [ "${BLD_HOST_CPU}" = 'x86_64' ] ; then
+        packages=../packages-`echo ${BLD_HOST_OS}-x64 | tr '[:upper:]' '[:lower:]'`
     else 
         packages=../packages-`echo ${BLD_HOST_OS}-${BLD_HOST_CPU} | tr '[:upper:]' '[:lower:]'`
     fi
