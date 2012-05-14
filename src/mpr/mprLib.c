@@ -11681,6 +11681,7 @@ void mprDoEvent(MprEvent *event, void *workerThread)
     if (event->flags & MPR_EVENT_THREAD && workerThread == 0) {
         /*
          *  Recall mprDoEvent but via a worker thread. If none available, then handle inline.
+         *  This means the selecting thread may get used.
          */
         if (mprStartWorker(event->dispatcher, (MprWorkerProc) mprDoEvent, (void*) event, event->priority) == 0) {
             return;
