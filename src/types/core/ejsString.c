@@ -865,12 +865,22 @@ static EjsVar *match(Ejs *ejs, EjsString *sp, int argc, EjsVar **argv)
             len = matches[i + 1] - matches[i];
             match = ejsCreateStringWithLength(ejs, &sp->value[matches[i]], len);
             ejsSetProperty(ejs, (EjsVar*) results, resultCount++, (EjsVar*) match);
+#if WAS
             rp->endLastMatch = matches[i + 1];
             if (rp->global) {
                 break;
             }
+#else
+            if (rp->global) {
+                if (matches[1] == rp->endLastMatch) {
+                    rp->endLastMatch++;
+                } else {
+                    rp->endLastMatch = matches[1];
+                }
+                break;
+            }
+#endif
         }
-
     } while (rp->global);
 
     if (results == NULL) {
