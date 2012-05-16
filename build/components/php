@@ -2,7 +2,7 @@
 #   PHP
 #
 defineComponent() {
-	local path name search ver imports libs iflags extensions file resolved
+	local os path name search ver imports libs iflags extensions file resolved
 
     if [ $KIND = "BUILD" -a $BLD_CROSS = 1 ] ; then
         echo "only used as a host component"
@@ -13,12 +13,13 @@ defineComponent() {
     search="."
     ver="latest"
 
+    os="${BLD_HOST_OS}" ; if [ "${os}" = "WIN" ] ; then os=WINDOWS ; fi
     if [ "${BLD_HOST_CPU}" = 'i686' ] ; then
-        packages=../packages-`echo ${BLD_HOST_OS}-x86 | tr '[:upper:]' '[:lower:]'`
+        packages=../packages-`echo ${os}-x86 | tr '[:upper:]' '[:lower:]'`
     elif [ "${BLD_HOST_CPU}" = 'x86_64' ] ; then
-        packages=../packages-`echo ${BLD_HOST_OS}-x64 | tr '[:upper:]' '[:lower:]'`
+        packages=../packages-`echo ${os}-x64 | tr '[:upper:]' '[:lower:]'`
     else 
-        packages=../packages-`echo ${BLD_HOST_OS}-${BLD_HOST_CPU} | tr '[:upper:]' '[:lower:]'`
+        packages=../packages-`echo ${os}-${BLD_HOST_CPU} | tr '[:upper:]' '[:lower:]'`
     fi
     path=`probe --path "$path" --partial "$packages/php/$ver" --search "$search" $name`
     if [ "$path" = "" ] ; then
