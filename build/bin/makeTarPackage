@@ -18,8 +18,11 @@ makeTarPackage() {
     #
     cd ${ROOT_DIR}
 
-    os=${BLD_HOST_OS} ; if [ "$BLD_HOST_OS" = "WIN" ] ; then os=WINDOWS ; fi
-    file=`echo ${BLD_PRODUCT}-${BLD_VERSION}-${BLD_NUMBER}-${BLD_HOST_DIST}-${os}-${BLD_HOST_CPU}.tgz | tr '[A-Z]' '[a-z]'`
+    os=${BLD_HOST_OS} ; if [ "$os" = "WIN" ] ; then os=WINDOWS ; fi
+    cpu=${BLD_HOST_CPU} ; if [ "$cpu" = "i686" ] ; then cpu=x86 ; fi
+    if [ "$cpu" = "x86_64" ] ; then cpu=x64 ; fi
+
+    file=`echo ${BLD_PRODUCT}-${BLD_VERSION}-${BLD_NUMBER}-${BLD_HOST_DIST}-${os}-${cpu}.tgz | tr '[A-Z]' '[a-z]'`
     rm -f ${file}*
     srcPkg=`echo ${BLD_PRODUCT}-src-${BLD_VERSION}-${BLD_NUMBER}`.tgz
     files=`echo *.tgz | sed "s^$srcPkg^^"`
