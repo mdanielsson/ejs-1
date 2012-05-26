@@ -67,11 +67,15 @@ int main(int argc, char *argv[])
     openSignals();
 
     if (nextArg >= argc) {
-        patchFileList(stdin);
+        if (patchFileList(stdin) < 0) {
+            return -1;
+        }
         
     } else {
         for (i = nextArg; !finished && i < argc; i++) {
-            patch(argv[i]);
+            if (patch(argv[i]) < 0) {
+                return -1;
+            }
         }
     }
     return 0;
@@ -99,7 +103,9 @@ static int patchFileList(FILE *fp)
         if (cp[len - 1] == '\n') {
             cp[len - 1] = '\0';
         }
-        patch(cp);
+        if (patch(cp) < 0) {
+            return -1;
+        }
     }
     return 0;
 }

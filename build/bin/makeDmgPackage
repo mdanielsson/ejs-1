@@ -7,8 +7,16 @@
 
 if [ -x /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker ] ; then
     PMAKER=/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
+
 elif [ -x /Applications/PackageMaker.app/Contents/MacOS/PackageMaker ] ; then
     PMAKER=/Applications/PackageMaker.app/Contents/MacOS/PackageMaker
+
+elif [ -x /Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker ] ; then
+    PMAKER=/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
+
+elif [ -x /Xcode4/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker ] ; then
+    PMAKER=/Xcode4//Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
+
 else
     echo Cant find PackageMaker
     exit 255
