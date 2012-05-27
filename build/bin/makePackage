@@ -378,7 +378,7 @@ createEnvelopes() {
     baseName=`echo ${baseName} | tr '[A-Z]' '[a-z]'`
     cd ${ROOT_DIR} >/dev/null
     count=0
-    for fmt in deb rpm tar exe ; do
+    for fmt in tar exe ; do
 
         if ! ls *.${fmt} >/dev/null 2>&1 ; then
             continue
