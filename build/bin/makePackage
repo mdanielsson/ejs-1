@@ -405,14 +405,6 @@ createEnvelopes() {
         count=`expr $count + 1`
     done
     cd ${HOME} >/dev/null
-
-    if [ "$count" = 0 ] ; then
-        if [ $BLD_BUILD_OS != MACOSX ] ; then
-            echo "Could not find any packages to envelope in $ROOT_DIR"
-            echo "Using base name $baseName"
-            exit 255
-        fi
-    fi
 }
 
 copyImages() {
