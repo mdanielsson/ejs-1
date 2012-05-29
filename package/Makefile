@@ -9,7 +9,8 @@ include 		.makedep
 PRE_DIRS		= $(BLD_HOST_OS)
 BUILD_DEPTH		?= 2
 BASE_NAME		:= "$(BLD_PRODUCT)-$(BLD_VERSION)-$(BLD_NUMBER)-$(BLD_HOST_DIST)-$(BLD_HOST_OS)-$(BLD_HOST_CPU)"
-PACKS			:= binary dev source
+# PACKS			:= binary dev source
+PACKS			:= source
 PKG_DIR			:= `pwd`/../staging
 INS_DIR			:= c:/tmp/testInsEjs
 
@@ -38,7 +39,7 @@ packageExtra:
 	if [ "$(BUILD_DEPTH)" -ge 2 ] ; then \
 		fakePriv "OPTIONS=$(OPTIONS) TRACE=$(TRACE) \
 			$(BLD_TOP)/build/bin/makeInstall --root=$(PKG_DIR) --package $(PACKS) && \
-			$(BLD_TOOLS_DIR)/makePackage --root=$(PKG_DIR)" ; \
+			$(BLD_TOOLS_DIR)/makePackage --root=$(PKG_DIR) $(PACKS)" ; \
 	else \
 		echo "Packaging skipped at build depth $(BUILD_DEPTH)" ; \
 	fi

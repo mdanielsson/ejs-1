@@ -27,6 +27,7 @@
 DRY_RUN=
 QUIET=0
 TASK=Package
+SUFFIXES="bin dev src"
 MD5=
 
 #
@@ -161,7 +162,7 @@ patchSource() {
 createArchives() {
     local base dir name listLoc fromFiles
 
-    for suffix in bin dev src ; do
+    for suffix in $SUFFIXES; do
         echo -en "\n#\n#  "
 
         name="${BLD_PRODUCT}-${suffix}"
@@ -451,12 +452,16 @@ done
 
 PACKS=$*
 PACKS=${PACKS:=binary dev}
-
+if [ "${PACKS}" = source ] ; then
+    SUFFIXES='src'
+fi
 setup
 createArchives
-createScripts
-createPlatformPackages
-createEnvelopes
+if [ "${PACKS}" != source ] ; then
+    createScripts
+    createPlatformPackages
+    createEnvelopes
+fi
 copyImages
 createChecksums
 cleanup
