@@ -1,6 +1,4 @@
-#
-#	Makefile.top -- Top level Makefile for the Embedthis Build System
-#					Included by $(BLD_TOP)/Makefile only.
+# #	Makefile.top -- Top level Makefile for the Embedthis Build System #					Included by $(BLD_TOP)/Makefile only.
 #
 #	Copyright (c) Embedthis Software LLC, 2003-2012. All Rights Reserved.
 #
@@ -37,7 +35,6 @@ BUILD_CHECK	:= buildCheck
 FIRST		:= first
 SHELL		:= bash
 IMG_NAME	= $(BLD_PRODUCT)-$(BLD_VERSION)-$(BLD_NUMBER)
-SRC_NAME	= $(BLD_PRODUCT)-src-$(BLD_VERSION)-$(BLD_NUMBER)
 
 #
 #	Conditionally read in the Make rules and templates. The buildConfig.make
@@ -142,7 +139,7 @@ incVersion:
 	sed s/BLD_NUMBER=\"$(BLD_NUMBER)\"/BLD_NUMBER=\"$${num}\"/ </tmp/build$$$$.tmp >build/product.config
 	./configure
 
-upload: binary source
+upload: binary
 
 binary:
 	if [ "$(BUILD_UPLOAD)" = "" ] ; then \
@@ -157,21 +154,4 @@ binary:
 			echo http --upload --form "server=`hostname`&key=$(BUILD_KEY)" $$name $(BUILD_UPLOAD); \
 			http -q --upload --form "server=`hostname`&key=$(BUILD_KEY)" $$name $(BUILD_UPLOAD); \
 		done ; \
-	fi
-
-source:
-	if [ "$(BUILD_UPLOAD_SOURCE)" = "true" ] ; then \
-		if [ "$(BUILD_UPLOAD)" = "" ] ; then \
-			echo "Can't upload: BUILD_UPLOAD is not defined" >&2; \
-			exit 2 ; \
-		fi ; \
-		cd releases >/dev/null 2>&1 ; \
-		if ls $(IMG_NAME)* >/dev/null 2>&1 ; then \
-			for name in $(SRC_NAME)* md5-$(SRC_NAME)* ; \
-			do \
-				chmod 664 $$name ; \
-				echo http --upload --form "server=`hostname`&key=$(BUILD_KEY)" $$name $(BUILD_UPLOAD); \
-				http -q --upload --form "server=`hostname`&key=$(BUILD_KEY)" $$name $(BUILD_UPLOAD); \
-			done ; \
-		fi ; \
 	fi
