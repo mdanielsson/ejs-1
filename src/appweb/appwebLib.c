@@ -14361,7 +14361,9 @@ static bool parseRequest(MaConn *conn, MaPacket *packet)
         return 0;
     }
     if (parseFirstLine(conn, packet)) {
-        parseHeaders(conn, packet);
+        if (!parseHeaders(conn, packet)) {
+            return 0;
+        }
     } else {
         return 0;
     }

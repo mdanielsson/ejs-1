@@ -30,13 +30,13 @@ diff import sync:
 	@if [ ! -x $(BLD_TOOLS_DIR)/edep$(BLD_BUILD_EXE) -a "$(BUILDING_CROSS)" != 1 ] ; then \
 		$(MAKE) -S --no-print-directory _RECURSIVE_=1 -C $(BLD_TOP)/build/src compile ; \
 	fi
-	@import.ksh --$@ --src ../tools.stable --dir . ../tools.stable/build/export/export.gen
-	@import.ksh --$@ --src ../tools.stable --dir . ../tools.stable/build/export/export.configure
-	@import.ksh --$@ --src ../mpr.stable 	--dir . ../mpr.stable/build/export/export.gen
-	@import.ksh --$@ --src ../mpr.stable 	--dir ./src/include --strip ./all/ ../mpr.stable/build/export/export.h
-	@import.ksh --$@ --src ../mpr.stable 	--dir ./src/mpr --strip ./all/ ../mpr.stable/build/export/export.c
-	@import.ksh --$@ --src ../appweb.stable --dir ./src/include --strip ./all/ ../appweb.stable/build/export/export.h
-	@import.ksh --$@ --src ../appweb.stable --dir ./src/appweb --strip ./all/ ../appweb.stable/build/export/export.c
+	@import.ksh --$@ --src ../tools.3 --dir . ../tools.3/build/export/export.gen
+	@import.ksh --$@ --src ../tools.3 --dir . ../tools.3/build/export/export.configure
+	@import.ksh --$@ --src ../mpr.3 	--dir . ../mpr.3/build/export/export.gen
+	@import.ksh --$@ --src ../mpr.3 	--dir ./src/include --strip ./all/ ../mpr.3/build/export/export.h
+	@import.ksh --$@ --src ../mpr.3 	--dir ./src/mpr --strip ./all/ ../mpr.3/build/export/export.c
+	@import.ksh --$@ --src ../appweb.3 --dir ./src/include --strip ./all/ ../appweb.3/build/export/export.h
+	@import.ksh --$@ --src ../appweb.3 --dir ./src/appweb --strip ./all/ ../appweb.3/build/export/export.c
 	@echo
 
 #
