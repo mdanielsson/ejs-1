@@ -216,14 +216,13 @@ createArchives() {
             echo "tar -czf ${file} --files-from=$fromFiles"
             tar -czf ${file} --files-from=$fromFiles
 
-            echo -e "\n#\n#  Create zip images for the src distribution ... \n#"
-
-            file=`echo ${BLD_PRODUCT}-${BLD_VERSION}-${BLD_NUMBER}-src.zip`
-            file="${ROOT_DIR}/$file"
-            [ $BLD_HOST_OS = WIN ] && file=`cygpath "${file}"`
-            ${RM} -f "${file}"
-            echo "cat fileList.txt | zip -q ${file} -@"
-            cat "$dir/fileList.txt" | zip -q "${file}" -@
+#              echo -e "\n#\n#  Create zip images for the src distribution ... \n#"
+#              file=`echo ${BLD_PRODUCT}-${BLD_VERSION}-${BLD_NUMBER}-src.zip`
+#              file="${ROOT_DIR}/$file"
+#              [ $BLD_HOST_OS = WIN ] && file=`cygpath "${file}"`
+#              ${RM} -f "${file}"
+#              echo "cat fileList.txt | zip -q ${file} -@"
+#              cat "$dir/fileList.txt" | zip -q "${file}" -@
             cd $HOME >/dev/null
 
         else
