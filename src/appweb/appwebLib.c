@@ -3,7 +3,7 @@
 /******************************************************************************/
 /* 
  *  This file is an amalgamation of all the individual source code files for
- *  Embedthis Appweb 3.3.3.
+ *  Embedthis Appweb 3.3.4.
  *
  *  Catenating all the source into a single file makes embedding simpler and
  *  the resulting application faster, as many compilers can do whole file
@@ -6843,8 +6843,10 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
     MaConn      *conn;
     MaResponse  *resp;
     MprBuf      *buf;
-    char        *mark;
     int         space, nbytes, err;
+#if BLD_DEBUG
+    char        *mark;
+#endif
 
     mprLog(cmd, 6, "CGI callback channel %d", channel);
     
@@ -6885,7 +6887,9 @@ static void cgiEvent(MaQueue *q, MprCmd *cmd, int channel)
                     break;
                 }
             }
+#if BLD_DEBUG
             mark = mprGetBufEnd(buf);
+#endif
             nbytes = mprReadCmdPipe(cmd, channel, mprGetBufEnd(buf), space);
             mprLog(q, 5, "CGI: read from gateway %d on channel %d. errno %d", nbytes, channel, 
                     nbytes >= 0 ? 0 : mprGetOsError());
