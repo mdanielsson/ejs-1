@@ -112,7 +112,6 @@
 
 /* Begin PBXBuildFile section */
 		C916FB58107E7A050090F86A /* ejsJSON.c in Sources */ = {isa = PBXBuildFile; fileRef = C916FB57107E7A050090F86A /* ejsJSON.c */; };
-		C928EF3D10741AE900A81F4D /* libmatrixsslstatic.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C928EF3C10741AE800A81F4D /* libmatrixsslstatic.a */; };
 		C97625440FD071CF009C78E1 /* ejsc.c in Sources */ = {isa = PBXBuildFile; fileRef = C97624200FD06F8B009C78E1 /* ejsc.c */; };
 		C97625A30FD07280009C78E1 /* doc.c in Sources */ = {isa = PBXBuildFile; fileRef = C976243F0FD06F8B009C78E1 /* doc.c */; };
 		C97625A40FD07280009C78E1 /* docFiles.c in Sources */ = {isa = PBXBuildFile; fileRef = C97624410FD06F8B009C78E1 /* docFiles.c */; };
@@ -1121,7 +1120,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				C9D84AF41051C1940022DB20 /* libmpr.dylib in Frameworks */,
-				C928EF3D10741AE900A81F4D /* libmatrixsslstatic.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

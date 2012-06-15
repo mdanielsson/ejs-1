@@ -484,7 +484,6 @@ EjsFrame *ejsCreateFrame(Ejs *ejs, EjsFunction *src)
     frame->function.block.numInherited = src->block.numInherited;
     frame->function.block.hasScriptFunctions = src->block.hasScriptFunctions;
     frame->function.block.referenced = src->block.referenced;
-    frame->function.block.breakCatch = src->block.breakCatch;
 
     frame->function.numArgs = src->numArgs;
     frame->function.numDefault = src->numDefault;

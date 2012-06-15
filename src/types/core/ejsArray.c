@@ -1227,12 +1227,11 @@ static int partition(Ejs *ejs, EjsVar **data, int dir, int p, int r)
 
     x = data[r];
     j = p - 1;
-
+    if ((sx = ejsToString(ejs, x)) == 0) {
+        return 0;
+    }
     for (i = p; i < r; i++) {
-
-        sx = ejsToString(ejs, x);
-        so = ejsToString(ejs, data[i]);
-        if (sx == 0 || so == 0) {
+        if ((so = ejsToString(ejs, data[i])) == 0) {
             return 0;
         }
         rc = strcmp(sx->value, so->value) * dir;

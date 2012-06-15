@@ -23,6 +23,10 @@
 
 include		build/make/Makefile.top
 
+APPWEB  := appweb-3.3.4
+MPR     := mpr-3.3.4
+TOOLS   := tools
+
 dependExtra:
 	@[ ! -L extensions ] && ln -s ../packages extensions ; true
 
@@ -30,13 +34,13 @@ diff import sync:
 	@if [ ! -x $(BLD_TOOLS_DIR)/edep$(BLD_BUILD_EXE) -a "$(BUILDING_CROSS)" != 1 ] ; then \
 		$(MAKE) -S --no-print-directory _RECURSIVE_=1 -C $(BLD_TOP)/build/src compile ; \
 	fi
-	@import.ksh --$@ --src ../tools.3 --dir . ../tools.3/build/export/export.gen
-	@import.ksh --$@ --src ../tools.3 --dir . ../tools.3/build/export/export.configure
-	@import.ksh --$@ --src ../mpr.3 	--dir . ../mpr.3/build/export/export.gen
-	@import.ksh --$@ --src ../mpr.3 	--dir ./src/include --strip ./all/ ../mpr.3/build/export/export.h
-	@import.ksh --$@ --src ../mpr.3 	--dir ./src/mpr --strip ./all/ ../mpr.3/build/export/export.c
-	@import.ksh --$@ --src ../appweb.3 --dir ./src/include --strip ./all/ ../appweb.3/build/export/export.h
-	@import.ksh --$@ --src ../appweb.3 --dir ./src/appweb --strip ./all/ ../appweb.3/build/export/export.c
+	@import.ksh --$@ --src ../$(TOOLS) --dir . ../$(TOOLS)/build/export/export.gen
+	@import.ksh --$@ --src ../$(TOOLS) --dir . ../$(TOOLS)/build/export/export.configure
+	@import.ksh --$@ --src ../$(MPR) 	--dir . ../$(MPR)/build/export/export.gen
+	@import.ksh --$@ --src ../$(MPR) 	--dir ./src/include --strip ./all/ ../$(MPR)/build/export/export.h
+	@import.ksh --$@ --src ../$(MPR) 	--dir ./src/mpr --strip ./all/ ../$(MPR)/build/export/export.c
+	@import.ksh --$@ --src ../$(APPWEB) --dir ./src/include --strip ./all/ ../$(APPWEB)/build/export/export.h
+	@import.ksh --$@ --src ../$(APPWEB) --dir ./src/appweb --strip ./all/ ../$(APPWEB)/build/export/export.c
 	@echo
 
 #

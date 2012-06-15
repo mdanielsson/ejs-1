@@ -1408,21 +1408,33 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
 
         /*
          *  Invoke finally blocks before acting on: return, returnValue and break (goto) opcodes.
-         *  Injected by the compiler prior to break, continue and return statements. Also at the end of a try block
-         *  if there is a finally block.
+         *  Injected by the compiler prior to break, continue and return statements.
          *
          *      finally
          */
-        CASE (EJS_OP_FINALLY):
+        CASE (EJS_OP_CALL_FINALLY):
+            if ((ex = findExceptionHandler(ejs, EJS_EX_FINALLY)) != 0) {
+                uchar *savePC;
+                if (FRAME->function.inCatch) {
+                    popExceptionBlock(ejs);
+                }
+                savePC = FRAME->pc;
+                createExceptionBlock(ejs, ex, EJS_EX_FINALLY);
+                BLOCK->restartAddress = savePC;
+            }
+            BREAK;
+
+        /*
+         *  Invoke finally blocks before leaving try block. These are injected by the compiler.
+         *
+         *      finally
+         */
+        CASE (EJS_OP_GOTO_FINALLY):
             if ((ex = findExceptionHandler(ejs, EJS_EX_FINALLY)) != 0) {
                 if (FRAME->function.inCatch) {
                     popExceptionBlock(ejs);
-                    push(FRAME->pc);
-                    createExceptionBlock(ejs, ex, EJS_EX_FINALLY);
-                    BLOCK->breakCatch = 1;
-                } else {
-                    createExceptionBlock(ejs, ex, EJS_EX_FINALLY);
                 }
+                createExceptionBlock(ejs, ex, EJS_EX_FINALLY);
             }
             BREAK;
 
@@ -1434,10 +1446,10 @@ static void VM(Ejs *ejs, EjsFunction *fun, EjsVar *thisObj, int argc, int stackA
             if (FRAME->function.inException) {
                 FRAME->function.inCatch = 0;
                 FRAME->function.inException = 0;
-                if (BLOCK->breakCatch) {
-                    /* Restart the original instruction (return, break, continue) */
+                if (BLOCK->restartAddress) {
+                    uchar *savePC = BLOCK->restartAddress;
                     popExceptionBlock(ejs);
-                    FRAME->pc = (uchar*) pop(ejs);
+                    FRAME->pc = savePC;
                 } else {
                     offset = findEndException(ejs);
                     FRAME->pc = &FRAME->function.body.code.byteCode[offset];

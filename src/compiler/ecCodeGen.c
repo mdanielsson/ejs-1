@@ -340,7 +340,7 @@ static void genBreak(EcCompiler *cp, EcNode *np)
     state = cp->state;
 
     if (state->captureBreak) {
-        ecEncodeOpcode(cp, EJS_OP_FINALLY);
+        ecEncodeOpcode(cp, EJS_OP_CALL_FINALLY);
     }
     if (state->code->jumps == 0 || !(state->code->jumpKinds & EC_JUMP_BREAK)) {
         genError(cp, np, "Illegal break statement");
@@ -434,7 +434,7 @@ static void genContinue(EcCompiler *cp, EcNode *np)
     ENTER(cp);
 
     if (cp->state->captureBreak) {
-        ecEncodeOpcode(cp, EJS_OP_FINALLY);
+        ecEncodeOpcode(cp, EJS_OP_CALL_FINALLY);
     }
     if (cp->state->code->jumps == 0 || !(cp->state->code->jumpKinds & EC_JUMP_CONTINUE)) {
         genError(cp, np, "Illegal continue statement");
@@ -2522,7 +2522,7 @@ static void genReturn(EcCompiler *cp, EcNode *np)
     ENTER(cp);
 
     if (cp->state->captureBreak) {
-        ecEncodeOpcode(cp, EJS_OP_FINALLY);
+        ecEncodeOpcode(cp, EJS_OP_CALL_FINALLY);
     }
     if (np->left) {
         fun = cp->state->currentFunction;
@@ -2826,7 +2826,9 @@ static void genTry(EcCompiler *cp, EcNode *np)
      *  Process the try block. Will add a goto into either the finally block or if no finally block,
      *  to after the last catch.
      */
+    state->captureBreak = np->exception.finallyBlock ? 1 : 0;
     processNode(cp, np->exception.tryBlock);
+    state->captureBreak = 0;
 
     if (np->exception.catchClauses) {
         next = 0;
@@ -2888,9 +2890,8 @@ static void genTry(EcCompiler *cp, EcNode *np)
     copyCodeBuffer(cp, state->code, np->exception.tryBlock->code);
 
     if (np->exception.finallyBlock) {
-        ecEncodeOpcode(cp, EJS_OP_FINALLY);
-    }
-    if (len < 0x7f && cp->optimizeLevel > 0) {
+        ecEncodeOpcode(cp, EJS_OP_GOTO_FINALLY);
+    } else if (len < 0x7f && cp->optimizeLevel > 0) {
         ecEncodeOpcode(cp, EJS_OP_GOTO_8);
         ecEncodeByte(cp, len);
     } else {

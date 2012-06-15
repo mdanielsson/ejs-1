@@ -200,5 +200,6 @@ static void *opcodeJump[] = {
     &&EJS_OP_TYPE_OF,
     &&EJS_OP_USHR,
     &&EJS_OP_XOR,
-    &&EJS_OP_FINALLY,
+    &&EJS_OP_CALL_FINALLY,
+    &&EJS_OP_GOTO_FINALLY,
 };

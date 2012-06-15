@@ -876,6 +876,7 @@ typedef struct EjsBlock {
     struct EjsVar   *prevException;                 /**< Previous exception if nested exceptions */
     EjsVar          **stackBase;                    /**< Start of stack in this block */
     EjsTrait        *traits;                        /**< Property trait descriptions */
+    uchar           *restartAddress;                /**< Instruction restart after finally block */
 
     int             numTraits: 16;                  /**< Number of traits */
     int             sizeTraits: 16;                 /**< Size of traits array */
@@ -883,7 +884,6 @@ typedef struct EjsBlock {
     uint            dynamicInstance : 1;            /**< Instances may add properties */
     uint            hasScriptFunctions: 1;          /**< Block has non-native functions requiring namespaces */
     uint            referenced: 1;                  /**< Block has a reference to it */
-    uint            breakCatch: 1;                  /**< Return, break or continue in a catch block */
     uint            nobind: 1;                      /**< Don't bind to properties in this block */
 } EjsBlock;
 

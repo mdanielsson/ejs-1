@@ -246,7 +246,8 @@ EjsOptable ejsOptable[] = {
     {   "TYPE_OF",                  -1,         { EBC_NONE,                               },},
     {   "USHR",                     -1,         { EBC_NONE,                               },},
     {   "XOR",                      -1,         { EBC_NONE,                               },},
-    {   "FINALLY",                   0,         { EBC_NONE,                               },},
+    {   "CALL_FINALLY",              0,         { EBC_NONE,                               },},
+    {   "GOTO_FINALLY",              0,         { EBC_NONE,                               },},
     {   NULL,                        0,         { EBC_NONE,                               },},
 };
 #endif /* EJS_DEFINE_OPTABLE */
