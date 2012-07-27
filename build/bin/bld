@@ -836,13 +836,17 @@ if [ "$BLD_WIN_LIKE" = 1 -o "$OS" = "BREW" -o "$OS" = "BREWSIM" ] ; then
                 echo "bld: $BLD_RC failed"
                 exit 255
             fi
-        elif [ $OS != WINCE ] ; then
-            RES_OBJ=.dummy.res
-            echo >.dummy.rc
-            run "$BLD_RC" /r .dummy.rc >/dev/null
-            if [ $? != 0 ] ; then
-                echo "bld: $BLD_RC failed"
-                exit 255
+        elif [ $OS = WIN ] ; then
+            # if [ "${PROCESSOR_ARCHITECTURE}" = AMD64 -o "${PROCESSOR_ARCHITEW6432}" = AMD64 ] ; then
+            cl=`type "${BLD_CC}"`
+            if [ "${cl/Studio 11.0}" != "${cl}" ] ; then
+                RES_OBJ=.dummy.res
+                echo >.dummy.rc
+                run "$BLD_RC" /r .dummy.rc >/dev/null
+                if [ $? != 0 ] ; then
+                    echo "bld: $BLD_RC failed"
+                    exit 255
+                fi
             fi
         fi
 
