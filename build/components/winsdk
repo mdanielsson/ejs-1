@@ -12,7 +12,7 @@ defineComponent() {
     partial="Include/um/WinBase.h"
     path=`probe --emit-dir --path "$1" --partial "$partial" $name`
     if [ "$path" = "" ] ; then
-        partial="Include/um/WinBase.h"
+        partial="Include/WinBase.h"
         path=`probe --emit-dir --path "$1" --partial "$partial" $name`
     fi
     if [ "$path" = "" ] ; then
