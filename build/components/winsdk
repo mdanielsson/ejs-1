@@ -8,10 +8,13 @@ defineComponent() {
         echo 
         return 0
     fi
-
     name=winsdk
-    partial="Include/WinBase.h"
+    partial="Include/um/WinBase.h"
     path=`probe --emit-dir --path "$1" --partial "$partial" $name`
+    if [ "$path" = "" ] ; then
+        partial="Include/um/WinBase.h"
+        path=`probe --emit-dir --path "$1" --partial "$partial" $name`
+    fi
     if [ "$path" = "" ] ; then
         warnComponent "Windows SDK" \
             "Download from http://msdn.microsoft.com/en-us/windowsserver/bb980924.aspx\n"
@@ -82,6 +85,26 @@ setWinEnv()
         bldInclude="$VS_DOS/VC/ATLMFC/INCLUDE;$VS_DOS/VC/INCLUDE;$VS_DOS/VC/PlatformSDK/include;$VS_DOS/SDK/v2.0/include"
         bldLib="$VS_DOS/VC/ATLMFC/LIB;$VS_DOS/VC/LIB;$VS_DOS/VC/PlatformSDK/lib;$VS_DOS/SDK/v2.0/lib;$VS_DOS/PlatformSDK/include/mfc"
         version=14
+
+    elif [ "${cc%Visual Studio 11*}" != "${cc}" -a "$cldir" != AMD64 ] ; then
+        #
+        #   Visual Studio 2012
+        #
+        bldPath="$VS/Common7/IDE:$VS/VC/BIN:$VS/Common7/Tools:$VS/SDK/v3.5/bin:$VS/VC/VCPackages"
+        bldInclude="$VS_DOS/VC/INCLUDE"
+        bldLib="$VS_DOS/VC/LIB"
+        version=17
+
+        #
+        #	Add the Windows SDK
+        #
+        bldPath="$bldPath:$winsdk/bin"
+        bldInclude="$bldInclude;$WIN_SDK/include;$WIN_SDK/include/um;$WIN_SDK/include/shared"
+        if [ -x "$WIN_SDK/LIB/win8/um" ] ; then
+            bldLib="$bldLib;$WIN_SDK/LIB/win8/um/x86"
+        else
+            bldLib="$bldLib;$WIN_SDK/LIB"
+        fi
 
     elif [ "${cc%Visual Studio 10*}" != "${cc}" -a "$cldir" != AMD64 ] ; then
         #
