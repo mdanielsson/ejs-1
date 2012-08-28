@@ -25007,7 +25007,7 @@ int mprStartWorker(MprCtx ctx, MprWorkerProc proc, void *data, int priority)
 static void pruneWorkers(MprWorkerService *ws, MprEvent *timer)
 {
     MprWorker     *worker;
-    int           index, toTrim;
+    int           index;
 
     if (mprGetDebugMode(ws)) {
         return;
@@ -25017,9 +25017,8 @@ static void pruneWorkers(MprWorkerService *ws, MprEvent *timer)
      *  the last period.
      */
     mprLock(ws->mutex);
-    toTrim = (ws->pruneHighWater - ws->minThreads) / 2;
 
-    for (index = 0; toTrim-- > 0 && index < ws->idleThreads->length; index++) {
+    for (index = 0; index < ws->idleThreads->length; index++) {
         if (ws->numThreads <= ws->minThreads) {
             break;
         }
@@ -25186,7 +25185,10 @@ static int changeState(MprWorker *worker, int state)
     MprList             *lp;
 
     mprAssert(worker->state != state);
-
+    if (worker->state == state) {
+        mprLog(worker, 4, "changeState already in desired state %d", state);
+        return 0;
+    }
     ws = worker->workerService;
 
     lp = 0;
