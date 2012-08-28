@@ -16,7 +16,7 @@ cpy -e Makefile "${DIR}"
 cpy -w -e "*.TXT" "${DIR}"
 cpy -m 0755 configure "${DIR}"
 cpy -p obj/Makefile lib/Makefile modules/Makefile bin/Makefile "${DIR}"
-cpy -p -d build -c "Makefile|Makefile.top|configure.${BLD_PRODUCT}|*.defaults|config.*|*.make" "*" "${DIR}"
+cpy -p -d build -c "Makefile|Makefile.top|configure.${BLD_PRODUCT}|\.defaults|config.*|\.make" "*" "${DIR}"
 cpy -m 0755 -p -d build configure.${BLD_PRODUCT} "${DIR}"
 cpy -m 0755 -p -d build/bin bld getlib makedep priv fakePriv mkdmg utest utest.worker "${DIR}"
 cpy -m 0755 -p -d build/bin "make*Package*" makeInstall all-in-one "${DIR}"
@@ -47,7 +47,7 @@ cpy -f "${docFilter}" doc "${DIR}"
 samplesFilter="\.mod$|\.so$|\.dylib$|\.js$|\.o"
 cpy -f "${samplesFilter}" samples "${DIR}"
 
-projectsFilter="WIN|/Debug|/Release|\.user|\.suo|\.ncb|*.mode1v3|*.pbxuser|/ejs.build/|iphone"
+projectsFilter="WIN|/Debug|/Release|\.user|\.suo|\.ncb|\.mode1v3|\.pbxuser|/ejs.build/|iphone"
 cpy -f "${projectsFilter}" projects "${DIR}"
 
 cat src/include/master/buildConfig.h | sed 's/-VERSION-/${BLD_VERSION}/;s/-NUMBER-/${BLD_NUMBER}/' \
