@@ -245,7 +245,7 @@ static bool parseArgs(Mpr *mpr, int argc, char **argv)
                     return 0;
                 }
                 *value++ = '\0';
-                while (isspace((int) *value)) {
+                while (isspace((uchar) *value)) {
                     value++;
                 }
                 mprAddItem(headers, mprCreateKeyPair(headers, key, value));
@@ -836,7 +836,7 @@ static bool isPort(cchar *name)
     cchar   *cp;
 
     for (cp = name; *cp && *cp != '/'; cp++) {
-        if (!isdigit((int) *cp) || *cp == '.') {
+        if (!isdigit((uchar) *cp) || *cp == '.') {
             return 0;
         }
     }
@@ -889,7 +889,7 @@ static void showOutput(MprHttp *http, cchar *buf, int count)
     }
 
     for (i = 0; i < count; i++) {
-        if (!isprint((int) buf[i]) && buf[i] != '\n' && buf[i] != '\r' && buf[i] != '\t') {
+        if (!isprint((uchar) buf[i]) && buf[i] != '\n' && buf[i] != '\r' && buf[i] != '\t') {
             isBinary = 1;
             break;
         }
@@ -1025,7 +1025,7 @@ static char *getpass(char *prompt)
         } else if (c == 3) {            /* Control C */
             fputs("^C\n", stderr);
             exit(255);
-        } else if (!iscntrl(c) && (i < (int) sizeof(password) - 1)) {
+        } else if (!iscntrl((uchar) c) && (i < (int) sizeof(password) - 1)) {
             password[i] = c;
             fputc('*', stderr);
         } else {

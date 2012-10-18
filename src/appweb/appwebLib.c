@@ -629,7 +629,7 @@ MaAcl maParseAcl(MaAuth *auth, cchar *aclStr)
         if (aclStr[0] == '0' && aclStr[1] == 'x') {
             aclStr += 2;
         }
-        for (; isxdigit((int) *aclStr); aclStr++) {
+        for (; isxdigit((uchar) *aclStr); aclStr++) {
             c = (int) tolower((int) *aclStr);
             if ('0' <= c && c <= '9') {
                 acl = (acl * 16) + c - '0';
@@ -2094,7 +2094,7 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
 
             value = mprStrTrim(value, "\"");
 
-            if (isdigit((int) *value) && strchr(value, '.') == 0 && strchr(value, ':') == 0) {
+            if (isdigit((uchar) *value) && strchr(value, '.') == 0 && strchr(value, ':') == 0) {
                 /*
                  *  Port only, listen on all interfaces (ipv4 + ipv6)
                  */
@@ -2290,7 +2290,7 @@ static int processSetting(MaServer *server, char *key, char *value, MaConfigStat
                 code = 302;
                 url = mprStrTok(value, " \t", &tok);
 
-            } else if (isdigit((int) value[0])) {
+            } else if (isdigit((uchar) value[0])) {
                 cp = mprStrTok(value, " \t", &tok);
                 code = atoi(cp);
                 url = mprStrTok(0, " \t\n", &tok);
@@ -5292,7 +5292,7 @@ static void incomingChunkData(MaQueue *q, MaPacket *packet)
             return;
         }
         req->chunkSize = (int) mprAtoi(&start[2], 16);
-        if (!isxdigit((int) start[2]) || req->chunkSize < 0) {
+        if (!isxdigit((uchar) start[2]) || req->chunkSize < 0) {
             maFailConnection(conn, MPR_HTTP_CODE_BAD_REQUEST, "Bad chunk specification");
             return;
         }
@@ -10110,7 +10110,7 @@ void maSetHostIpAddrPort(MaHost *host, cchar *ipAddrPort)
     if (*ipAddrPort == ':') {
         ++ipAddrPort;
     }
-    if (isdigit((int) *ipAddrPort) && strchr(ipAddrPort, '.') == 0) {
+    if (isdigit((uchar) *ipAddrPort) && strchr(ipAddrPort, '.') == 0) {
         host->ipAddrPort = mprStrcat(host, -1, "127.0.0.1", ":", ipAddrPort, NULL);
     } else {
         host->ipAddrPort = mprStrdup(host, ipAddrPort);
@@ -11529,7 +11529,7 @@ int maStartLogging(MprCtx ctx, cchar *logSpec)
     }
     if (*logSpec && strcmp(logSpec, "none") != 0) {
         spec = mprStrdup(mpr, logSpec);
-        if ((levelSpec = strrchr(spec, ':')) != 0 && isdigit((int) levelSpec[1])) {
+        if ((levelSpec = strrchr(spec, ':')) != 0 && isdigit((uchar) levelSpec[1])) {
             *levelSpec++ = '\0';
             level = atoi(levelSpec);
         }
@@ -14631,7 +14631,7 @@ static bool parseHeaders(MaConn *conn, MaPacket *packet)
 
                 start = end = size = -1;
                 sp = value;
-                while (*sp && !isdigit((int) *sp)) {
+                while (*sp && !isdigit((uchar) *sp)) {
                     sp++;
                 }
                 if (*sp) {

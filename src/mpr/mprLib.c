@@ -6239,7 +6239,7 @@ MprAlloc *mprGetAllocStats(MprCtx ctx)
         if ((len = read(fd, buf, sizeof(buf) - 1)) > 0) {
             buf[len] = '\0';
             if ((cp = strstr(buf, "MemTotal:")) != 0) {
-                for (; *cp && !isdigit((int) *cp); cp++) {}
+                for (; *cp && !isdigit((uchar) *cp); cp++) {}
                 ap->ram = ((int64) atoi(cp) * 1024);
             }
         }
@@ -7510,7 +7510,7 @@ int atoi(cchar *str)
 
 int tolower(int c)
 {
-    if (isupper(c)) {
+    if (isupper((uchar) c)) {
         c = 'a' + c - 'A';
     }
     return c;
@@ -12803,7 +12803,7 @@ static int sncasecmp(cchar *s1, cchar *s2, int n)
         return 1;
     }
     for (rc = 0; n > 0 && *s1 && rc == 0; s1++, s2++, n--) {
-        rc = tolower((int) *s1) - tolower((int) *s2);
+        rc = tolower((uchar) *s1) - tolower((uchar) *s2);
     }
     if (rc) {
         return (rc > 0) ? 1 : -1;
@@ -12917,7 +12917,7 @@ static int hashIndex(MprHashTable *table, cchar *key, int size)
     sum = 0;
     if (table->flags & MPR_HASH_CASELESS) {
         while (*key) {
-            sum += (sum * 33) + tolower((int) *key);
+            sum += (sum * 33) + tolower((uchar) *key);
             key++;
         }
     } else {
@@ -14074,7 +14074,7 @@ static bool parseHeaders(MprHttp *http, MprBuf *buf)
          *  Tokenize the headers insitu. This modifies the data in the input buffer
          */
         value = getHttpToken(buf, "\r\n");
-        while (isspace((int) *value)) {
+        while (isspace((uchar) *value)) {
             value++;
         }
         /*
@@ -14115,7 +14115,7 @@ static bool parseHeaders(MprHttp *http, MprBuf *buf)
                  */
                 len = (int) strlen(value);
                 if (len > 2 && value[len - 1] == '1' && value[len - 2] == '=' && 
-                        tolower((int)(value[len - 3])) == 'x') {
+                        tolower((uchar)(value[len - 3])) == 'x') {
                     /*
                      *  IMPORTANT: Deliberately close the connection one request early. This ensures a client-led 
                      *  termination and helps relieve server-side TIME_WAIT conditions.
@@ -14145,7 +14145,7 @@ static bool parseHeaders(MprHttp *http, MprBuf *buf)
         case 'W':
             if (strcmp("WWW-AUTHENTICATE", key) == 0) {
                 tp = value;
-                while (*value && !isspace((int) *value)) {
+                while (*value && !isspace((uchar) *value)) {
                     value++;
                 }
                 *value++ = '\0';
@@ -14186,16 +14186,16 @@ static int parseAuthenticate(MprHttp *http, char *authDetails)
     resp = http->response;
 
     while (*key) {
-        while (*key && isspace((int) *key)) {
+        while (*key && isspace((uchar) *key)) {
             key++;
         }
         tok = key;
-        while (*tok && !isspace((int) *tok) && *tok != ',' && *tok != '=') {
+        while (*tok && !isspace((uchar) *tok) && *tok != ',' && *tok != '=') {
             tok++;
         }
         *tok++ = '\0';
 
-        while (isspace((int) *tok)) {
+        while (isspace((uchar) *tok)) {
             tok++;
         }
         seenComma = 0;
@@ -14230,7 +14230,7 @@ static int parseAuthenticate(MprHttp *http, char *authDetails)
          *  algorithm, domain, nonce, oqaque, realm, qop, stale
          *  We don't strdup any of the values as the headers are persistently saved.
          */
-        switch (tolower((int) *key)) {
+        switch (tolower((uchar) *key)) {
         case 'a':
             if (mprStrcmpAnyCase(key, "algorithm") == 0) {
                 mprFree(resp->authAlgorithm);
@@ -14686,7 +14686,7 @@ char *mprGetHttpHeaders(MprHttp *http)
         headers = mprReallocStrcat(http, -1, headers, hp->key, NULL);
         key = &headers[len];
         for (cp = &key[1]; *cp; cp++) {
-            *cp = tolower((int) *cp);
+            *cp = tolower((uchar) *cp);
             if (*cp == '-') {
                 cp++;
             }
@@ -15001,7 +15001,7 @@ static bool parseChunk(MprHttp *http, MprBuf *buf)
         return 1;
     }
     resp->chunkRemaining = (int) mprAtoi(&start[2], 16);
-    if (!isxdigit((int) start[2]) || resp->chunkRemaining < 0) {
+    if (!isxdigit((uchar) start[2]) || resp->chunkRemaining < 0) {
         badRequest(http, "Bad chunk specification");
         return 1;
     }
@@ -17576,7 +17576,7 @@ char *mprGetRelPath(MprCtx ctx, cchar *pathArg)
                 commonSegments++;
             }
         } else if (fs->caseSensitive) {
-            if (tolower((int) *hp) != tolower((int) *cp)) {
+            if (tolower((uchar) *hp) != tolower((uchar) *cp)) {
                 break;
             }
         } else {
@@ -18202,7 +18202,7 @@ int mprSamePath(MprCtx ctx, cchar *path1, cchar *path2)
         }
     } else {
         for (p1 = path1, p2 = path2; *p1 && *p2; p1++, p2++) {
-            if (tolower((int) *p1) != tolower((int) *p2) && !(isSep(fs, *p1) && isSep(fs, *p2))) {
+            if (tolower((uchar) *p1) != tolower((uchar) *p2) && !(isSep(fs, *p1) && isSep(fs, *p2))) {
                 break;
             }
         }
@@ -18245,7 +18245,7 @@ int mprSamePathCount(MprCtx ctx, cchar *path1, cchar *path2, int len)
         }
     } else {
         for (p1 = path1, p2 = path2; *p1 && *p2 && len > 0; p1++, p2++, len--) {
-            if (tolower((int) *p1) != tolower((int) *p2) && !(isSep(fs, *p1) && isSep(fs, *p2))) {
+            if (tolower((uchar) *p1) != tolower((uchar) *p2) && !(isSep(fs, *p1) && isSep(fs, *p2))) {
                 break;
             }
         }
@@ -19340,7 +19340,7 @@ static char *sprintfCore(MprCtx ctx, char *buf, int maxsize, cchar *spec, va_lis
                     fmt.flags |= SPRINTF_LEFT;
                 }
             } else {
-                while (isdigit((int) c)) {
+                while (isdigit((uchar) c)) {
                     fmt.width = fmt.width * 10 + (c - '0');
                     c = *spec++;
                 }
@@ -19356,7 +19356,7 @@ static char *sprintfCore(MprCtx ctx, char *buf, int maxsize, cchar *spec, va_lis
             if (c == '*') {
                 fmt.precision = va_arg(arg, int);
             } else {
-                while (isdigit((int) c)) {
+                while (isdigit((uchar) c)) {
                     fmt.precision = fmt.precision * 10 + (c - '0');
                     c = *spec++;
                 }
@@ -22381,7 +22381,7 @@ int mprParseIp(MprCtx ctx, cchar *ipAddrPort, char **ipAddrRef, int *port, int d
             }
 
         } else {
-            if (isdigit((int) *ipAddr)) {
+            if (isdigit((uchar) *ipAddr)) {
                 *port = atoi(ipAddr);
                 mprFree(ipAddr);
                 ipAddr = mprStrdup(ctx, "127.0.0.1");
@@ -22733,8 +22733,8 @@ char *mprStrLower(char *str)
     }
 
     for (cp = str; *cp; cp++) {
-        if (isupper((int) *cp)) {
-            *cp = (char) tolower((int) *cp);
+        if (isupper((uchar) *cp)) {
+            *cp = (char) tolower((uchar) *cp);
         }
     }
     return str;
@@ -22755,7 +22755,7 @@ char *mprStrUpper(char *str)
 
     for (cp = str; *cp; cp++) {
         if (islower((int) *cp)) {
-            *cp = (char) toupper((int) *cp);
+            *cp = (char) toupper((uchar) *cp);
         }
     }
     return str;
@@ -22848,7 +22848,7 @@ int mprStrcmpAnyCase(cchar *str1, cchar *str2)
         return 0;
     }
     for (rc = 0; *str1 && *str2 && rc == 0; str1++, str2++) {
-        rc = tolower((int) *str1) - tolower((int) *str2);
+        rc = tolower((uchar) *str1) - tolower((uchar) *str2);
     }
     if (rc) {
         return rc < 0 ? -1 : 1;
@@ -22879,7 +22879,7 @@ int mprStrcmpAnyCaseCount(cchar *str1, cchar *str2, int len)
     }
 
     for (rc = 0; len-- > 0 && *str1 && rc == 0; str1++, str2++) {
-        rc = tolower((int) *str1) - tolower((int) *str2);
+        rc = tolower((uchar) *str1) - tolower((uchar) *str2);
     }
     if (rc || len < 0) {
         return rc;
@@ -23025,7 +23025,7 @@ int64 mprAtoi(cchar *str, int radix)
     if (str == 0) {
         return 0;
     }
-    while (isspace((int) *str)) {
+    while (isspace((uchar) *str)) {
         str++;
     }
     val = 0;
@@ -23038,7 +23038,7 @@ int64 mprAtoi(cchar *str, int radix)
     if (radix <= 0) {
         radix = 10;
         if (*str == '0') {
-            if (tolower((int) str[1]) == 'x') {
+            if (tolower((uchar) str[1]) == 'x') {
                 radix = 16;
                 str += 2;
             } else {
@@ -23047,15 +23047,15 @@ int64 mprAtoi(cchar *str, int radix)
             }
         }
     } else if (radix == 16) {
-        if (*str == '0' && tolower((int) str[1]) == 'x') {
+        if (*str == '0' && tolower((uchar) str[1]) == 'x') {
             str += 2;
         }
     }
 
     if (radix == 16) {
         while (*str) {
-            c = tolower((int) *str);
-            if (isdigit(c)) {
+            c = tolower((uchar) *str);
+            if (isdigit((uchar) c)) {
                 val = (val * radix) + c - '0';
             } else if (c >= 'a' && c <= 'f') {
                 val = (val * radix) + c - 'a' + 10;
@@ -23065,7 +23065,7 @@ int64 mprAtoi(cchar *str, int radix)
             str++;
         }
     } else {
-        while (*str && isdigit((int) *str)) {
+        while (*str && isdigit((uchar) *str)) {
             val = (val * radix) + *str - '0';
             str++;
         }
@@ -23111,7 +23111,7 @@ int mprMakeArgv(MprCtx ctx, cchar *program, cchar *cmd, int *argcp, char ***argv
             }
             return MPR_ERR_TOO_MANY;
         }
-        while (isspace((int) *cp)) {
+        while (isspace((uchar) *cp)) {
             cp++;
         }
         if (*cp == '\0')  {
@@ -23131,7 +23131,7 @@ int mprMakeArgv(MprCtx ctx, cchar *program, cchar *cmd, int *argcp, char ***argv
             }
         } else {
             argv[argc] = cp;
-            while (*cp != '\0' && !isspace((int) *cp)) {
+            while (*cp != '\0' && !isspace((uchar) *cp)) {
                 cp++;
             }
         }
@@ -26595,7 +26595,7 @@ static bool allDigits(cchar *token)
     cchar   *cp;
 
     for (cp = token; *cp; cp++) {
-        if (!isdigit((int) *cp)) {
+        if (!isdigit((uchar) *cp)) {
             return 0;
         }
     }
@@ -26740,7 +26740,7 @@ int mprParseTime(MprCtx ctx, MprTime *time, cchar *dateString, int zoneFlags, st
                 }
             }
 
-        } else if ((cp = strchr(token, timeSep)) != 0 && isdigit((int) token[0])) {
+        } else if ((cp = strchr(token, timeSep)) != 0 && isdigit((uchar) token[0])) {
             /*
                 Time:  10:52[:23]
                 Must not parse GMT-07:30
@@ -27426,7 +27426,7 @@ int mprContainsCaselessUs(uni *us, uni *pat)
 
     for (i = 0; i < us->length; i++) {
         for (j = 0; j < pat->length; j++) {
-            if (tolower(us->str[i]) != tolower(pat->str[j])) {
+            if (tolower((uchar) us->str[i]) != tolower((uchar) pat->str[j])) {
                 break;
             }
         }
@@ -27545,7 +27545,7 @@ void mprUsToLower(uni *us)
     mprAssert(us->str);
 
     for (i = 0; i < us->length; i++) {
-        us->str[i] = tolower(us->str[i]);
+        us->str[i] = tolower((uchar) us->str[i]);
     }
 }
 
@@ -27559,7 +27559,7 @@ void mprUsToUpper(uni *us)
     mprAssert(us->str);
 
     for (i = 0; i < us->length; i++) {
-        us->str[i] = toupper(us->str[i]);
+        us->str[i] = toupper((uchar) us->str[i]);
     }
 }
 
@@ -28202,11 +28202,11 @@ char *mprUrlDecode(MprCtx ctx, cchar *inbuf)
         if (*ip == '+') {
             *op = ' ';
 
-        } else if (*ip == '%' && isxdigit((int) ip[1]) && isxdigit((int) ip[2])) {
+        } else if (*ip == '%' && isxdigit((uchar) ip[1]) && isxdigit((uchar) ip[2])) {
             ip++;
             num = 0;
             for (i = 0; i < 2; i++, ip++) {
-                c = tolower((int) *ip);
+                c = tolower((uchar) *ip);
                 if (c >= 'a' && c <= 'f') {
                     num = (num * 16) + 10 + c - 'a';
                 } else if (c >= '0' && c <= '9') {
@@ -31013,7 +31013,7 @@ static MprXmlToken getToken(MprXml *xp, int state)
          *  If all white space, then zero the token buffer
          */
         for (cp = tokBuf->start; *cp; cp++) {
-            if (!isspace((int) *cp)) {
+            if (!isspace((uchar) *cp)) {
                 return MPR_XMLTOK_TEXT;
             }
         }
@@ -31080,7 +31080,7 @@ static MprXmlToken getToken(MprXml *xp, int state)
                 xp->quoteChar = 0;
 
             } else {
-                while (!isspace(c) && c != '>' && c != '/' && c != '=') {
+                while (!isspace((uchar) c) && c != '>' && c != '/' && c != '=') {
                     if (mprPutCharToBuf(tokBuf, c) < 0) {
                         return MPR_XMLTOK_TOO_BIG;
                     }
@@ -31261,7 +31261,7 @@ static void xmlError(MprXml *xp, char *fmt, ...)
  */
 static void trimToken(MprXml *xp)
 {
-    while (isspace(mprLookAtLastCharInBuf(xp->tokBuf))) {
+    while (isspace((uchar) mprLookAtLastCharInBuf(xp->tokBuf))) {
         mprAdjustBufEnd(xp->tokBuf, -1);
     }
     mprAddNullToBuf(xp->tokBuf);

@@ -23,8 +23,8 @@
 
 include		build/make/Makefile.top
 
-APPWEB  := appweb-3.3.4
-MPR     := mpr-3.3.4
+APPWEB  := appweb-3
+MPR     := mpr-3
 TOOLS   := tools
 
 dependExtra:

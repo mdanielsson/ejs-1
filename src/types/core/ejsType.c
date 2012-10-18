@@ -205,7 +205,7 @@ static EjsType *createBootstrapType(Ejs *ejs, int numSlots)
     memset(&bootstrapInstanceBlock, 0, sizeof(bootstrapInstanceBlock));
 
     bootstrap.instanceSize = sizeof(EjsType);
-    bootstrap.subTypeCount = -1;
+    bootstrap.subTypeCount = 0;
     bootstrap.instanceBlock = &bootstrapInstanceBlock;
 
     type = (EjsType*) createTypeVar(ejs, &bootstrap, numSlots);
