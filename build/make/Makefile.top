@@ -152,8 +152,8 @@ binary:
 			for name in $(IMG_NAME)* md5-$(IMG_NAME)* ; \
 			do \
 				chmod 664 $$name ; \
-				echo http --upload --form "server=`hostname`&key=$(BUILD_KEY)" $$name $(BUILD_UPLOAD); \
-				http -q --upload --form "server=`hostname`&key=$(BUILD_KEY)" $$name $(BUILD_UPLOAD); \
+				echo http --upload --form "branch=legacy&server=`hostname`&key=$(BUILD_KEY)" $$name $(BUILD_UPLOAD); \
+				http -q --upload --form "branch=legacy&server=`hostname`&key=$(BUILD_KEY)" $$name $(BUILD_UPLOAD); \
 			done ; \
 		fi; \
 	fi
